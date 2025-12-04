@@ -2538,3 +2538,997 @@ h1, h2, h3, h4, h5, h6 {
     height: 120px;
   }
 }
+
+/* --- Global Background (The Foundation) --- */
+.gradient-bg {
+  /* Deep Luxury Black Gradient */
+  background: radial-gradient(circle at top left, #1a1a1a 0%, #000000 100%);
+  min-height: 100vh;
+  color: #f3f4f6; /* Default text color is now off-white */
+}
+
+/* --- Gradient Text (Gold Effect) --- */
+.gradient-text {
+  background: linear-gradient(135deg, #FDE68A 0%, #D4AF37 50%, #B4941F 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
+/* --- About / Features Section (Black & Gold Theme) --- */
+.features-section {
+  padding: 6rem 2rem; /* More spacing for luxury feel */
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff; /* White text */
+  margin-bottom: 1rem;
+  letter-spacing: -0.5px;
+}
+
+.section-description {
+  color: #9ca3af; /* Light gray for readability */
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+  font-size: 1.1rem;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.feature-card {
+  /* Dark Glassmorphism */
+  background: rgba(20, 20, 20, 0.6); 
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  
+  /* Gold Border styling */
+  border: 1px solid rgba(212, 175, 55, 0.15); /* Subtle gold border */
+  border-radius: 1rem;
+  
+  padding: 2.5rem 2rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  
+  /* Glow effect */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  /* Stronger Gold Glow on Hover */
+  border-color: rgba(212, 175, 55, 0.5);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 
+              0 0 15px rgba(212, 175, 55, 0.1); 
+}
+
+.feature-icon-wrapper {
+  width: 4rem;
+  height: 4rem;
+  /* Gold background for icon */
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0.05) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem auto;
+  color: #D4AF37; /* Icon color is Gold */
+}
+
+.feature-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #ffffff; /* White title */
+}
+
+.feature-text {
+  color: #9ca3af; /* Gray description */
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* --- Login Logic & States --- */
+
+/* Error Message Box */
+.error-alert {
+  background-color: rgba(220, 38, 38, 0.1); /* Red background with opacity */
+  border: 1px solid #ef4444;
+  color: #fca5a5; /* Light red text */
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Input Error State */
+.form-input.error {
+  border-color: #ef4444;
+}
+
+.form-input.error:focus {
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* Loading Spinner Animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Disabled button state during loading */
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.link {
+  cursor: pointer; /* Ensures links look clickable */
+}
+
+/* --- Product Filter Enhancements --- */
+
+/* Price Range Inputs */
+.price-range-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.price-inputs-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.price-input-group {
+  position: relative;
+  flex: 1;
+}
+
+.currency-symbol {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #D4AF37;
+  font-size: 0.875rem;
+}
+
+.price-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.5rem; /* Space for currency symbol */
+  color: white;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.price-input:focus {
+  border-color: #D4AF37;
+}
+
+.price-separator {
+  color: #6b7280;
+}
+
+/* Scents & Sizes Grid */
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 columns for compactness */
+  gap: 0.5rem;
+}
+
+.filter-scroll-area {
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+/* Custom Scrollbar for filter list */
+.filter-scroll-area::-webkit-scrollbar {
+  width: 4px;
+}
+.filter-scroll-area::-webkit-scrollbar-thumb {
+  background: #374151; 
+  border-radius: 4px;
+}
+/* --- 1. Hide Up/Down Arrows in Number Inputs --- */
+/* Chrome, Safari, Edge, Opera */
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
+/* --- 2. Dual Range Slider Styling --- */
+.range-slider-container {
+  position: relative;
+  width: 100%;
+  height: 24px; /* Height of the slider area */
+  margin-top: 10px;
+}
+
+/* The horizontal line track */
+.slider-track {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  width: 100%;
+  background: #374151; /* Dark gray background */
+  border-radius: 4px;
+  z-index: 1;
+}
+
+/* The active gold range in the middle */
+.slider-range {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  background: #D4AF37; /* Luxury Gold */
+  z-index: 2;
+}
+
+/* The actual input sliders (invisible but clickable) */
+.thumb-input {
+  position: absolute;
+  top: 0; /* Align to top of container */
+  pointer-events: none; /* Let clicks pass through to bottom slider */
+  -webkit-appearance: none;
+  z-index: 3;
+  height: 24px; /* Match container height */
+  width: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Webkit (Chrome/Safari) Thumb Styling */
+.thumb-input::-webkit-slider-thumb {
+  pointer-events: all; /* Re-enable clicks just for the thumb */
+  width: 16px;
+  height: 16px;
+  -webkit-appearance: none;
+  border-radius: 50%;
+  background: #D4AF37;
+  cursor: pointer;
+  border: 2px solid #000; /* Dark border to pop against the bar */
+  box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+  margin-top: 4px; /* alignment adjustment */
+}
+
+/* Firefox Thumb Styling */
+.thumb-input::-moz-range-thumb {
+  pointer-events: all;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #D4AF37;
+  cursor: pointer;
+  border: 2px solid #000;
+  box-shadow: 0 0 5px rgba(212, 175, 55, 0.5);
+}
+
+/* Visual Mock Thumbs (Since actual inputs are invisible/stacked) */
+/* We will use React inline styles to move these, 
+   but this class defines what they look like */
+.slider-thumb-node {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #D4AF37;
+  border: 2px solid #1f2937; /* Match bg color for clean look */
+  z-index: 4;
+  pointer-events: none; /* Clicks go to the hidden inputs */
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* --- Pagination --- */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.page-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-btn:hover {
+  border-color: #D4AF37;
+  color: #D4AF37;
+}
+
+.page-btn.active {
+  background: #D4AF37;
+  color: #000;
+  border-color: #D4AF37;
+  font-weight: bold;
+}
+
+/* --- Product Details Overlay (The "New Page" look) --- */
+.product-details-container {
+  background: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(20px);
+  border-radius: 1rem;
+  padding: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  animation: fadeIn 0.3s ease;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #9ca3af;
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-bottom: 2rem;
+  font-size: 1rem;
+  transition: color 0.2s;
+}
+
+.back-btn:hover {
+  color: #D4AF37;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+}
+
+.details-image-container {
+  background: radial-gradient(circle at center, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+  border-radius: 1rem;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.details-info h1 {
+  font-size: 2.5rem;
+  color: #fff;
+  margin-bottom: 0.5rem;
+}
+
+.details-brand {
+  color: #D4AF37;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+  display: block;
+}
+
+.details-price {
+  font-size: 2rem;
+  color: #fff;
+  font-weight: 300;
+  margin-bottom: 2rem;
+  display: block;
+}
+
+.details-description {
+  color: #9ca3af;
+  line-height: 1.6;
+  margin-bottom: 2rem;
+}
+
+.details-notes-title {
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.details-notes-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.note-tag {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.85rem;
+  color: #d1d5db;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* --- Review Modal --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  background: #1a1a1a;
+  border: 1px solid #D4AF37;
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 500px;
+  position: relative;
+}
+
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.modal-title {
+  color: #fff;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.review-textarea {
+  width: 100%;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  color: #fff;
+  min-height: 120px;
+  margin-bottom: 1.5rem;
+  resize: vertical;
+}
+
+/* Added State Button */
+.btn-add-cart.added {
+  background: #059669; /* Green */
+  border-color: #059669;
+  color: white;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Mobile responsive adjustment for details */
+@media (max-width: 768px) {
+  .details-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+/* --- Product Detail Reviews Section --- */
+.reviews-section {
+  margin-top: 4rem;
+  padding-top: 3rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  animation: fadeIn 0.5s ease;
+}
+
+.reviews-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.reviews-title {
+  font-size: 1.5rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+.reviews-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.review-card {
+  background: rgba(255, 255, 255, 0.03); /* Very subtle overlay */
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  transition: background 0.2s;
+}
+
+.review-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(212, 175, 55, 0.2); /* Gold hint on hover */
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.review-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #374151 0%, #111827 100%);
+  border: 1px solid #D4AF37;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #D4AF37;
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.user-name {
+  color: #fff;
+  font-weight: 500;
+  display: block;
+  font-size: 0.95rem;
+}
+
+.review-date {
+  color: #6b7280;
+  font-size: 0.8rem;
+  margin-top: 0.1rem;
+  display: block;
+}
+
+.review-text {
+  color: #d1d5db;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #059669; /* Green */
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+  background: rgba(5, 150, 105, 0.1);
+  padding: 0.1rem 0.5rem;
+  border-radius: 1rem;
+}
+
+/* --- Cart Enhancements --- */
+
+/* Empty State */
+.cart-empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 2rem;
+}
+
+.empty-icon-wrapper {
+  width: 80px;
+  height: 80px;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem auto;
+  color: #D4AF37;
+}
+
+/* Quantity Controls */
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 0.5rem;
+  padding: 0.25rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 0.75rem;
+  width: fit-content;
+}
+
+.btn-qty {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.btn-qty:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-qty:disabled {
+  color: #4b5563;
+  cursor: not-allowed;
+}
+
+.qty-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #fff;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* Removing State Animation */
+.cart-item.removing {
+  opacity: 0.5;
+  pointer-events: none;
+  filter: grayscale(100%);
+  transform: scale(0.98);
+}
+
+/* Availability Badges */
+.availability-badge.unavailable {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Checkout Button Disabled State */
+.btn-checkout:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #374151; /* Gray out */
+}
+
+.summary-warning {
+  color: #ef4444;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+/* --- Chat Order Card Styles --- */
+
+/* The card inside the chat history */
+.order-bubble {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  min-width: 280px;
+}
+
+.order-header {
+  background: rgba(212, 175, 55, 0.1);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+}
+
+.order-header-text {
+  color: #D4AF37;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.order-content {
+  padding: 1rem;
+}
+
+.order-item-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+
+.order-total-row {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-total-label {
+  color: #9ca3af;
+  font-size: 0.85rem;
+}
+
+.order-total-value {
+  color: #D4AF37;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+/* The "Pre-fill" Attachment area above the input */
+.chat-attachment-area {
+  background: #1f2937;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: slideUp 0.3s ease;
+}
+
+.attachment-preview {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.attachment-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #D4AF37;
+}
+
+.attachment-info h4 {
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.attachment-info p {
+  color: #D4AF37;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.btn-close-attachment {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.btn-close-attachment:hover {
+  color: #ef4444;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* --- Admin Enhancements --- */
+
+/* Admin View Transitions */
+.admin-view-container {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Pagination */
+.admin-pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Modals */
+.admin-modal {
+  background: #1a1a1a;
+  border: 1px solid #D4AF37;
+  border-radius: 1rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 600px; /* Wider for product form */
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 1rem;
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.file-upload-box {
+  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.file-upload-box:hover {
+  border-color: #D4AF37;
+  color: #D4AF37;
+}
+
+/* Analytics View */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #fff;
+  margin: 0.5rem 0;
+}
+
+.stat-label {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.chart-mockup {
+  height: 300px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 1rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  padding: 2rem;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.chart-bar {
+  width: 40px;
+  background: linear-gradient(to top, rgba(212, 175, 55, 0.2), rgba(212, 175, 55, 0.8));
+  border-radius: 4px 4px 0 0;
+  transition: height 1s ease;
+}
+
+/* Admin Chat View */
+.admin-chat-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.5rem;
+  height: 600px;
+}
+
+.chat-list {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 1rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.chat-list-item {
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.chat-list-item:hover, .chat-list-item.active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Settings Form */
+.settings-form {
+  max-width: 600px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2rem;
+  border-radius: 1rem;
+}
+/* --- Admin Notification Badge --- */
+.notification-badge {
+  background: rgba(220, 38, 38, 0.9); /* Deep Red */
+  color: white;
+  padding: 0.35rem 0.85rem;
+  border-radius: 2rem; /* Pill shape */
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 10px rgba(220, 38, 38, 0.3); /* Red Glow */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
