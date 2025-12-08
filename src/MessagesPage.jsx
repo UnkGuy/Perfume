@@ -1,7 +1,6 @@
 import React from 'react';
-import { User, Send, ShoppingBag, X } from 'lucide-react';
+import { User, Send, ShoppingBag } from 'lucide-react'; // Removed 'X' import as it's no longer used
 import Header from './Header';
-import Footer from './Footer';
 
 const MessagesPage = ({ setCurrentPage, cartItems }) => (
   <div className="messages-container">
@@ -90,24 +89,10 @@ const MessagesPage = ({ setCurrentPage, cartItems }) => (
         {/* Chat Input Area */}
         <div className="chat-input-area" style={{padding: 0, flexDirection: 'column', gap: 0}}>
           
-          {/* MOCK "PRE-FILLED" ATTACHMENT from Cart */}
-          <div className="chat-attachment-area">
-            <div className="attachment-preview">
-              <div className="attachment-icon">
-                <ShoppingBag size={20} />
-              </div>
-              <div className="attachment-info">
-                <h4>Order Summary (2 Items)</h4>
-                <p>Total: ₱228.00</p>
-              </div>
-            </div>
-            <button className="btn-close-attachment">
-              <X size={16} />
-            </button>
-          </div>
+          {/* REMOVED: The Order Summary Attachment Box was here */}
 
           {/* Actual Input Row */}
-          <div className="chat-input-wrapper" style={{borderTop: 'none', borderRadius: '0 0 1rem 1rem'}}>
+          <div className="chat-input-wrapper" style={{borderTop: '1px solid #333', borderRadius: '0 0 1rem 1rem'}}>
             <input 
               type="text" 
               className="chat-input" 

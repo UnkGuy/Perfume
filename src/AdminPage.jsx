@@ -2,12 +2,21 @@ import React, { useState } from 'react';
 import { 
   Settings, Package, BarChart3, MessageSquare, Plus, Edit, Trash2, 
   X, ChevronLeft, ChevronRight, Upload, Search, User, DollarSign, 
-  TrendingUp, Users 
+  TrendingUp, Users, ArrowRight, ArrowLeft 
 } from 'lucide-react';
 
 const AdminPage = () => {
   // --- STATE MANAGEMENT ---
   const [activeTab, setActiveTab] = useState('products');
+  // --- NEW STATE: MESSAGES ---
+  const [activeChat, setActiveChat] = useState(1);
+  const [conversations, setConversations] = useState([
+    { id: 1, name: 'Customer 1', lastMessage: 'Is this still available?', unread: true },
+    { id: 2, name: 'Customer 2', lastMessage: 'Thank you for the update!', unread: false },
+    { id: 3, name: 'Customer 3', lastMessage: 'Do you ship to Cebu?', unread: true },
+    { id: 4, name: 'Customer 4', lastMessage: 'How long does shipping take?', unread: true },
+    { id: 5, name: 'Customer 5', lastMessage: 'Received, thanks.', unread: false },
+  ]);
   
   // Product Data State
   const [products, setProducts] = useState([
@@ -19,25 +28,24 @@ const AdminPage = () => {
     { id: 6, name: 'Luxury Parfum 6', category: 'Unisex', price: 149, available: false, brand: 'Designer Brand', size: '50ml', notes: 'Vanilla, Sweet' },
     { id: 7, name: 'Luxury Parfum 7', category: 'Women', price: 159, available: true, brand: 'Designer Brand', size: '50ml', notes: 'Fruity' },
     { id: 8, name: 'Luxury Parfum 8', category: 'Men', price: 169, available: true, brand: 'Designer Brand', size: '50ml', notes: 'Aqua' },
+    { id: 9, name: 'Luxury Parfum 9', category: 'Women', price: 179, available: true, brand: 'Designer Brand', size: '50ml', notes: 'Chypre' },
+    { id: 10, name: 'Luxury Parfum 10', category: 'Men', price: 189, available: true, brand: 'Designer Brand', size: '50ml', notes: 'Oud' },
   ]);
 
   // Modal States
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [currentProduct, setCurrentProduct] = useState(null); // Used for Edit & Delete target
+  const [currentProduct, setCurrentProduct] = useState(null);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
   // --- HANDLERS ---
-
-  // Open Modal for Create (null) or Edit (product object)
   const openProductModal = (product = null) => {
     if (product) {
       setCurrentProduct(product);
     } else {
-      // Empty template for new product
       setCurrentProduct({ id: null, name: '', brand: '', price: '', size: '50ml', category: 'Women', notes: '', available: true });
     }
     setIsProductModalOpen(true);
@@ -46,11 +54,9 @@ const AdminPage = () => {
   const handleSaveProduct = (e) => {
     e.preventDefault();
     if (currentProduct.id) {
-      // Edit Logic
       setProducts(products.map(p => p.id === currentProduct.id ? currentProduct : p));
     } else {
-      // Create Logic
-      const newProduct = { ...currentProduct, id: Date.now() }; // Mock ID
+      const newProduct = { ...currentProduct, id: Date.now() };
       setProducts([...products, newProduct]);
     }
     setIsProductModalOpen(false);
@@ -65,19 +71,18 @@ const AdminPage = () => {
     setProducts(products.filter(p => p.id !== currentProduct.id));
     setIsDeleteModalOpen(false);
     setCurrentProduct(null);
-    // Reset pagination if deleting the last item on a page
     if (products.length % itemsPerPage === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
   };
 
-  // Pagination Logic
+  // Pagination Calculations
   const totalPages = Math.ceil(products.length / itemsPerPage);
   const displayedProducts = products.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  // --- SUB-COMPONENT RENDERS ---
+  // --- RENDER FUNCTIONS ---
 
-  const renderProducts = () => (
+const renderProducts = () => (
     <div className="admin-view-container">
       <header className="admin-header">
         <div className="admin-header-content">
@@ -92,7 +97,8 @@ const AdminPage = () => {
         </div>
       </header>
 
-      <div className="admin-content">
+      {/* Content Area with Margin */}
+      <div className="admin-content" style={{ padding: '2rem' }}>
         <div className="table-card">
           <div className="table-header">
             <h2 className="table-title">All Products</h2>
@@ -165,35 +171,93 @@ const AdminPage = () => {
             </table>
           </div>
           
-          {/* Pagination Controls */}
-          <div className="admin-pagination">
-             <span style={{color: '#9ca3af', fontSize: '0.9rem', marginRight: 'auto'}}>
-               Page {currentPage} of {totalPages}
-             </span>
-             <button 
-               className="page-btn" 
-               disabled={currentPage === 1} 
-               onClick={() => setCurrentPage(p => p - 1)}
-             >
-               <ChevronLeft size={20} />
-             </button>
-             {Array.from({length: totalPages}, (_, i) => i + 1).map(num => (
+          {/* --- PAGINATION: BLACK, GOLD, & LUXURY FONT --- */}
+          <div className="admin-pagination" style={{
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center',
+            padding: '1.5rem',
+            borderTop: '1px solid #e5e7eb',
+            fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" // Luxury Font Stack
+          }}>
+             {/* "Showing X entries" text */}
+             <div style={{color: '#6b7280', fontSize: '0.85rem', letterSpacing: '0.5px'}}>
+               Showing <span style={{fontWeight: 'bold', color: '#1f2937'}}>{(currentPage - 1) * itemsPerPage + 1}</span> to <span style={{fontWeight: 'bold', color: '#1f2937'}}>{Math.min(currentPage * itemsPerPage, products.length)}</span> of <span style={{fontWeight: 'bold', color: '#1f2937'}}>{products.length}</span> entries
+             </div>
+             
+             <div style={{display: 'flex', gap: '0.5rem'}}>
+               {/* Previous Button */}
                <button 
-                 key={num} 
-                 className={`page-btn ${currentPage === num ? 'active' : ''}`}
-                 onClick={() => setCurrentPage(num)}
+                 className="page-btn" 
+                 disabled={currentPage === 1} 
+                 onClick={() => setCurrentPage(p => p - 1)}
+                 style={{
+                   display: 'flex', alignItems: 'center', gap: '8px', 
+                   padding: '0.6rem 1.2rem', borderRadius: '4px', // Slightly sharper corners
+                   // FONT STYLES
+                   fontSize: '0.75rem',
+                   fontWeight: '600',
+                   textTransform: 'uppercase',
+                   letterSpacing: '1px',
+                   // COLOR STYLES
+                   border: '1px solid #D4AF37',
+                   background: currentPage === 1 ? '#1a1a1a' : '#000000',
+                   color: currentPage === 1 ? '#665c40' : '#D4AF37',
+                   cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                   transition: 'all 0.3s ease'
+                 }}
                >
-                 {num}
+                 <ArrowLeft size={14} /> Previous
                </button>
-             ))}
-             <button 
-               className="page-btn" 
-               disabled={currentPage === totalPages} 
-               onClick={() => setCurrentPage(p => p + 1)}
-             >
-               <ChevronRight size={20} />
-             </button>
+               
+               {/* Numbered Buttons */}
+               {Array.from({length: totalPages}, (_, i) => i + 1).map(num => (
+                 <button 
+                   key={num} 
+                   onClick={() => setCurrentPage(num)}
+                   style={{
+                     width: '38px', height: '38px', borderRadius: '4px',
+                     // FONT STYLES
+                     fontSize: '0.85rem',
+                     fontWeight: '700',
+                     // COLOR STYLES
+                     border: '1px solid #D4AF37',
+                     background: num === currentPage ? '#D4AF37' : '#000000',
+                     color: num === currentPage ? '#000000' : '#D4AF37',
+                     cursor: 'pointer',
+                     transition: 'all 0.3s ease'
+                   }}
+                 >
+                   {num}
+                 </button>
+               ))}
+
+               {/* Next Button */}
+               <button 
+                 className="page-btn" 
+                 disabled={currentPage === totalPages} 
+                 onClick={() => setCurrentPage(p => p + 1)}
+                 style={{
+                   display: 'flex', alignItems: 'center', gap: '8px', 
+                   padding: '0.6rem 1.2rem', borderRadius: '4px',
+                   // FONT STYLES
+                   fontSize: '0.75rem',
+                   fontWeight: '600',
+                   textTransform: 'uppercase',
+                   letterSpacing: '1px',
+                   // COLOR STYLES
+                   border: '1px solid #D4AF37',
+                   background: currentPage === totalPages ? '#1a1a1a' : '#000000',
+                   color: currentPage === totalPages ? '#665c40' : '#D4AF37',
+                   cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                   transition: 'all 0.3s ease'
+                 }}
+               >
+                 Next <ArrowRight size={14} />
+               </button>
+             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -214,112 +278,163 @@ const AdminPage = () => {
         </div>
       </header>
       
-      <div className="analytics-grid">
-        <div className="stat-card">
-          <div style={{display: 'flex', justifyContent: 'space-between'}}>
-            <span className="stat-label">Total Revenue</span>
-            <DollarSign size={20} color="#D4AF37" />
-          </div>
-          <div className="stat-value">₱124,500</div>
-          <div style={{color: '#059669', fontSize: '0.85rem'}}>+12.5% from last month</div>
-        </div>
-        <div className="stat-card">
-          <div style={{display: 'flex', justifyContent: 'space-between'}}>
-            <span className="stat-label">Total Orders</span>
-            <Package size={20} color="#D4AF37" />
-          </div>
-          <div className="stat-value">1,240</div>
-          <div style={{color: '#059669', fontSize: '0.85rem'}}>+5.2% from last month</div>
-        </div>
-        <div className="stat-card">
-          <div style={{display: 'flex', justifyContent: 'space-between'}}>
-            <span className="stat-label">Active Users</span>
-            <Users size={20} color="#D4AF37" />
-          </div>
-          <div className="stat-value">8,500</div>
-          <div style={{color: '#ef4444', fontSize: '0.85rem'}}>-1.1% from last month</div>
-        </div>
-        <div className="stat-card">
-          <div style={{display: 'flex', justifyContent: 'space-between'}}>
-            <span className="stat-label">Conversion Rate</span>
-            <TrendingUp size={20} color="#D4AF37" />
-          </div>
-          <div className="stat-value">3.2%</div>
-          <div style={{color: '#059669', fontSize: '0.85rem'}}>+0.4% from last month</div>
-        </div>
-      </div>
-
-      <div className="table-card" style={{padding: '2rem'}}>
-        <h3 className="table-title" style={{marginBottom: '2rem'}}>Sales Overview</h3>
-        <div className="chart-mockup">
-          {/* Mock Bars for Chart */}
-          <div className="chart-bar" style={{height: '40%'}}></div>
-          <div className="chart-bar" style={{height: '60%'}}></div>
-          <div className="chart-bar" style={{height: '45%'}}></div>
-          <div className="chart-bar" style={{height: '80%'}}></div>
-          <div className="chart-bar" style={{height: '55%'}}></div>
-          <div className="chart-bar" style={{height: '90%'}}></div>
-          <div className="chart-bar" style={{height: '70%'}}></div>
-        </div>
-        <div style={{display: 'flex', justifyContent: 'space-around', marginTop: '1rem', color: '#9ca3af', fontSize: '0.85rem'}}>
-          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderMessages = () => (
-    <div className="admin-view-container">
-      <header className="admin-header">
-        <div className="admin-header-content">
-          <div>
-            <h1 className="admin-header-title">Customer Inquiries</h1>
-            <p className="admin-header-subtitle">View and reply to messages</p>
-          </div>
-          <div style={{display: 'flex', gap: '0.5rem'}}>
-             {/* Corrected Badge using CSS class */}
-             <span className="notification-badge">5 Unread</span>
-          </div>
-        </div>
-      </header>
-
-      <div className="admin-chat-layout">
-        <div className="chat-list">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className={`chat-list-item ${i === 1 ? 'active' : ''}`}>
-              <div style={{display: 'flex', alignItems: 'center', gap: '1rem'}}>
-                <div className="chat-avatar"><User size={16} /></div>
-                <div>
-                  <div style={{color: '#fff', fontWeight: '500'}}>Customer {i}</div>
-                  <div style={{color: '#9ca3af', fontSize: '0.8rem'}}>Is this still available?</div>
-                </div>
-              </div>
+      <div style={{ padding: '2rem' }}>
+        <div className="analytics-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="stat-card">
+            <div style={{display: 'flex', justifyContent: 'space-between'}}>
+              <span className="stat-label">Total Revenue</span>
+              <DollarSign size={20} color="#D4AF37" />
             </div>
-          ))}
+            <div className="stat-value">₱124,500</div>
+            <div style={{color: '#059669', fontSize: '0.85rem'}}>+12.5% from last month</div>
+          </div>
+          <div className="stat-card">
+            <div style={{display: 'flex', justifyContent: 'space-between'}}>
+              <span className="stat-label">Total Orders</span>
+              <Package size={20} color="#D4AF37" />
+            </div>
+            <div className="stat-value">1,240</div>
+            <div style={{color: '#059669', fontSize: '0.85rem'}}>+5.2% from last month</div>
+          </div>
+          <div className="stat-card">
+            <div style={{display: 'flex', justifyContent: 'space-between'}}>
+              <span className="stat-label">Active Users</span>
+              <Users size={20} color="#D4AF37" />
+            </div>
+            <div className="stat-value">8,500</div>
+            <div style={{color: '#ef4444', fontSize: '0.85rem'}}>-1.1% from last month</div>
+          </div>
         </div>
-        <div className="chat-area" style={{height: '100%'}}>
-           <div className="chat-messages" style={{height: 'calc(100% - 60px)'}}>
-             <div className="message-wrapper">
-                <div className="message-content">
-                  <div className="message-bubble received"><p className="message-text">Hi, do you have Luxury Parfum 1 in stock?</p></div>
-                </div>
-             </div>
-             <div className="message-wrapper sent">
-                <div className="message-content">
-                  <div className="message-bubble sent"><p className="message-text">Yes, we have plenty in stock!</p></div>
-                </div>
-             </div>
-           </div>
-           <div className="chat-input-area">
-             <div className="chat-input-wrapper">
-                <input type="text" className="chat-input" placeholder="Type a reply..." />
-             </div>
-           </div>
+
+        <div className="table-card" style={{padding: '2rem', marginTop: '2rem'}}>
+          <h3 className="table-title" style={{marginBottom: '2rem'}}>Sales Overview</h3>
+          <div className="chart-mockup">
+            <div className="chart-bar" style={{height: '40%'}}></div>
+            <div className="chart-bar" style={{height: '60%'}}></div>
+            <div className="chart-bar" style={{height: '45%'}}></div>
+            <div className="chart-bar" style={{height: '80%'}}></div>
+            <div className="chart-bar" style={{height: '55%'}}></div>
+            <div className="chart-bar" style={{height: '90%'}}></div>
+            <div className="chart-bar" style={{height: '70%'}}></div>
+          </div>
+          <div style={{display: 'flex', justifyContent: 'space-around', marginTop: '1rem', color: '#9ca3af', fontSize: '0.85rem'}}>
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+          </div>
         </div>
       </div>
     </div>
   );
 
+const renderMessages = () => {
+    // Calculate total unread dynamically
+    const unreadCount = conversations.filter(c => c.unread).length;
+
+    return (
+      <div className="admin-view-container">
+        <header className="admin-header">
+          <div className="admin-header-content">
+            <div>
+              <h1 className="admin-header-title">Customer Inquiries</h1>
+              <p className="admin-header-subtitle">View and reply to messages</p>
+            </div>
+            <div style={{display: 'flex', gap: '0.5rem'}}>
+               {/* Show Total Unread Count */}
+               <span className="notification-badge">{unreadCount} Unread</span>
+            </div>
+          </div>
+        </header>
+
+        <div style={{ padding: '2rem', height: 'calc(100vh - 80px)' }}> 
+          <div className="admin-chat-layout" style={{ height: '100%' }}>
+            
+            {/* --- CHAT LIST SIDEBAR --- */}
+            <div className="chat-list">
+              {conversations.map((chat) => (
+                <div 
+                  key={chat.id} 
+                  className={`chat-list-item ${activeChat === chat.id ? 'active' : ''}`}
+                  onClick={() => setActiveChat(chat.id)}
+                  style={{
+                    position: 'relative', 
+                    background: activeChat === chat.id ? '#1f2937' : 'transparent'
+                  }}
+                >
+                  <div style={{display: 'flex', alignItems: 'center', gap: '1rem', width: '100%'}}>
+                    <div className="chat-avatar">
+                      <User size={16} />
+                    </div>
+                    <div style={{flex: 1, overflow: 'hidden'}}>
+                      
+                      {/* Name Row (Time Removed) */}
+                      <div style={{
+                        color: '#fff', 
+                        fontWeight: chat.unread ? '700' : '400', // Bold if unread
+                        marginBottom: '4px'
+                      }}>
+                        {chat.name}
+                      </div>
+                      
+                      {/* Message Preview */}
+                      <div style={{
+                        color: chat.unread ? '#e5e7eb' : '#9ca3af', // Brighter text if unread
+                        fontSize: '0.8rem',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        fontWeight: chat.unread ? '600' : '400'
+                      }}>
+                        {chat.lastMessage}
+                      </div>
+                    </div>
+                    
+                    {/* --- INDIVIDUAL UNREAD INDICATOR (Gold Dot) --- */}
+                    {chat.unread && (
+                      <div style={{
+                        width: '10px',
+                        height: '10px',
+                        borderRadius: '50%',
+                        backgroundColor: '#D4AF37', // Gold color
+                        flexShrink: 0,
+                        marginLeft: '5px',
+                        boxShadow: '0 0 5px rgba(212, 175, 55, 0.5)'
+                      }}></div>
+                    )}
+
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* --- CHAT AREA --- */}
+            <div className="chat-area" style={{height: '100%'}}>
+               <div className="chat-messages" style={{height: 'calc(100% - 60px)'}}>
+                 <div className="message-wrapper">
+                    <div className="message-content">
+                      <div className="message-bubble received">
+                        <p className="message-text">
+                          {conversations.find(c => c.id === activeChat)?.lastMessage}
+                        </p>
+                      </div>
+                    </div>
+                 </div>
+                 <div className="message-wrapper sent">
+                    <div className="message-content">
+                      <div className="message-bubble sent"><p className="message-text">Yes, we have plenty in stock!</p></div>
+                    </div>
+                 </div>
+               </div>
+               <div className="chat-input-area">
+                 <div className="chat-input-wrapper">
+                    <input type="text" className="chat-input" placeholder="Type a reply..." />
+                 </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  
   const renderSettings = () => (
     <div className="admin-view-container">
       <header className="admin-header">
@@ -331,20 +446,22 @@ const AdminPage = () => {
         </div>
       </header>
 
-      <div className="settings-form">
-        <div className="form-group">
-          <label className="form-label">Site Name</label>
-          <input type="text" className="form-input" defaultValue="KL Scents PH" />
+      <div style={{ padding: '2rem' }}>
+        <div className="settings-form">
+          <div className="form-group">
+            <label className="form-label">Site Name</label>
+            <input type="text" className="form-input" defaultValue="KL Scents PH" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Admin Email</label>
+            <input type="email" className="form-input" defaultValue="admin@klscents.ph" />
+          </div>
+          <div className="form-group">
+            <label className="form-label">New Password</label>
+            <input type="password" className="form-input" placeholder="Leave blank to keep current" />
+          </div>
+          <button className="btn-primary">Save Changes</button>
         </div>
-        <div className="form-group">
-          <label className="form-label">Admin Email</label>
-          <input type="email" className="form-input" defaultValue="admin@klscents.ph" />
-        </div>
-        <div className="form-group">
-          <label className="form-label">New Password</label>
-          <input type="password" className="form-input" placeholder="Leave blank to keep current" />
-        </div>
-        <button className="btn-primary">Save Changes</button>
       </div>
     </div>
   );
@@ -386,7 +503,6 @@ const AdminPage = () => {
         </nav>
       </div>
 
-      {/* Main Content Area */}
       <div className="admin-main">
         {activeTab === 'products' && renderProducts()}
         {activeTab === 'analytics' && renderAnalytics()}
@@ -493,13 +609,13 @@ const AdminPage = () => {
                <div style={{margin: '0 auto 1rem auto', width: '50px', height: '50px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444'}}>
                  <Trash2 size={24} />
                </div>
-               <h2 className="modal-title" style={{marginBottom: '0.5rem'}}>Delete Product?</h2>
+               <h2 className="modal-title" style={{marginBottom: '0.5rem'}}>Delist Product?</h2>
                <p style={{color: '#9ca3af', marginBottom: '2rem'}}>
-                 Are you sure you want to delete <strong>{currentProduct?.name}</strong>? This action cannot be undone.
+                 Are you sure you want to delist <strong>{currentProduct?.name}</strong>? This action cannot be undone.
                </p>
                <div style={{display: 'flex', gap: '1rem'}}>
                  <button className="btn-guest" style={{flex: 1}} onClick={() => setIsDeleteModalOpen(false)}>Cancel</button>
-                 <button className="btn-primary" style={{flex: 1, background: '#ef4444', borderColor: '#ef4444'}} onClick={confirmDelete}>Delete</button>
+                 <button className="btn-primary" style={{flex: 1, background: '#ef4444', borderColor: '#ef4444'}} onClick={confirmDelete}>Delist</button>
                </div>
              </div>
           </div>

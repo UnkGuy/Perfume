@@ -30,7 +30,7 @@ function App() {
     setCartItems(newCart);
   };
 
-  const pagesToHideNav = []; // Added login here to hide the top nav buttons
+  const pagesToHideNav = ["admin"]; // Added login here to hide the top nav buttons
 
   const renderPage = () => {
     switch (currentPage) {

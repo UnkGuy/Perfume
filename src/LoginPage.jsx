@@ -50,7 +50,24 @@ const LoginPage = ({ setCurrentPage }) => {
       return;
     }
 
-    // --- Mock API Call ---
+    // --- MOCK CREDENTIAL CHECK (Added Logic Here) ---
+    // If we are on the login view, we check if the inputs match our hardcoded admin user.
+    if (view === 'login') {
+        const correctEmail = 'admin@example.com';
+        const correctPassword = 'password123';
+
+        if (formData.email !== correctEmail || formData.password !== correctPassword) {
+            setIsLoading(true);
+            // Simulate a network delay before rejecting
+            setTimeout(() => {
+                setIsLoading(false);
+                setError('Invalid email or password.');
+            }, 1000);
+            return; // Stop here, do not log them in
+        }
+    }
+
+    // --- Mock API Call (Success path) ---
     setIsLoading(true);
 
     setTimeout(() => {
@@ -60,7 +77,7 @@ const LoginPage = ({ setCurrentPage }) => {
         setIsLoading(false);
         setView('login');
       } else {
-        // For Login or Register, we let them in
+        // For Login (if correct) or Register, we let them in
         setIsLoading(false);
         setCurrentPage('products');
       }
