@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, User, Search, Menu, X } from 'lucide-react';
+import { ShoppingBag, User, Search, Menu, X, Heart } from 'lucide-react';
 
-const Header = ({ setCurrentPage, cartItems }) => {
+const Header = ({ setCurrentPage, cartItems, wishlistItems, onCartClick }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Detect scroll to make the navbar solid when scrolling down
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -51,20 +48,30 @@ const Header = ({ setCurrentPage, cartItems }) => {
                   className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group"
                 >
                   {link.label}
-                  {/* Underline animation */}
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold-400 transition-all group-hover:w-full"></span>
                 </button>
               ))}
             </nav>
 
-            {/* Icons (Cart, Login, etc) */}
+            {/* Icons */}
             <div className="flex items-center space-x-6">
-              {/* Search Icon (Decorative for now) */}
               <button className="hidden md:block text-gray-300 hover:text-white transition-colors">
                 <Search size={20} />
               </button>
 
-              {/* Login/User */}
+              {/* NEW: Wishlist Icon */}
+              <button 
+                className="relative text-gray-300 hover:text-gold-400 transition-colors group"
+                onClick={() => setCurrentPage('products')} // Or a dedicated wishlist page if you make one
+              >
+                <Heart size={20} />
+                {wishlistItems && wishlistItems.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
+                    {wishlistItems.length}
+                  </span>
+                )}
+              </button>
+
               <button 
                 onClick={() => setCurrentPage('login')}
                 className="text-gray-300 hover:text-gold-400 transition-colors"
@@ -72,9 +79,13 @@ const Header = ({ setCurrentPage, cartItems }) => {
                 <User size={20} />
               </button>
 
-              {/* Cart */}
+              {/* Cart Icon - Uses onCartClick to open drawer */}
               <button 
-                onClick={() => setCurrentPage('cart')}
+                onClick={(e) => {
+                   e.preventDefault();
+                   if (onCartClick) onCartClick();
+                   else setCurrentPage('cart');
+                }}
                 className="relative text-gray-300 hover:text-gold-400 transition-colors group"
               >
                 <ShoppingBag size={20} />
@@ -85,7 +96,6 @@ const Header = ({ setCurrentPage, cartItems }) => {
                 )}
               </button>
 
-              {/* Mobile Menu Toggle */}
               <button 
                 className="md:hidden text-gray-300"
                 onClick={() => setIsMobileMenuOpen(true)}

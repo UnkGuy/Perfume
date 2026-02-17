@@ -1,32 +1,73 @@
 import React, { useState } from 'react';
-import WelcomePage from './WelcomePage';
-import LoginPage from './LoginPage';
-import ProductPage from './ProductPage';
-import CartPage from './CartPage';
-import MessagesPage from './MessagesPage';
-import AdminPage from './AdminPage';
-// You don't need App.css anymore if you are using Tailwind classes globally
+// Import Pages
+import WelcomePage from './pages/WelcomePage';
+import LoginPage from './pages/LoginPage';
+import ProductPage from './pages/ProductPage';
+import CartPage from './pages/CartPage';
+import MessagesPage from './pages/MessagesPage';
+import AdminPage from './pages/AdminPage';
+
+// Import Components
+import CartDrawer from './components/CartDrawer';
+import Header from './components/Header';
+import Toast from './components/Toast'; // NEW IMPORT
 
 function App() {
   const [currentPage, setCurrentPage] = useState('welcome');
   const [cartItems, setCartItems] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState([]); // NEW: Wishlist State
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [toasts, setToasts] = useState([]); // NEW: Toast State
 
+  // --- TOAST LOGIC ---
+  const showToast = (title, message, type = 'success') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    // Auto remove after 3 seconds
+    setTimeout(() => removeToast(id), 3000);
+  };
+
+  const removeToast = (id) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  // --- CART & WISHLIST LOGIC ---
   const addToCart = (product) => {
     setCartItems([...cartItems, product]);
+    setIsCartOpen(true);
+    showToast("Added to Cart", `${product.name} is now in your bag.`);
   };
 
   const removeFromCart = (index) => {
     setCartItems(cartItems.filter((_, i) => i !== index));
+    showToast("Removed", "Item removed from cart.", "error");
   };
 
+  const toggleWishlist = (product) => {
+    if (wishlistItems.some(item => item.id === product.id)) {
+      setWishlistItems(wishlistItems.filter(item => item.id !== product.id));
+      showToast("Removed from Wishlist", `${product.name} removed.`, "error");
+    } else {
+      setWishlistItems([...wishlistItems, product]);
+      showToast("Saved to Wishlist", `${product.name} saved for later.`);
+    }
+  };
+
+  const toggleCart = () => setIsCartOpen(!isCartOpen);
+
   const renderCurrentPage = () => {
-    // We pass setCurrentPage to every component so the Header inside them can work
-    const commonProps = { setCurrentPage, cartItems };
+    const commonProps = { 
+      setCurrentPage, 
+      cartItems, 
+      wishlistItems, // Pass wishlist to all pages
+      onCartClick: toggleCart,
+      showToast // Pass toast trigger to all pages
+    };
     
     switch (currentPage) {
       case 'welcome': return <WelcomePage {...commonProps} />;
       case 'login': return <LoginPage setCurrentPage={setCurrentPage} />;
-      case 'products': return <ProductPage {...commonProps} addToCart={addToCart} />;
+      case 'products': return <ProductPage {...commonProps} addToCart={addToCart} toggleWishlist={toggleWishlist} />;
       case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} />;
       case 'messages': return <MessagesPage {...commonProps} />;
       case 'admin': return <AdminPage />;
@@ -35,17 +76,21 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black">
-      {/* The Page Content */}
-      {renderCurrentPage()}
+    <div className="min-h-screen bg-rich-black text-white font-sans">
+      
+      {/* GLOBAL TOAST CONTAINER */}
+      <Toast toasts={toasts} removeToast={removeToast} />
 
-      {/* Dev Debugger - Kept it but made it stylized for the theme */}
-      <div className="fixed bottom-4 right-4 z-50 pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
-        <div className="bg-black/80 border border-gold-400/30 text-gold-400 font-mono text-xs p-3 rounded backdrop-blur-sm">
-          <p>Page: <span className="text-white">{currentPage}</span></p>
-          <p>Cart: <span className="text-white">{cartItems.length}</span></p>
-        </div>
-      </div>
+      {/* GLOBAL CART DRAWER */}
+      <CartDrawer 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        cartItems={cartItems} 
+        removeFromCart={removeFromCart}
+        setCurrentPage={setCurrentPage}
+      />
+
+      {renderCurrentPage()}
     </div>
   );
 }

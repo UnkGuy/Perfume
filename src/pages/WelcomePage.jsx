@@ -1,7 +1,10 @@
 import React, { useRef } from 'react';
 import { Crown, Star, Sparkles, ShieldCheck, Truck, ChevronDown } from 'lucide-react';
-import Header from './Header'; // Assuming you will convert this later
-import Footer from './Footer'; // Assuming you will convert this later
+
+import Header from '../components/Header';
+import Footer from '../components/Footer';
+
+import perfumeHero from '../assets/images/perfume.jpg'; 
 
 const WelcomePage = ({ setCurrentPage, cartItems }) => {
   const learnMoreRef = useRef(null);
@@ -11,10 +14,9 @@ const WelcomePage = ({ setCurrentPage, cartItems }) => {
   };
 
   return (
-    // Main Container: Rich Black background, white text
     <div className="min-h-screen bg-rich-black text-white selection:bg-gold-400 selection:text-black font-sans">
       
-      {/* Pass props to Header (Wrapper for layout consistency) */}
+      {/* Header Wrapper */}
       <div className="relative z-50">
         <Header setCurrentPage={setCurrentPage} cartItems={cartItems} />
       </div>
@@ -94,11 +96,9 @@ const WelcomePage = ({ setCurrentPage, cartItems }) => {
               <div className="absolute inset-0 bg-gradient-to-b from-gold-500/20 to-transparent rounded-full blur-2xl transform scale-75" />
               
               <div className="relative z-10 transform hover:-translate-y-2 transition-transform duration-500">
-                {/* NOTE: Replace this img src with your actual bottle image.
-                   I'm using a placeholder that matches your description.
-                */}
+                {/* USING THE IMPORTED IMAGE VARIABLE HERE */}
                 <img 
-                  src="https://images.unsplash.com/photo-1541643600914-78b084683601?q=80&w=1000&auto=format&fit=crop" 
+                  src={perfumeHero} 
                   alt="Luxury Perfume Bottle" 
                   className="rounded-xl shadow-2xl drop-shadow-[0_20px_50px_rgba(212,175,55,0.15)] max-h-[500px] object-cover"
                 />
@@ -151,7 +151,7 @@ const WelcomePage = ({ setCurrentPage, cartItems }) => {
   );
 };
 
-// Sub-component for cleaner code (Put this in the same file or a separate one)
+// Sub-component for cleaner code
 const FeatureCard = ({ icon, title, desc }) => (
   <div className="p-8 rounded-2xl bg-rich-black border border-white/5 hover:border-gold-400/30 transition-colors group">
     <div className="w-14 h-14 bg-gold-400/10 rounded-lg flex items-center justify-center text-gold-400 mb-6 group-hover:scale-110 transition-transform">

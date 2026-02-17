@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, Send, ShoppingBag } from 'lucide-react'; // Removed 'X' import as it's no longer used
-import Header from './Header';
+import Header from '../components/Header';
 
 const MessagesPage = ({ setCurrentPage, cartItems }) => (
   <div className="messages-container">
