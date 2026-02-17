@@ -1,77 +1,51 @@
 import React, { useState } from 'react';
-import './App.css';
-
 import WelcomePage from './WelcomePage';
 import LoginPage from './LoginPage';
 import ProductPage from './ProductPage';
 import CartPage from './CartPage';
 import MessagesPage from './MessagesPage';
 import AdminPage from './AdminPage';
+// You don't need App.css anymore if you are using Tailwind classes globally
 
 function App() {
   const [currentPage, setCurrentPage] = useState('welcome');
   const [cartItems, setCartItems] = useState([]);
-
-  const pages = [
-    { id: 'welcome', name: 'Welcome/About' },
-    { id: 'login', name: 'Login' },
-    { id: 'products', name: 'Products' },
-    { id: 'cart', name: 'Cart' },
-    { id: 'messages', name: 'Messages' },
-    { id: 'admin', name: 'Admin Dashboard' }
-  ];
 
   const addToCart = (product) => {
     setCartItems([...cartItems, product]);
   };
 
   const removeFromCart = (index) => {
-    const newCart = cartItems.filter((_, i) => i !== index);
-    setCartItems(newCart);
+    setCartItems(cartItems.filter((_, i) => i !== index));
   };
 
-  const pagesToHideNav = ["admin"]; // Added login here to hide the top nav buttons
-
-  const renderPage = () => {
+  const renderCurrentPage = () => {
+    // We pass setCurrentPage to every component so the Header inside them can work
+    const commonProps = { setCurrentPage, cartItems };
+    
     switch (currentPage) {
-      case 'welcome': 
-        return <WelcomePage setCurrentPage={setCurrentPage} cartItems={cartItems} />;
-      case 'login': 
-        return <LoginPage setCurrentPage={setCurrentPage} />;
-      case 'products': 
-        return <ProductPage setCurrentPage={setCurrentPage} cartItems={cartItems} addToCart={addToCart} />;
-      case 'cart': 
-        return <CartPage setCurrentPage={setCurrentPage} cartItems={cartItems} removeFromCart={removeFromCart} />;
-      case 'messages': 
-        return <MessagesPage setCurrentPage={setCurrentPage} cartItems={cartItems} />;
-      case 'admin': 
-        return <AdminPage />;
-      default: 
-        return <WelcomePage setCurrentPage={setCurrentPage} cartItems={cartItems} />;
+      case 'welcome': return <WelcomePage {...commonProps} />;
+      case 'login': return <LoginPage setCurrentPage={setCurrentPage} />;
+      case 'products': return <ProductPage {...commonProps} addToCart={addToCart} />;
+      case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} />;
+      case 'messages': return <MessagesPage {...commonProps} />;
+      case 'admin': return <AdminPage />;
+      default: return <WelcomePage {...commonProps} />;
     }
   };
 
   return (
-    <div>
-      {!pagesToHideNav.includes(currentPage) && (
-        <div className="page-nav">
-          <h3 className="page-nav-title">Navigate Pages:</h3>
-          <ul className="page-nav-list">
-            {pages.map(page => (
-              <li key={page.id}>
-                <button
-                  onClick={() => setCurrentPage(page.id)}
-                  className={`page-nav-btn ${currentPage === page.id ? 'active' : ''}`}
-                >
-                  {page.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+    <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black">
+      {/* The Page Content */}
+      {renderCurrentPage()}
 
-      {renderPage()}
+      {/* Dev Debugger - Kept it but made it stylized for the theme */}
+      <div className="fixed bottom-4 right-4 z-50 pointer-events-none opacity-50 hover:opacity-100 transition-opacity">
+        <div className="bg-black/80 border border-gold-400/30 text-gold-400 font-mono text-xs p-3 rounded backdrop-blur-sm">
+          <p>Page: <span className="text-white">{currentPage}</span></p>
+          <p>Cart: <span className="text-white">{cartItems.length}</span></p>
+        </div>
+      </div>
     </div>
   );
 }
