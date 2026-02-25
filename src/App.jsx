@@ -1,37 +1,28 @@
 import React, { useState } from 'react';
-// Import Pages
 import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
-import AdminPage from './pages/AdminPage';
-
-// Import Components
+// Imports...
 import CartDrawer from './components/CartDrawer';
-import Header from './components/Header';
+import WishlistDrawer from './components/WishlistDrawer'; // NEW
 import Toast from './components/Toast'; 
-import ChatWidget from './components/ChatWidget'; 
 
 function App() {
   const [currentPage, setCurrentPage] = useState('welcome');
+  
+  // GLOBAL STATES
   const [cartItems, setCartItems] = useState([]);
-  const [wishlistItems, setWishlistItems] = useState([]); // NEW: Wishlist State
+  const [wishlistItems, setWishlistItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [toasts, setToasts] = useState([]); // NEW: Toast State
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false); // NEW
+  const [searchQuery, setSearchQuery] = useState(''); // NEW: Global Search
+  const [toasts, setToasts] = useState([]); 
 
-  // --- TOAST LOGIC ---
-  const showToast = (title, message, type = 'success') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, title, message, type }]);
-    // Auto remove after 3 seconds
-    setTimeout(() => removeToast(id), 3000);
-  };
+  // --- LOGIC ---
+  const showToast = (title, message, type = 'success') => { /* Your existing toast logic */ };
+  const removeToast = (id) => { /* Your existing logic */ };
 
-  const removeToast = (id) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
-  // --- CART & WISHLIST LOGIC ---
   const addToCart = (product) => {
     setCartItems([...cartItems, product]);
     setIsCartOpen(true);
@@ -54,14 +45,18 @@ function App() {
   };
 
   const toggleCart = () => setIsCartOpen(!isCartOpen);
+  const toggleWishlistDrawer = () => setIsWishlistOpen(!isWishlistOpen);
 
   const renderCurrentPage = () => {
     const commonProps = { 
       setCurrentPage, 
       cartItems, 
-      wishlistItems, // Pass wishlist to all pages
+      wishlistItems, 
       onCartClick: toggleCart,
-      showToast // Pass toast trigger to all pages
+      onWishlistClick: toggleWishlistDrawer, // Pass this to Header
+      searchQuery,                           // Pass to Header & ProductPage
+      setSearchQuery,                        // Pass to Header & ProductPage
+      showToast 
     };
     
     switch (currentPage) {
@@ -74,21 +69,17 @@ function App() {
     }
   };
 
-  return (
+return (
     <div className="min-h-screen bg-rich-black text-white font-sans">
-      
-      {/* GLOBAL TOAST CONTAINER */}
       <Toast toasts={toasts} removeToast={removeToast} />
+      
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} removeFromCart={removeFromCart} setCurrentPage={setCurrentPage} />
+      
+      {/* NEW: WISHLIST DRAWER */}
+      <WishlistDrawer isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} wishlistItems={wishlistItems} toggleWishlist={toggleWishlist} addToCart={addToCart} />
 
-      {/* GLOBAL CART DRAWER */}
-      <CartDrawer 
-        isOpen={isCartOpen} 
-        onClose={() => setIsCartOpen(false)} 
-        cartItems={cartItems} 
-        removeFromCart={removeFromCart}
-        setCurrentPage={setCurrentPage}
-      />
-      <ChatWidget />
+      {/* Global Chat Widget */}
+      {/* <ChatWidget /> */}
 
       {renderCurrentPage()}
     </div>

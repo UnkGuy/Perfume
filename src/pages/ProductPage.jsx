@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight, X, Star, Loader } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Star, Loader } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-// 1. IMPORT SUPABASE (Replace the local data import)
+// Supabase
 import { supabase } from '../lib/supabase';
 
 // Components
@@ -11,8 +11,20 @@ import ProductCard from '../components/products/ProductCard';
 import ProductFilters from '../components/products/ProductFilters';
 import ProductDetails from '../components/products/ProductDetails';
 import QuickViewModal from '../components/products/QuickViewModal';
+import PredictiveSearch from '../components/products/PredictiveSearch';
 
-const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wishlistItems, showToast }) => {
+const ProductPage = ({ 
+  setCurrentPage, 
+  cartItems, 
+  addToCart, 
+  toggleWishlist, 
+  wishlistItems, 
+  showToast,
+  searchQuery, 
+  setSearchQuery,
+  onCartClick,
+  onWishlistClick
+}) => {
   
   // --- DATABASE STATES ---
   const [products, setProducts] = useState([]);      
@@ -31,7 +43,6 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
   const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
   const [sortOption, setSortOption] = useState('date');
   const [ratingFilter, setRatingFilter] = useState(0);
-  const [searchQuery, setSearchQuery] = useState('');
   
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
@@ -49,7 +60,7 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
 
       if (error) {
         console.error("Error fetching products:", error);
-        showToast("Error", "Could not load products. Please try again.", "error");
+        if(showToast) showToast("Error", "Could not load products. Please try again.", "error");
       } else {
         setProducts(data || []);
       }
@@ -105,23 +116,29 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
   };
 
   const submitReview = () => {
-    showToast("Review Submitted", `Your review for ${reviewTarget.name} is pending approval.`);
+    if(showToast) showToast("Review Submitted", `Your review for ${reviewTarget.name} is pending approval.`);
     setIsReviewOpen(false);
     setReviewTarget(null);
   };
 
   // --- FILTERING ENGINE ---
   const getProcessedProducts = () => {
-    // Filter against the database state `products`
     let filtered = products.filter(product => {
+      // 1. Search (using the global searchQuery prop)
       if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) && !product.brand.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
+      // 2. Rating
       if (product.rating < ratingFilter) return false;
+      // 3. Price
       if (product.price < priceRange.min || product.price > priceRange.max) return false;
+      // 4. Notes
       if (selectedNotes.length > 0 && !product.notes.some(note => selectedNotes.includes(note))) return false;
+      // 5. Size
       if (selectedSizes.length > 0 && !selectedSizes.includes(product.size)) return false;
+      // 6. Brand
       if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
+      // 7. Gender
       if (selectedGender.length > 0 && product.gender && !selectedGender.includes(product.gender)) return false;
 
       return true;
@@ -143,23 +160,27 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
     <div className="min-h-screen bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
       
       <div className="relative z-50">
-        <Header setCurrentPage={setCurrentPage} cartItems={cartItems} wishlistItems={wishlistItems} />
+        <Header 
+          setCurrentPage={setCurrentPage} 
+          cartItems={cartItems} 
+          wishlistItems={wishlistItems}
+          onCartClick={onCartClick}
+          onWishlistClick={onWishlistClick}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+        />
       </div>
 
       <div className="container mx-auto px-6 py-24 max-w-7xl">
         
-        {/* Search Bar (Only visible in Grid View) */}
+        {/* --- OUR NEW PREDICTIVE SEARCH COMPONENT --- */}
         {!selectedProduct && (
-          <div className="relative max-w-2xl mx-auto mb-12 group animate-fade-in">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gold-400 transition-colors group-hover:text-gold-300" size={20} />
-            <input 
-              type="text" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search for your perfect scent..."
-              className="w-full bg-white/5 border border-white/10 rounded-full py-4 pl-14 pr-6 text-white placeholder-gray-500 focus:outline-none focus:border-gold-400/50 focus:ring-1 focus:ring-gold-400/50 transition-all shadow-lg"
-            />
-          </div>
+          <PredictiveSearch 
+            products={products} 
+            searchQuery={searchQuery} 
+            setSearchQuery={setSearchQuery} 
+            onSelectProduct={setSelectedProduct} 
+          />
         )}
 
         <div className="flex flex-col lg:flex-row gap-8">

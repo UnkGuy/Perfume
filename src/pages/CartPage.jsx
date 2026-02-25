@@ -2,36 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Trash2, MessageSquare, Check, Plus, Minus, ShoppingBag, ArrowRight, AlertCircle, ArrowLeft } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
-
-// Import the image asset
 import perfumeImage from '../assets/images/perfume.jpg';
 
-const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
+// Import Supabase
+import { supabase } from '../lib/supabase';
+
+// Make sure you pass showToast from App.jsx if you haven't already!
+const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast }) => {
   const [localItems, setLocalItems] = useState([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isSending, setIsSending] = useState(false); // To prevent double-clicking
 
-  // --- Initialization Logic ---
+  // Initialize with REAL data only. Removed the dummy data fallback.
   useEffect(() => {
-    if (!isInitialized) {
-      // Use props if available, otherwise fallback to mock data for preview
-      const initialData = cartItems.length > 0 ? cartItems : [
-        { id: 1, name: "Luxury Parfum 1", brand: "Chanel", price: 99, size: "50ml", available: true },
-        { id: 2, name: "Luxury Parfum 4", brand: "Dior", price: 129, size: "50ml", available: true },
-        { id: 3, name: "Luxury Parfum 3", brand: "Tom Ford", price: 119, size: "50ml", available: false } 
-      ];
+    const processedItems = cartItems.map(item => ({
+      ...item,
+      quantity: 1,
+      isRemoving: false
+    }));
+    setLocalItems(processedItems);
+  }, [cartItems]);
 
-      const processedItems = initialData.map(item => ({
-        ...item,
-        quantity: 1,
-        isRemoving: false
-      }));
-
-      setLocalItems(processedItems);
-      setIsInitialized(true);
-    }
-  }, [cartItems, isInitialized]);
-
-  // --- Handlers ---
   const handleQuantity = (index, delta) => {
     const newItems = [...localItems];
     if (newItems[index].quantity + delta >= 1) {
@@ -41,20 +31,14 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
   };
 
   const handleRemove = (index) => {
-    // 1. Visual Animation State
     const newItems = [...localItems];
     newItems[index].isRemoving = true;
     setLocalItems(newItems);
 
-    // 2. Actual Removal after 500ms
     setTimeout(() => {
       const filtered = localItems.filter((_, i) => i !== index);
       setLocalItems(filtered);
-      
-      // Sync with parent state if we are using real data
-      if (cartItems.length > 0) {
-        removeFromCart(index);
-      }
+      removeFromCart(index); // Sync with App.jsx
     }, 500);
   };
 
@@ -64,26 +48,52 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
 
   const hasUnavailableItems = localItems.some(item => !item.available);
 
-  // --- Render Empty State ---
-  if (isInitialized && localItems.length === 0) {
+  // --- SEND TO MESSENGER INTEGRATION ---
+  const handleCheckoutToChat = async () => {
+    setIsSending(true);
+
+    // 1. Format the cart items into a readable string
+    const orderDetails = localItems
+      .map(item => `• ${item.quantity}x ${item.name} (₱${item.price})`)
+      .join('\n');
+    
+    const total = calculateTotal();
+    
+    const messageContent = `Hi! I would like to inquire about this order:\n\n${orderDetails}\n\nTotal Estimate: ₱${total.toLocaleString()}`;
+
+    // 2. Send to Supabase
+    const { error } = await supabase
+      .from('messages')
+      .insert([{ sender_role: 'user', content: messageContent }]);
+
+    setIsSending(false);
+
+    if (error) {
+      console.error('Error sending order:', error);
+      if(showToast) showToast("Error", "Could not send message. Please try again.", "error");
+    } else {
+      // 3. Success! Notify the user.
+      if(showToast) showToast("Inquiry Sent!", "Your cart details have been sent to the seller.");
+      
+      // Optional: If you want to empty the cart after they inquire, you would call a prop here 
+      // like clearCart() that you define in App.jsx. For now, we'll just leave them on the page.
+    }
+  };
+
+  if (localItems.length === 0) {
     return (
       <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
         <Header setCurrentPage={setCurrentPage} cartItems={cartItems} />
-        
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
           <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-gray-600 mb-6 border border-white/10">
             <ShoppingBag size={40} />
           </div>
           <h2 className="text-3xl font-bold mb-3">Your Cart is Empty</h2>
           <p className="text-gray-400 mb-8 max-w-md">Looks like you haven't found your signature scent yet.</p>
-          <button 
-            onClick={() => setCurrentPage('products')}
-            className="px-8 py-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(212,175,55,0.3)]"
-          >
+          <button onClick={() => setCurrentPage('products')} className="px-8 py-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(212,175,55,0.3)]">
             Start Shopping <ArrowRight size={18} />
           </button>
         </div>
-        
         <Footer />
       </div>
     );
@@ -103,38 +113,19 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
         
         <div className="flex flex-col lg:flex-row gap-12">
           
-          {/* --- Left Column: Items List --- */}
           <div className="flex-1 space-y-6">
             {localItems.map((item, index) => (
-              <div 
-                key={index} 
-                className={`
-                  flex flex-col sm:flex-row gap-6 p-6 bg-white/5 border border-white/5 rounded-xl transition-all duration-500 ease-out
-                  ${item.isRemoving ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'}
-                  hover:border-gold-400/30 group
-                `}
-              >
-                {/* Image */}
-                <div 
-                  onClick={() => setCurrentPage('products')}
-                  className="w-full sm:w-24 h-24 bg-white/10 rounded-lg overflow-hidden cursor-pointer flex-shrink-0"
-                >
+              <div key={index} className={`flex flex-col sm:flex-row gap-6 p-6 bg-white/5 border border-white/5 rounded-xl transition-all duration-500 ease-out ${item.isRemoving ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'} hover:border-gold-400/30 group`}>
+                <div onClick={() => setCurrentPage('products')} className="w-full sm:w-24 h-24 bg-white/10 rounded-lg overflow-hidden cursor-pointer flex-shrink-0">
                   <img src={perfumeImage} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 </div>
                 
-                {/* Content */}
                 <div className="flex-1 flex flex-col justify-between">
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 
-                        onClick={() => setCurrentPage('products')}
-                        className="font-bold text-lg cursor-pointer hover:text-gold-400 transition-colors"
-                      >
-                        {item.name}
-                      </h3>
+                      <h3 onClick={() => setCurrentPage('products')} className="font-bold text-lg cursor-pointer hover:text-gold-400 transition-colors">{item.name}</h3>
                       <p className="text-sm text-gray-500">{item.brand} • {item.size}</p>
                       
-                      {/* Availability Badge */}
                       {item.available ? (
                         <div className="flex items-center gap-1 text-green-400 text-xs mt-2 bg-green-400/10 px-2 py-1 rounded w-fit">
                           <Check size={12} /> Available
@@ -146,29 +137,18 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
                       )}
                     </div>
                     
-                    <button 
-                      onClick={() => handleRemove(index)}
-                      className="text-gray-500 hover:text-red-400 transition-colors p-2 hover:bg-white/5 rounded-full"
-                    >
+                    <button onClick={() => handleRemove(index)} className="text-gray-500 hover:text-red-400 transition-colors p-2 hover:bg-white/5 rounded-full">
                       <Trash2 size={20} />
                     </button>
                   </div>
 
-                  {/* Footer: Qty & Price */}
                   <div className="flex justify-between items-end border-t border-white/5 pt-4">
                     <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/10">
-                      <button 
-                        onClick={() => handleQuantity(index, -1)}
-                        disabled={item.quantity <= 1}
-                        className="p-1 hover:text-gold-400 disabled:opacity-30 disabled:hover:text-gray-500 transition-colors"
-                      >
+                      <button onClick={() => handleQuantity(index, -1)} disabled={item.quantity <= 1} className="p-1 hover:text-gold-400 disabled:opacity-30 disabled:hover:text-gray-500 transition-colors">
                         <Minus size={14} />
                       </button>
                       <span className="text-sm font-mono w-4 text-center">{item.quantity}</span>
-                      <button 
-                        onClick={() => handleQuantity(index, 1)}
-                        className="p-1 hover:text-gold-400 transition-colors"
-                      >
+                      <button onClick={() => handleQuantity(index, 1)} className="p-1 hover:text-gold-400 transition-colors">
                         <Plus size={14} />
                       </button>
                     </div>
@@ -185,7 +165,6 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
             </button>
           </div>
 
-          {/* --- Right Column: Summary Panel --- */}
           <div className="w-full lg:w-96">
             <div className="bg-white/5 border border-gold-400/20 rounded-2xl p-8 sticky top-32 backdrop-blur-sm">
               <h2 className="text-xl font-bold mb-2">Ready to Purchase?</h2>
@@ -193,7 +172,6 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
                 Message the seller to arrange payment and delivery details.
               </p>
               
-              {/* List of items in summary */}
               <div className="space-y-3 mb-6 max-h-48 overflow-y-auto custom-scrollbar pr-2">
                 {localItems.map((item, index) => (
                   <div key={index} className="flex justify-between text-sm">
@@ -206,28 +184,24 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage }) => {
                 ))}
               </div>
               
-              {/* Total */}
               <div className="flex justify-between items-center text-xl font-bold text-white pt-6 border-t border-white/10 mb-8">
                 <span>Total</span>
                 <span>₱{calculateTotal().toLocaleString()}</span>
               </div>
               
-              {/* Action Button */}
               <button 
-                onClick={() => setCurrentPage('messages')}
-                disabled={hasUnavailableItems}
-                className={`
-                  w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all shadow-lg
-                  ${hasUnavailableItems 
+                onClick={handleCheckoutToChat}
+                disabled={hasUnavailableItems || isSending}
+                className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all shadow-lg
+                  ${(hasUnavailableItems || isSending)
                     ? 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-80' 
                     : 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-gold-400/20 hover:shadow-gold-400/40'}
                 `}
               >
                 <MessageSquare size={20} />
-                {hasUnavailableItems ? 'Remove Out of Stock Items' : 'Message Seller'}
+                {isSending ? 'Sending...' : (hasUnavailableItems ? 'Remove Out of Stock Items' : 'Message Seller')}
               </button>
 
-              {/* Warnings / Badges */}
               {hasUnavailableItems && (
                 <div className="flex items-center gap-2 text-red-400 text-xs mt-4 bg-red-400/10 p-3 rounded justify-center">
                   <AlertCircle size={14} />

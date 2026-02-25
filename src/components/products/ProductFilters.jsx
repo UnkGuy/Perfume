@@ -1,6 +1,8 @@
 import React from 'react';
 import { Filter, Star, Droplets, Ruler, User } from 'lucide-react';
-import { scentNotes, bottleSizes } from '../../data/products'; // Adjust path if needed
+
+// Make sure your data/products.js has these arrays exported!
+import { scentNotes, bottleSizes } from '../../data/products'; 
 
 const ProductFilters = ({ 
   ratingFilter, setRatingFilter, 
@@ -17,7 +19,6 @@ const ProductFilters = ({
   const brands = ['Chanel', 'Dior', 'Tom Ford', 'Versace'];
   const genders = ['Women', 'Men', 'Unisex'];
 
-  // Helper for checkboxes
   const toggleFilter = (item, state, setState) => {
     if (state.includes(item)) setState(state.filter(i => i !== item));
     else setState([...state, item]);
@@ -65,9 +66,10 @@ const ProductFilters = ({
           </div>
         </div>
 
-        {/* Price Range Slider */}
+        {/* 🛠️ FIXED: Price Range Slider 🛠️ */}
         <div className="mb-8">
           <h4 className="font-medium text-white mb-4">Price Range</h4>
+          
           <div className="flex items-center gap-2 mb-6">
             <div className="relative flex-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-xs">₱</span>
@@ -79,10 +81,26 @@ const ProductFilters = ({
               <input type="number" value={priceRange.max} onChange={(e) => handleInput(e, 'max')} className="w-full bg-black/40 border border-white/10 rounded px-2 py-1 pl-6 text-sm text-white focus:border-gold-400 outline-none" />
             </div>
           </div>
-          <div className="relative h-1 w-full bg-gray-700 rounded-full mb-4">
+          
+          {/* The Slider Container */}
+          <div className="relative h-1 w-full bg-gray-700 rounded-full mb-4 mt-4">
+            {/* The Gold Fill */}
             <div className="absolute h-full bg-gold-400 rounded-full z-10" style={{ left: `${getPercent(priceRange.min)}%`, width: `${getPercent(priceRange.max) - getPercent(priceRange.min)}%` }}></div>
-            <input type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.min} onChange={(e) => handleSliderChange(e, 'min')} className="absolute w-full h-full opacity-0 z-20 cursor-pointer pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4" />
-            <input type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.max} onChange={(e) => handleSliderChange(e, 'max')} className="absolute w-full h-full opacity-0 z-20 cursor-pointer pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4" />
+            
+            {/* Native Input Min */}
+            <input 
+              type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.min} onChange={(e) => handleSliderChange(e, 'min')} 
+              className="absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-20
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer
+                [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold-400 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer" 
+            />
+            {/* Native Input Max */}
+            <input 
+              type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.max} onChange={(e) => handleSliderChange(e, 'max')} 
+              className="absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-30
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer
+                [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold-400 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer" 
+            />
           </div>
         </div>
 
@@ -95,7 +113,7 @@ const ProductFilters = ({
           <div className="space-y-2">
             {genders.map(gender => (
               <div key={gender} className="flex items-center gap-2">
-                <input type="checkbox" id={gender} checked={selectedGender.includes(gender)} onChange={() => toggleFilter(gender, selectedGender, setSelectedGender)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4" />
+                <input type="checkbox" id={gender} checked={selectedGender.includes(gender)} onChange={() => toggleFilter(gender, selectedGender, setSelectedGender)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
                 <label htmlFor={gender} className="text-sm cursor-pointer hover:text-gold-400">{gender}</label>
               </div>
             ))}
@@ -111,14 +129,44 @@ const ProductFilters = ({
           <div className="h-40 overflow-y-auto pr-2 custom-scrollbar grid grid-cols-1 gap-2">
             {scentNotes.map(note => (
               <div key={note} className="flex items-center gap-2">
-                <input type="checkbox" id={note} checked={selectedNotes.includes(note)} onChange={() => toggleFilter(note, selectedNotes, setSelectedNotes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4" />
+                <input type="checkbox" id={note} checked={selectedNotes.includes(note)} onChange={() => toggleFilter(note, selectedNotes, setSelectedNotes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
                 <label htmlFor={note} className="text-sm cursor-pointer hover:text-gold-400">{note}</label>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Size & Brand sections follow the same pattern... omitted for brevity but you keep them! */}
+        {/* Size */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3 text-white font-medium">
+            <Ruler size={16} className="text-gold-400" />
+            <h4>Size</h4>
+          </div>
+          <div className="space-y-2">
+            {bottleSizes.map(size => (
+              <div key={size} className="flex items-center gap-2">
+                <input type="checkbox" id={size} checked={selectedSizes.includes(size)} onChange={() => toggleFilter(size, selectedSizes, setSelectedSizes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
+                <label htmlFor={size} className="text-sm cursor-pointer hover:text-gold-400">{size}</label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+         {/* Brand */}
+         <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3 text-white font-medium">
+            <Star size={16} className="text-gold-400" />
+            <h4>Brand</h4>
+          </div>
+          <div className="space-y-2">
+            {brands.map(brand => (
+              <div key={brand} className="flex items-center gap-2">
+                <input type="checkbox" id={brand} checked={selectedBrands.includes(brand)} onChange={() => toggleFilter(brand, selectedBrands, setSelectedBrands)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
+                <label htmlFor={brand} className="text-sm cursor-pointer hover:text-gold-400">{brand}</label>
+              </div>
+            ))}
+          </div>
+        </div>
         
         <button onClick={clearAllFilters} className="w-full mt-6 py-3 bg-white/5 hover:bg-gold-400/20 text-gold-400 border border-gold-400/30 font-bold rounded transition-colors">
           Reset Filters
