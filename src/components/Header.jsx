@@ -14,7 +14,6 @@ const Header = ({ setCurrentPage, cartItems, wishlistItems, onCartClick }) => {
   const navLinks = [
     { id: 'welcome', label: 'Home' },
     { id: 'products', label: 'Collection' },
-    { id: 'messages', label: 'Contact' },
   ];
 
   return (

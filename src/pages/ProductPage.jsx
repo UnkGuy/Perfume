@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, X, Star } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, ChevronLeft, ChevronRight, X, Star, Loader } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-// Data
-import { products } from '../data/products';
+// 1. IMPORT SUPABASE (Replace the local data import)
+import { supabase } from '../lib/supabase';
 
 // Components
 import ProductCard from '../components/products/ProductCard';
@@ -14,7 +14,11 @@ import QuickViewModal from '../components/products/QuickViewModal';
 
 const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wishlistItems, showToast }) => {
   
-  // --- STATE MANAGEMENT ---
+  // --- DATABASE STATES ---
+  const [products, setProducts] = useState([]);      
+  const [isLoading, setIsLoading] = useState(true); 
+
+  // --- UI STATE MANAGEMENT ---
   const [activePage, setActivePage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null); 
   const [quickViewProduct, setQuickViewProduct] = useState(null); 
@@ -33,6 +37,28 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedGender, setSelectedGender] = useState([]);
+
+  // --- FETCH DATA FROM SUPABASE ---
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select('*');
+
+      if (error) {
+        console.error("Error fetching products:", error);
+        showToast("Error", "Could not load products. Please try again.", "error");
+      } else {
+        setProducts(data || []);
+      }
+      
+      setIsLoading(false);
+    };
+
+    fetchProducts();
+  }, [showToast]);
 
   // --- LOGIC HELPERS ---
   const MIN_LIMIT = 0;
@@ -86,22 +112,16 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
 
   // --- FILTERING ENGINE ---
   const getProcessedProducts = () => {
+    // Filter against the database state `products`
     let filtered = products.filter(product => {
-      // 1. Search
       if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) && !product.brand.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
-      // 2. Rating
       if (product.rating < ratingFilter) return false;
-      // 3. Price
       if (product.price < priceRange.min || product.price > priceRange.max) return false;
-      // 4. Notes
       if (selectedNotes.length > 0 && !product.notes.some(note => selectedNotes.includes(note))) return false;
-      // 5. Size
       if (selectedSizes.length > 0 && !selectedSizes.includes(product.size)) return false;
-      // 6. Brand
       if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
-      // 7. Gender (Optional check if data exists)
       if (selectedGender.length > 0 && product.gender && !selectedGender.includes(product.gender)) return false;
 
       return true;
@@ -112,7 +132,7 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
       if (sortOption === 'price-asc') return a.price - b.price;
       if (sortOption === 'price-desc') return b.price - a.price;
       if (sortOption === 'rating-desc') return b.rating - a.rating;
-      return 0; // Default date/id
+      return 0; 
     });
   };
 
@@ -144,7 +164,7 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
 
         <div className="flex flex-col lg:flex-row gap-8">
           
-          {/* --- SIDEBAR FILTERS (Only visible in Grid View) --- */}
+          {/* --- SIDEBAR FILTERS --- */}
           {!selectedProduct && (
             <ProductFilters 
               ratingFilter={ratingFilter} setRatingFilter={setRatingFilter}
@@ -163,8 +183,14 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
           {/* --- MAIN CONTENT AREA --- */}
           <main className={`flex-1 ${selectedProduct ? 'w-full' : ''}`}>
             
-            {selectedProduct ? (
-              // === FULL DETAILS VIEW COMPONENT ===
+            {isLoading ? (
+              // --- LOADING UI ---
+              <div className="flex flex-col items-center justify-center h-96 text-gold-400 animate-fade-in">
+                <Loader className="animate-spin mb-4" size={48} />
+                <p className="text-gray-400 font-medium tracking-widest uppercase text-sm">Loading Collection...</p>
+              </div>
+            ) : selectedProduct ? (
+              // --- FULL DETAILS VIEW COMPONENT ---
               <ProductDetails 
                 product={selectedProduct}
                 onBack={() => setSelectedProduct(null)}
@@ -174,7 +200,7 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
                 onOpenReviewModal={openReviewModal}
               />
             ) : (
-              // === GRID VIEW ===
+              // --- GRID VIEW ---
               <>
                 <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-8 gap-4 animate-fade-in">
                   <div>
@@ -241,7 +267,6 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
 
       {/* --- MODALS --- */}
       
-      {/* Quick View */}
       <QuickViewModal 
         product={quickViewProduct} 
         onClose={() => setQuickViewProduct(null)}
@@ -250,7 +275,6 @@ const ProductPage = ({ setCurrentPage, cartItems, addToCart, toggleWishlist, wis
         isInWishlist={wishlistItems?.some(item => item.id === quickViewProduct?.id)}
       />
 
-      {/* Review Modal */}
       {isReviewOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsReviewOpen(false)}>
           <div className="bg-rich-black border border-gold-400/30 p-8 rounded-2xl max-w-lg w-full relative shadow-2xl" onClick={e => e.stopPropagation()}>

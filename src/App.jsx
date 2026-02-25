@@ -4,13 +4,13 @@ import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
-import MessagesPage from './pages/MessagesPage';
 import AdminPage from './pages/AdminPage';
 
 // Import Components
 import CartDrawer from './components/CartDrawer';
 import Header from './components/Header';
-import Toast from './components/Toast'; // NEW IMPORT
+import Toast from './components/Toast'; 
+import ChatWidget from './components/ChatWidget'; 
 
 function App() {
   const [currentPage, setCurrentPage] = useState('welcome');
@@ -69,7 +69,6 @@ function App() {
       case 'login': return <LoginPage setCurrentPage={setCurrentPage} />;
       case 'products': return <ProductPage {...commonProps} addToCart={addToCart} toggleWishlist={toggleWishlist} />;
       case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} />;
-      case 'messages': return <MessagesPage {...commonProps} />;
       case 'admin': return <AdminPage />;
       default: return <WelcomePage {...commonProps} />;
     }
@@ -89,6 +88,7 @@ function App() {
         removeFromCart={removeFromCart}
         setCurrentPage={setCurrentPage}
       />
+      <ChatWidget />
 
       {renderCurrentPage()}
     </div>
