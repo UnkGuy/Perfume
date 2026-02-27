@@ -1,9 +1,12 @@
 import React from 'react';
 import { Star, X, Heart } from 'lucide-react';
-import perfumeImage from '../../assets/images/perfume.jpg';
+import fallbackImage from '../../assets/images/perfume.jpg';
 
 const QuickViewModal = ({ product, onClose, onAddToCart, onToggleWishlist, isInWishlist }) => {
   if (!product) return null;
+
+  // 2. Add the fallback logic
+  const imageSource = product.image_url ? product.image_url : fallbackImage;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -13,9 +16,14 @@ const QuickViewModal = ({ product, onClose, onAddToCart, onToggleWishlist, isInW
         </button>
 
         <div className="w-full md:w-1/2 h-64 md:h-auto bg-white/5 relative">
-          <img src={perfumeImage} alt={product.name} className="w-full h-full object-cover" />
+          {/* 3. Use the dynamic imageSource */}
+          <img 
+            src={imageSource} 
+            alt={product.name} 
+            loading="lazy"
+            className="w-full h-full object-cover" 
+          />
         </div>
-
         <div className="w-full md:w-1/2 p-8 flex flex-col justify-center">
           <span className="text-gold-400 text-xs font-bold tracking-widest uppercase mb-2">{product.brand}</span>
           <h2 className="text-2xl font-bold text-white mb-2">{product.name}</h2>

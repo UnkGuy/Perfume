@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
 import { Star, ArrowLeft, Heart, Check, AlertCircle } from 'lucide-react';
-import perfumeImage from '../../assets/images/perfume.jpg';
+import fallbackImage from '../../assets/images/perfume.jpg';
 
-const ProductDetails = ({ 
-  product, 
-  onBack, 
-  onAddToCart, 
-  onToggleWishlist, 
-  isInWishlist, 
-  onOpenReviewModal 
-}) => {
-  
+const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWishlist, onOpenReviewModal }) => {
   if (!product) return null;
+
+  // 2. Add the fallback logic
+  const imageSource = product.image_url ? product.image_url : fallbackImage;
 
   // Mock reviews for the details view
   const mockReviews = [
@@ -34,12 +29,13 @@ const ProductDetails = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
         {/* Left: Image */}
         <div className="relative aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 group">
+          {/* 3. Use the dynamic imageSource */}
           <img 
-            src={perfumeImage} 
+            src={imageSource} 
             alt={product.name} 
+            loading="lazy"
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
           />
-           {/* Mobile Wishlist Button (Visible only on small screens usually, but kept for access) */}
            <button 
               onClick={() => onToggleWishlist(product)}
               className="absolute top-4 right-4 p-3 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 hover:border-red-500 hover:text-red-500 transition-colors z-20"

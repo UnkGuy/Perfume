@@ -53,8 +53,9 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
 
   const hasUnavailableItems = localItems.some(item => !item.available);
 
-  // --- SEND TO MESSENGER INTEGRATION ---
+  // --- SEND TO MESSENGER INTEGRATION (UPGRADED) ---
   const handleCheckoutToChat = async () => {
+    // 1. Ensure user is logged in
     if (!user) {
       if(showToast) showToast("Login Required", "Please sign in to message the seller.", "error");
       setCurrentPage('login');
@@ -62,36 +63,81 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
     }
 
     setIsSending(true);
+    const total = calculateTotal();
 
-    const orderItems = localItems.map(item => ({
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price
-    }));
-    
-    const { error } = await supabase
-      .from('messages')
-      .insert([{ 
-        sender_role: 'user', 
-        content: 'Hi! I would like to inquire about this order:',
-        user_id: user.id, 
-        metadata: {
-          type: 'order_inquiry',
-          items: orderItems,
-          total: calculateTotal()
-        }
-      }]);
+    try {
+      // STEP 1: Create the main Order record
+      // We use .select().single() to immediately get the newly generated Order ID back from the database
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert([{ 
+          user_id: user.id, 
+          total_amount: total,
+          status: 'pending' 
+        }])
+        .select() 
+        .single();
 
-    setIsSending(false);
+      if (orderError) throw orderError;
 
-    if (error) {
-      console.error('Error sending order:', error);
-      if(showToast) showToast("Error", "Could not send message. Please try again.", "error");
-    } else {
-      if(showToast) showToast("Inquiry Sent!", "Check the chat widget to view your inquiry.");
+      const orderId = orderData.id;
+
+      // STEP 2: Create the Order Items
+      // Map through the cart to format the data for our new order_items table
+      const orderItemsToInsert = localItems.map(item => ({
+        order_id: orderId,
+        product_id: item.id, // The ID of the actual product
+        quantity: item.quantity,
+        price_at_time: item.price // Locks in the price in case it changes tomorrow
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      // STEP 3: Send the Chat Message
+      // We still need the lightweight array for the visual UI bubble
+      const chatMetadataItems = localItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      }));
+      
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert([{ 
+          sender_role: 'user', 
+          content: `Hi! I would like to inquire about Order #${orderId}:`, // Added Order ID here!
+          user_id: user.id,
+          metadata: {
+            type: 'order_inquiry',
+            order_id: orderId,
+            items: chatMetadataItems,
+            total: total
+          }
+        }]);
+
+      if (messageError) throw messageError;
+
+      // --- SUCCESS ---
+      if(showToast) showToast("Order Placed!", "Your order has been saved and sent to the seller.");
+      
+      // Clear the local cart visually
+      setLocalItems([]);
+      
+      // Note: To clear the global cart in App.jsx, you would typically 
+      // pass a clearCart() function as a prop and call it here.
+
+    } catch (err) {
+      console.error('Checkout error:', err);
+      if(showToast) showToast("Error", "Could not process order. Please try again.", "error");
+    } finally {
+      setIsSending(false);
     }
   };
-
+  
   // --- RENDER EMPTY STATE ---
   if (localItems.length === 0) {
     return <EmptyCart setCurrentPage={setCurrentPage} cartItems={cartItems} />;

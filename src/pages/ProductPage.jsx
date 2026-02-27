@@ -14,16 +14,9 @@ import QuickViewModal from '../components/products/QuickViewModal';
 import PredictiveSearch from '../components/products/PredictiveSearch';
 
 const ProductPage = ({ 
-  setCurrentPage, 
-  cartItems, 
-  addToCart, 
-  toggleWishlist, 
-  wishlistItems, 
-  showToast,
-  searchQuery, 
-  setSearchQuery,
-  onCartClick,
-  onWishlistClick
+  setCurrentPage, cartItems, addToCart, toggleWishlist, wishlistItems, showToast,
+  searchQuery, setSearchQuery, onCartClick, onWishlistClick,
+  user, handleLogout // <--- ADD THEM HERE
 }) => {
   
   // --- DATABASE STATES ---
@@ -160,6 +153,7 @@ const ProductPage = ({
     <div className="min-h-screen bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
       
       <div className="relative z-50">
+        
         <Header 
           setCurrentPage={setCurrentPage} 
           cartItems={cartItems} 
@@ -168,6 +162,8 @@ const ProductPage = ({
           onWishlistClick={onWishlistClick}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
+          user={user}                 // <--- PASS IT DOWN
+          handleLogout={handleLogout} // <--- PASS IT DOWN
         />
       </div>
 

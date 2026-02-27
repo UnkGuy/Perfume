@@ -8,13 +8,16 @@ import CartDrawer from './components/CartDrawer';
 import WishlistDrawer from './components/WishlistDrawer';
 import Toast from './components/Toast'; 
 
-// NEW: Import Supabase
+// NEW: Import ChatWidget so React knows what it is!
+import ChatWidget from './components/ChatWidget';
+
+// Import Supabase
 import { supabase } from './lib/supabase';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('welcome');
   
-  // --- NEW: USER AUTH STATE ---
+  // --- USER AUTH STATE ---
   const [user, setUser] = useState(null);
 
   // GLOBAL STATES
@@ -27,17 +30,14 @@ function App() {
 
   // --- AUTHENTICATION LISTENER ---
   useEffect(() => {
-    // 1. Check if they are already logged in when they first open the app
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
 
-    // 2. Listen for any login/logout events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
 
-    // Cleanup listener when app closes
     return () => subscription.unsubscribe();
   }, []);
 
@@ -45,7 +45,6 @@ function App() {
   const showToast = (title, message, type = 'success') => { /* Your toast logic */ };
   const removeToast = (id) => { /* Your toast logic */ };
 
-  // --- NEW: LOGOUT FUNCTION ---
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -77,9 +76,6 @@ function App() {
     }
   };
 
-  {/* Global Chat Widget */}
-  <ChatWidget user={user} />
-
   const toggleCart = () => setIsCartOpen(!isCartOpen);
   const toggleWishlistDrawer = () => setIsWishlistOpen(!isWishlistOpen);
 
@@ -93,8 +89,8 @@ function App() {
       searchQuery,                           
       setSearchQuery,                        
       showToast,
-      user,         // NEW: Pass user down so pages know who is logged in
-      handleLogout  // NEW: Pass logout function
+      user,         
+      handleLogout  
     };
     
     switch (currentPage) {
@@ -106,6 +102,7 @@ function App() {
     }
   };
 
+  // Components inside the return block!
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans">
       <Toast toasts={toasts} removeToast={removeToast} />
@@ -113,6 +110,9 @@ function App() {
       <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} cartItems={cartItems} removeFromCart={removeFromCart} setCurrentPage={setCurrentPage} />
       
       <WishlistDrawer isOpen={isWishlistOpen} onClose={() => setIsWishlistOpen(false)} wishlistItems={wishlistItems} toggleWishlist={toggleWishlist} addToCart={addToCart} />
+
+      {/* Global Chat Widget MOVED HERE */}
+      <ChatWidget user={user} />
 
       {renderCurrentPage()}
     </div>

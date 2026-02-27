@@ -1,8 +1,9 @@
 import React from 'react';
 import { Star, Eye, Heart } from 'lucide-react';
-import perfumeImage from '../../assets/images/perfume.jpg';
+import fallbackImage from '../../assets/images/perfume.jpg';
 
 const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWishlist, isInWishlist }) => {
+  const imageSource = product.image_url ? product.image_url : fallbackImage;
   return (
     <div 
       className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex flex-col ${!product.available ? 'opacity-80' : ''}`}
@@ -25,9 +26,14 @@ const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWish
         </button>
       </div>
 
-      {/* Card Image */}
+      {/* DYNAMIC CARD IMAGE */}
       <div className="relative aspect-[4/5] overflow-hidden bg-white/5 cursor-pointer" onClick={() => onSelect(product)}>
-          <img src={perfumeImage} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
+          <img 
+            src={imageSource} 
+            alt={product.name} 
+            loading="lazy" // <-- Adds native browser lazy-loading for memory efficiency
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" 
+          />
           
           {product.available && <span className="absolute top-3 left-3 bg-gold-400 text-black text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider">New</span>}
           {!product.available && <span className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm text-white font-bold tracking-widest border-2 border-white/20 m-4">OUT OF STOCK</span>}

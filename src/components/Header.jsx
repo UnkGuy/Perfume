@@ -8,7 +8,9 @@ const Header = ({
   onCartClick, 
   onWishlistClick,
   searchQuery,
-  setSearchQuery 
+  setSearchQuery,
+  user,           // <--- ADD THIS
+  handleLogout    // <--- ADD THIS
 }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
