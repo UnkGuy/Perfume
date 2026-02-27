@@ -1,90 +1,86 @@
 import React, { useState } from 'react';
 import { Gem, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { supabase } from '../lib/supabase'; // Import the database client!
 
-const LoginPage = ({ setCurrentPage }) => {
-  // 1. State for View Switching (login | register | forgot)
-  const [view, setView] = useState('login');
+const LoginPage = ({ setCurrentPage, showToast }) => {
+  const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
   
-  // 2. State for Form Data
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: ''
   });
 
-  // 3. State for UI Feedback
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Handle Input Changes
   const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    // Clear error when user starts typing again
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     if (error) setError('');
   };
 
-  // Handle "Continue as Guest"
   const handleGuestAccess = () => {
     setCurrentPage('products');
   };
 
-  // Handle Form Submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // --- Validation Logic ---
-    
-    // Check Empty Fields
     if (!formData.email || (view !== 'forgot' && !formData.password)) {
       setError('Please fill in all required fields.');
       return;
     }
 
-    // Check Password Match (Only for Register view)
     if (view === 'register' && formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
       return;
     }
 
-    // --- MOCK CREDENTIAL CHECK (Added Logic Here) ---
-    // If we are on the login view, we check if the inputs match our hardcoded admin user.
-    if (view === 'login') {
-        const correctEmail = 'admin@example.com';
-        const correctPassword = 'password123';
-
-        if (formData.email !== correctEmail || formData.password !== correctPassword) {
-            setIsLoading(true);
-            // Simulate a network delay before rejecting
-            setTimeout(() => {
-                setIsLoading(false);
-                setError('Invalid email or password.');
-            }, 1000);
-            return; // Stop here, do not log them in
-        }
-    }
-
-    // --- Mock API Call (Success path) ---
     setIsLoading(true);
 
-    setTimeout(() => {
-      // Mock Success Logic
-      if (view === 'forgot') {
-        alert(`Password reset link sent to ${formData.email}`);
-        setIsLoading(false);
-        setView('login');
-      } else {
-        // For Login (if correct) or Register, we let them in
-        setIsLoading(false);
+    try {
+      if (view === 'register') {
+        // --- SUPABASE SIGN UP ---
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+        });
+        
+        if (error) throw error;
+        
+        if (showToast) showToast('Success', 'Account created! You are now logged in.');
         setCurrentPage('products');
+
+      } else if (view === 'login') {
+        // --- SUPABASE SIGN IN ---
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) throw error;
+        
+        if (showToast) showToast('Welcome Back', 'Successfully logged in.');
+        setCurrentPage('products');
+
+      } else if (view === 'forgot') {
+        // --- SUPABASE RESET PASSWORD ---
+        const { error } = await supabase.auth.resetPasswordForEmail(formData.email);
+        
+        if (error) throw error;
+        
+        if (showToast) showToast('Email Sent', 'Check your inbox for the reset link.');
+        setView('login');
       }
-    }, 1500); // 1.5 second delay to show spinner
+    } catch (err) {
+      // Supabase returns nice, human-readable error messages
+      setError(err.message); 
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // Helper to render the Title based on view
   const renderHeader = () => {
     switch(view) {
       case 'register': return { title: 'Create Account', subtitle: 'Join the luxury experience' };
@@ -96,160 +92,135 @@ const LoginPage = ({ setCurrentPage }) => {
   const headerContent = renderHeader();
 
   return (
-    <div className="login-container">
-      <div className="blob-gold"></div>
-      <div className="blob-dark"></div>
+    <div className="min-h-screen bg-rich-black flex items-center justify-center p-6 text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
       
-      <div className="login-card">
-        {/* Header Section */}
-        <div className="login-header">
-          <div className="login-logo">
+      {/* Background aesthetics */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold-400/10 rounded-full blur-[120px] pointer-events-none"></div>
+      
+      <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
+        
+        {/* Header */}ava
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold-400/10 text-gold-400 mb-4 border border-gold-400/20">
             <Gem size={32} />
           </div>
-          <h2 className="login-title">{headerContent.title}</h2>
-          <p className="login-subtitle">{headerContent.subtitle}</p>
+          <h2 className="text-2xl font-bold text-white mb-2">{headerContent.title}</h2>
+          <p className="text-sm text-gray-400">{headerContent.subtitle}</p>
         </div>
 
-        {/* Error Message Box */}
+        {/* Error Alert */}
         {error && (
-          <div className="error-alert">
-            <AlertCircle size={16} />
+          <div className="flex items-center gap-2 p-3 mb-6 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg">
+            <AlertCircle size={16} className="flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          {/* Email Field (Always visible) */}
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-1.5">Email Address</label>
             <input 
               type="email" 
               name="email"
-              className={`form-input ${error ? 'error' : ''}`}
               placeholder="your@email.com"
               value={formData.email}
               onChange={handleInputChange}
+              className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`}
             />
           </div>
 
-          {/* Password Fields (Hidden in Forgot Password view) */}
+          {/* Password */}
           {view !== 'forgot' && (
-            <div className="form-group">
-              <label className="form-label">Password</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
               <input 
                 type="password" 
                 name="password"
-                className={`form-input ${error ? 'error' : ''}`}
                 placeholder="••••••••"
                 value={formData.password}
                 onChange={handleInputChange}
+                className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`}
               />
             </div>
           )}
 
-          {/* Confirm Password (Only in Register view) */}
+          {/* Confirm Password */}
           {view === 'register' && (
-            <div className="form-group">
-              <label className="form-label">Confirm Password</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
               <input 
                 type="password" 
                 name="confirmPassword"
-                className={`form-input ${error && formData.password !== formData.confirmPassword ? 'error' : ''}`}
                 placeholder="••••••••"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
+                className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error && formData.password !== formData.confirmPassword ? 'border-red-500/50' : 'border-white/10'}`}
               />
             </div>
           )}
 
-          {/* Options Row (Remember Me / Forgot Password) */}
+          {/* Options Row */}
           {view === 'login' && (
-            <div className="form-row">
-              <label className="checkbox-label">
-                <input type="checkbox" />
-                Remember me
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" className="accent-gold-400 w-4 h-4 bg-transparent border-gray-600 rounded" />
+                <span className="text-gray-400">Remember me</span>
               </label>
-              <span 
-                className="link" 
-                onClick={() => { setView('forgot'); setError(''); }}
-              >
+              <button type="button" onClick={() => { setView('forgot'); setError(''); }} className="text-gold-400 hover:text-gold-300 transition-colors">
                 Forgot password?
-              </span>
+              </button>
             </div>
           )}
 
-          {/* Primary Action Button */}
+          {/* Submit Button */}
           <button 
             type="submit"
-            className="btn-primary" 
-            style={{ width: '100%', marginBottom: '1rem', marginTop: view === 'forgot' ? '1rem' : '0' }}
             disabled={isLoading}
+            className="w-full py-3 mt-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded-lg transition-all shadow-lg disabled:opacity-70 flex justify-center items-center gap-2"
           >
             {isLoading ? (
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                <Loader2 className="spinner" size={18} />
+              <>
+                <Loader2 className="animate-spin" size={18} />
                 Processing...
-              </span>
+              </>
             ) : (
               view === 'login' ? 'Sign In' : view === 'register' ? 'Create Account' : 'Send Reset Link'
             )}
           </button>
         </form>
 
-        {/* Back Button (Only for Forgot Password) */}
-        {view === 'forgot' && (
-          <button 
-            className="btn-guest" 
-            style={{ width: '100%', marginBottom: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            onClick={() => { setView('login'); setError(''); }}
-          >
-            <ArrowLeft size={16} />
-            Back to Login
-          </button>
-        )}
-
-        {/* Guest Button (Hidden in Forgot Password) */}
-        {view !== 'forgot' && (
-          <button 
-            type="button"
-            className="btn-guest" 
-            style={{ width: '100%', marginBottom: '1rem' }}
-            onClick={handleGuestAccess}
-          >
-            Continue as Guest
-          </button>
-        )}
-
-        {/* Toggle between Login and Register */}
-        {view !== 'forgot' && (
-          <div style={{ textAlign: 'center', fontSize: '0.875rem', color: '#9ca3af' }}>
-            {view === 'login' ? "Don't have an account? " : "Already have an account? "}
-            <span 
-              className="link" 
-              onClick={() => { 
-                setView(view === 'login' ? 'register' : 'login'); 
-                setError(''); 
-              }}
+        {/* Alternate Actions */}
+        <div className="mt-6 space-y-4">
+          {view === 'forgot' ? (
+            <button 
+              onClick={() => { setView('login'); setError(''); }}
+              className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
             >
-              {view === 'login' ? 'Sign up free' : 'Sign in'}
-            </span>
-          </div>
-        )}
+              <ArrowLeft size={16} /> Back to Login
+            </button>
+          ) : (
+            <>
+              <button 
+                onClick={handleGuestAccess}
+                className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/5 text-white font-medium rounded-lg transition-colors"
+              >
+                Continue as Guest
+              </button>
 
-        {/* Social Buttons (Only in Login/Register) */}
-        {view !== 'forgot' && (
-          <>
-            <div className="divider">
-              <div className="divider-container">
-                <span className="divider-text">Or continue with</span>
+              <div className="text-center text-sm text-gray-400 pt-2 border-t border-white/10">
+                {view === 'login' ? "Don't have an account? " : "Already have an account? "}
+                <button 
+                  onClick={() => { setView(view === 'login' ? 'register' : 'login'); setError(''); }}
+                  className="text-gold-400 hover:text-gold-300 font-medium"
+                >
+                  {view === 'login' ? 'Sign up free' : 'Sign in'}
+                </button>
               </div>
-            </div>
-            <div className="social-buttons">
-              <button className="btn-social">🔍 Google</button>
-              <button className="btn-social">📘 Facebook</button>
-            </div>
-          </>
-        )}
+            </>
+          )}
+        </div>
+
       </div>
     </div>
   );
