@@ -1,17 +1,16 @@
 import React from 'react';
 import { X, Trash2, Heart, ShoppingCart } from 'lucide-react';
-import perfumeImage from '../assets/images/perfume.jpg'; 
+
+const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const WishlistDrawer = ({ isOpen, onClose, wishlistItems, toggleWishlist, addToCart }) => {
   return (
     <>
-      {/* Overlay */}
       <div 
         className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
 
-      {/* Drawer */}
       <div 
         className={`fixed inset-y-0 right-0 w-full max-w-md bg-rich-black border-l border-gold-400/30 shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
@@ -35,40 +34,44 @@ const WishlistDrawer = ({ isOpen, onClose, wishlistItems, toggleWishlist, addToC
                 <button onClick={onClose} className="text-gold-400 hover:underline">Explore Collection</button>
               </div>
             ) : (
-              wishlistItems.map((item, index) => (
-                <div key={index} className="flex gap-4 items-start animate-fade-in bg-white/5 p-3 rounded-lg border border-white/5">
-                  <div className="w-20 h-20 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-                    <img src={perfumeImage} alt={item.name} className="w-full h-full object-cover" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-white text-sm">{item.name}</h3>
-                    <p className="text-gray-500 text-xs mb-2">{item.brand}</p>
-                    <p className="text-gold-400 font-medium mb-3">₱{item.price}</p>
-                    
-                    <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => {
-                          if(item.available) {
-                            addToCart(item);
-                            toggleWishlist(item); // Remove from wishlist after adding to cart
-                          }
-                        }}
-                        disabled={!item.available}
-                        className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded transition-colors ${item.available ? 'bg-gold-400 text-black hover:bg-gold-300' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
-                      >
-                        <ShoppingCart size={14} /> Add to Cart
-                      </button>
-                      <button 
-                        onClick={() => toggleWishlist(item)}
-                        className="text-gray-500 hover:text-red-400 transition-colors p-1"
-                        title="Remove from Wishlist"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+              wishlistItems.map((item, index) => {
+                const imageSource = item.image_url ? item.image_url : FALLBACK_IMAGE;
+
+                return (
+                  <div key={index} className="flex gap-4 items-start animate-fade-in bg-white/5 p-3 rounded-lg border border-white/5">
+                    <div className="w-20 h-20 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
+                      <img src={imageSource} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-white text-sm">{item.name}</h3>
+                      <p className="text-gray-500 text-xs mb-2">{item.brand}</p>
+                      <p className="text-gold-400 font-medium mb-3">₱{item.price}</p>
+                      
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => {
+                            if(item.available) {
+                              addToCart(item);
+                              toggleWishlist(item); 
+                            }
+                          }}
+                          disabled={!item.available}
+                          className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded transition-colors ${item.available ? 'bg-gold-400 text-black hover:bg-gold-300' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
+                        >
+                          <ShoppingCart size={14} /> Add to Cart
+                        </button>
+                        <button 
+                          onClick={() => toggleWishlist(item)}
+                          className="text-gray-500 hover:text-red-400 transition-colors p-1"
+                          title="Remove from Wishlist"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
