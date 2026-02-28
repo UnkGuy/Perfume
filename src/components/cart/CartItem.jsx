@@ -1,27 +1,23 @@
 import React from 'react';
 import { Trash2, Check, Plus, Minus, AlertCircle } from 'lucide-react';
-// 1. Rename the import so it acts as our backup
-import fallbackImage from '../../assets/images/perfume.jpg';
+
+const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const CartItem = ({ item, index, handleQuantity, handleRemove, setCurrentPage }) => {
-  
-  // 2. Add the fallback logic
-  const imageSource = item.image_url ? item.image_url : fallbackImage;
+  const imageSource = item.image_url ? item.image_url : FALLBACK_IMAGE;
 
   return (
     <div className={`flex flex-col sm:flex-row gap-6 p-6 bg-white/5 border border-white/5 rounded-xl transition-all duration-500 ease-out ${item.isRemoving ? 'opacity-0 -translate-x-12' : 'opacity-100 translate-x-0'} hover:border-gold-400/30 group`}>
       
       <div onClick={() => setCurrentPage('products')} className="w-full sm:w-24 h-24 bg-white/10 rounded-lg overflow-hidden cursor-pointer flex-shrink-0">
-        {/* 3. Use the dynamic imageSource here */}
         <img 
           src={imageSource} 
           alt={item.name} 
-          loading="lazy" 
+          loading="lazy"
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
         />
       </div>
       
-      {/* Content */}
       <div className="flex-1 flex flex-col justify-between">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -44,7 +40,6 @@ const CartItem = ({ item, index, handleQuantity, handleRemove, setCurrentPage })
           </button>
         </div>
 
-        {/* Quantity and Price */}
         <div className="flex justify-between items-end border-t border-white/5 pt-4">
           <div className="flex items-center gap-3 bg-black/40 rounded-lg p-1 border border-white/10">
             <button onClick={() => handleQuantity(index, -1)} disabled={item.quantity <= 1} className="p-1 hover:text-gold-400 disabled:opacity-30 disabled:hover:text-gray-500 transition-colors">

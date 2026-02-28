@@ -1,13 +1,14 @@
 import React from 'react';
 import { Star, Eye, Heart } from 'lucide-react';
-import fallbackImage from '../../assets/images/perfume.jpg';
+
+const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWishlist, isInWishlist }) => {
-  const imageSource = product.image_url ? product.image_url : fallbackImage;
+  const imageSource = product.image_url ? product.image_url : FALLBACK_IMAGE;
+  
   return (
-    <div 
-      className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex flex-col ${!product.available ? 'opacity-80' : ''}`}
-    >
+    <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex flex-col ${!product.available ? 'opacity-80' : ''}`}>
+      
       {/* OVERLAY ACTIONS */}
       <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-x-2 group-hover:translate-x-0">
         <button 
@@ -31,10 +32,9 @@ const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWish
           <img 
             src={imageSource} 
             alt={product.name} 
-            loading="lazy" // <-- Adds native browser lazy-loading for memory efficiency
+            loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" 
           />
-          
           {product.available && <span className="absolute top-3 left-3 bg-gold-400 text-black text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider">New</span>}
           {!product.available && <span className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm text-white font-bold tracking-widest border-2 border-white/20 m-4">OUT OF STOCK</span>}
       </div>
@@ -48,9 +48,8 @@ const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWish
               <span className="text-xs text-gray-400">{product.rating}</span>
             </div>
         </div>
-        
         <p className="text-xs text-gray-500 mb-3 uppercase tracking-wide">{product.brand} • {product.size}</p>
-        <div className="text-xs text-gray-400 mb-4 line-clamp-1">{product.notes.join(" • ")}</div>
+        <div className="text-xs text-gray-400 mb-4 line-clamp-1">{product.notes?.join(" • ")}</div>
 
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/10">
           <span className="text-xl font-medium text-white">₱{product.price}</span>
