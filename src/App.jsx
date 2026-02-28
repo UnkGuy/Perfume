@@ -5,6 +5,7 @@ import WelcomePage from './pages/WelcomePage';
 import LoginPage from './pages/LoginPage';
 import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
+import ProfilePage from './pages/ProfilePage';
 
 // Components
 import CartDrawer from './components/CartDrawer';
@@ -51,9 +52,10 @@ function App() {
     
     switch (currentPage) {
       case 'welcome': return <WelcomePage {...commonProps} />;
-      case 'products': return <ProductPage {...commonProps} addToCart={(p) => { addToCart(p); setIsCartOpen(true); }} toggleWishlist={toggleWishlist} />;
+      case 'products': return <ProductPage {...commonProps} addToCart={addToCart} toggleWishlist={toggleWishlist} />;
       case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} />;
       case 'login': return <LoginPage setCurrentPage={setCurrentPage} showToast={showToast} />;
+      case 'profile': return <ProfilePage {...commonProps} />; // <--- ADD THIS LINE
       default: return <WelcomePage {...commonProps} />;
     }
   };

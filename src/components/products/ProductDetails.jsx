@@ -5,10 +5,13 @@ import ReviewModal from './ReviewModal';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWishlist, user, showToast }) => {
+const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWishlist, showToast }) => {
   const [reviews, setReviews] = useState([]);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [averageRating, setAverageRating] = useState(product?.rating || 5);
+  
+  // --- BULLETPROOF USER STATE ---
+  const [currentUser, setCurrentUser] = useState(null);
 
   const imageSource = product?.image_url ? product.image_url : FALLBACK_IMAGE;
 
@@ -16,12 +19,22 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
   const fetchReviewsData = async () => {
     if (!product) return;
 
-    // Fetch real reviews
-    const { data: reviewData } = await supabase
+    // 1. Fetch the user directly from Supabase
+    const { data: { session } } = await supabase.auth.getSession();
+    const loggedInUser = session?.user || null;
+    setCurrentUser(loggedInUser);
+
+    // 2. Fetch real reviews 
+    const { data: reviewData, error } = await supabase
       .from('reviews')
-      .select('*, auth_users:user_id(email)') 
+      .select('*')
       .eq('product_id', product.id)
       .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Error fetching reviews:", error);
+      return;
+    }
 
     if (reviewData) {
       setReviews(reviewData);
@@ -38,15 +51,13 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
 
   useEffect(() => {
     fetchReviewsData();
-  }, [product, user]);
+  }, [product]);
 
   if (!product) return null;
 
   // --- ANTI-SPAM LOGIC ---
-  // If they aren't logged in, they can't review.
-  // If they ARE logged in, check if their user.id is already in the reviews array!
-  const hasReviewed = user ? reviews.some(review => review.user_id === user.id) : false;
-  const canReview = user && !hasReviewed;
+  const hasReviewed = currentUser ? reviews.some(review => review.user_id === currentUser.id) : false;
+  const canReview = currentUser && !hasReviewed;
 
   return (
     <div className="animate-fade-in w-full max-w-6xl mx-auto">
@@ -56,7 +67,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
         isOpen={isReviewModalOpen} 
         onClose={() => setIsReviewModalOpen(false)} 
         product={product} 
-        user={user}
+        user={currentUser} 
         showToast={showToast}
         onReviewSubmitted={fetchReviewsData} 
       />
@@ -106,7 +117,6 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
               </span>
             </div>
 
-            {/* Show button ONLY if logged in and hasn't reviewed yet */}
             {canReview && (
               <button 
                 onClick={() => setIsReviewModalOpen(true)}
@@ -116,7 +126,6 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
               </button>
             )}
             
-            {/* Friendly message if they already reviewed */}
             {hasReviewed && (
               <span className="text-xs text-gray-500 mt-2 block italic">
                 You have already reviewed this product.
@@ -180,11 +189,12 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/30 uppercase font-bold">
-                      {review.auth_users?.email?.charAt(0) || <UserIcon size={16} />}
+                      <UserIcon size={16} />
                     </div>
                     <div>
+                      {/* Scrubbed the 'Verified' text - it just says Customer now */}
                       <p className="font-bold text-white text-sm">
-                        {review.auth_users?.email?.split('@')[0] || 'Customer'}
+                        Customer
                       </p>
                       <p className="text-xs text-gray-500">
                         {new Date(review.created_at).toLocaleDateString()}

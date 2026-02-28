@@ -102,13 +102,23 @@ const Header = ({
 
               {/* SMART USER ICON */}
               {user ? (
-                // If logged in, show an initial or a logout button
-                <div className="relative group cursor-pointer flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-xs font-bold uppercase">
+                <div className="relative group flex items-center gap-2">
+                  {/* Give the circle an onClick! */}
+                  <div 
+                    onClick={() => setCurrentPage('profile')}
+                    className="w-8 h-8 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-xs font-bold uppercase cursor-pointer hover:bg-gold-400 hover:text-black transition-colors"
+                  >
                     {user.email.charAt(0)}
                   </div>
-                  {/* Simple invisible dropdown for logout */}
+                  
+                  {/* Keep the dropdown for quick logout */}
                   <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    <button 
+                      onClick={() => setCurrentPage('profile')}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5"
+                    >
+                      My Account
+                    </button>
                     <button 
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
@@ -118,7 +128,6 @@ const Header = ({
                   </div>
                 </div>
               ) : (
-                // If logged out, show the normal login icon
                 <button onClick={() => setCurrentPage('login')} className="text-gray-300 hover:text-gold-400 transition-colors">
                   <User size={20} />
                 </button>
