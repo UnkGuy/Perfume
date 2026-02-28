@@ -11,7 +11,13 @@ import EmptyCart from '../components/cart/EmptyCart';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 
-const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }) => {
+const CartPage = ({ 
+  setCurrentPage, cartItems, removeFromCart, 
+  wishlistItems, onCartClick, onWishlistClick, 
+  searchQuery, setSearchQuery, 
+  user, handleLogout, showToast 
+}) => {
+  
   // --- STATE ---
   const [localItems, setLocalItems] = useState([]);
   const [isSending, setIsSending] = useState(false);
@@ -53,9 +59,9 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
 
   const hasUnavailableItems = localItems.some(item => !item.available);
 
-  // --- SEND TO MESSENGER INTEGRATION (UPGRADED) ---
+  // --- SEND TO MESSENGER INTEGRATION ---
   const handleCheckoutToChat = async () => {
-    // 1. Ensure user is logged in
+    // 1. Ensure user is logged in (Guest Block)
     if (!user) {
       if(showToast) showToast("Login Required", "Please sign in to message the seller.", "error");
       setCurrentPage('login');
@@ -67,7 +73,6 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
 
     try {
       // STEP 1: Create the main Order record
-      // We use .select().single() to immediately get the newly generated Order ID back from the database
       const { data: orderData, error: orderError } = await supabase
         .from('orders')
         .insert([{ 
@@ -83,12 +88,11 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
       const orderId = orderData.id;
 
       // STEP 2: Create the Order Items
-      // Map through the cart to format the data for our new order_items table
       const orderItemsToInsert = localItems.map(item => ({
         order_id: orderId,
-        product_id: item.id, // The ID of the actual product
+        product_id: item.id,
         quantity: item.quantity,
-        price_at_time: item.price // Locks in the price in case it changes tomorrow
+        price_at_time: item.price
       }));
 
       const { error: itemsError } = await supabase
@@ -98,7 +102,6 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
       if (itemsError) throw itemsError;
 
       // STEP 3: Send the Chat Message
-      // We still need the lightweight array for the visual UI bubble
       const chatMetadataItems = localItems.map(item => ({
         name: item.name,
         quantity: item.quantity,
@@ -109,7 +112,7 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
         .from('messages')
         .insert([{ 
           sender_role: 'user', 
-          content: `Hi! I would like to inquire about Order #${orderId}:`, // Added Order ID here!
+          content: `Hi! I would like to inquire about Order #${orderId}:`, 
           user_id: user.id,
           metadata: {
             type: 'order_inquiry',
@@ -124,11 +127,8 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
       // --- SUCCESS ---
       if(showToast) showToast("Order Placed!", "Your order has been saved and sent to the seller.");
       
-      // Clear the local cart visually
       setLocalItems([]);
-      
-      // Note: To clear the global cart in App.jsx, you would typically 
-      // pass a clearCart() function as a prop and call it here.
+      // NOTE: You'll also want to clear the global cartItems state in App.jsx eventually!
 
     } catch (err) {
       console.error('Checkout error:', err);
@@ -147,7 +147,17 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
       <div className="relative z-50">
-        <Header setCurrentPage={setCurrentPage} cartItems={cartItems} />
+        <Header 
+          setCurrentPage={setCurrentPage} 
+          cartItems={cartItems} 
+          wishlistItems={wishlistItems}
+          onCartClick={onCartClick}
+          onWishlistClick={onWishlistClick}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          user={user}                 
+          handleLogout={handleLogout} 
+        />
       </div>
       
       <div className="flex-1 container mx-auto px-6 py-32 max-w-6xl">
@@ -157,8 +167,6 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
         </div>
         
         <div className="flex flex-col lg:flex-row gap-12">
-          
-          {/* Left Column: Items List */}
           <div className="flex-1 space-y-6">
             {localItems.map((item, index) => (
               <CartItem 
@@ -176,7 +184,6 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
             </button>
           </div>
 
-          {/* Right Column: Summary Panel */}
           <CartSummary 
             localItems={localItems}
             calculateTotal={calculateTotal}
@@ -184,7 +191,6 @@ const CartPage = ({ cartItems, removeFromCart, setCurrentPage, showToast, user }
             isSending={isSending}
             handleCheckoutToChat={handleCheckoutToChat}
           />
-
         </div>
       </div>
       

@@ -9,12 +9,30 @@ const Header = ({
   onWishlistClick,
   searchQuery,
   setSearchQuery,
-  user,           // <--- ADD THIS
-  handleLogout    // <--- ADD THIS
+  user,           
+  handleLogout    
 }) => {
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false); // NEW: Search bar toggle
+  const [isSearchOpen, setIsSearchOpen] = useState(false); 
+  
+  // --- DEBOUNCE LOGIC ---
+  const [localSearch, setLocalSearch] = useState(searchQuery || '');
+
+  // Keep local search in sync if global search changes externally
+  useEffect(() => {
+    setLocalSearch(searchQuery || '');
+  }, [searchQuery]);
+
+  // The actual debounce timer
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(localSearch);
+    }, 300); // Waits 300ms after you stop typing to update the page
+
+    return () => clearTimeout(timer);
+  }, [localSearch, setSearchQuery]);
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -28,9 +46,10 @@ const Header = ({
   ];
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    if (e.target.value.length > 0) {
-      setCurrentPage('products'); // Auto-jump to products page when typing
+    setLocalSearch(e.target.value);
+    // Auto-jump to products page immediately so they see the results load
+    if (e.target.value.length > 0 && setCurrentPage) {
+      setCurrentPage('products'); 
     }
   };
 
@@ -65,10 +84,8 @@ const Header = ({
                 {isSearchOpen && (
                   <input 
                     type="text"
-                    value={searchQuery}
-                  
-                    onChange={(e) => setSearchQuery(e.target.value)} 
-                    
+                    value={localSearch}
+                    onChange={handleSearchChange} 
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         setCurrentPage('products');
@@ -103,7 +120,6 @@ const Header = ({
               {/* SMART USER ICON */}
               {user ? (
                 <div className="relative group flex items-center gap-2">
-                  {/* Give the circle an onClick! */}
                   <div 
                     onClick={() => setCurrentPage('profile')}
                     className="w-8 h-8 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-xs font-bold uppercase cursor-pointer hover:bg-gold-400 hover:text-black transition-colors"
@@ -111,7 +127,6 @@ const Header = ({
                     {user.email.charAt(0)}
                   </div>
                   
-                  {/* Keep the dropdown for quick logout */}
                   <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                     <button 
                       onClick={() => setCurrentPage('profile')}

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, User, ShoppingBag } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-// NEW: Accept 'user' prop
 const ChatWidget = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -17,7 +16,6 @@ const ChatWidget = ({ user }) => {
     }
 
     const fetchMessages = async () => {
-      // ONLY fetch messages belonging to this user
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -29,7 +27,6 @@ const ChatWidget = ({ user }) => {
 
     fetchMessages();
 
-    // Subscribe to new messages for this user
     const subscription = supabase
       .channel(`public:messages:user_id=eq.${user.id}`)
       .on('postgres_changes', { 
@@ -65,11 +62,15 @@ const ChatWidget = ({ user }) => {
       .insert([{ 
         sender_role: 'user', 
         content: messageText,
-        user_id: user.id // Tag it with the user
+        user_id: user.id 
       }]);
 
     if (error) console.error('Error sending message:', error);
   };
+
+  // --- GUEST BLOCKER ---
+  // If there is no user logged in, render absolutely nothing!
+  if (!user) return null; 
 
   return (
     <>
@@ -104,8 +105,7 @@ const ChatWidget = ({ user }) => {
         {/* Chat Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar bg-black/40">
           
-          {/* Default Greeting if Empty */}
-          {messages.length === 0 && user && (
+          {messages.length === 0 && (
             <div className="flex flex-col items-start animate-fade-in">
               <div className="p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed bg-white/10 text-white border border-white/5 rounded-tl-sm">
                 Hello! Welcome to KL Scents. How can I help you with your order today? 👋
@@ -113,7 +113,6 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
 
-          {/* DYNAMIC MESSAGES */}
           {messages.map((msg) => {
             const isUser = msg.sender_role === 'user';
             const isOrderInquiry = msg.metadata && msg.metadata.type === 'order_inquiry';
@@ -126,7 +125,6 @@ const ChatWidget = ({ user }) => {
                   </div>
                 )}
 
-                {/* --- CONDITIONAL RENDERING: Order Bubble vs Normal Text --- */}
                 {isOrderInquiry ? (
                   <div className="bg-white/5 border border-gold-400/30 p-4 rounded-2xl rounded-tr-sm max-w-[85%] text-white text-sm shadow-lg shadow-gold-400/5">
                     <div className="flex items-center gap-2 mb-3 text-gold-400 font-bold border-b border-white/10 pb-2">
@@ -164,30 +162,24 @@ const ChatWidget = ({ user }) => {
         </div>
 
         {/* Chat Input Area */}
-        {user ? (
-          <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
-            <div className="relative flex items-center">
-              <input 
-                type="text" 
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                className="w-full bg-black/50 border border-white/20 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors placeholder-gray-500"
-              />
-              <button 
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="absolute right-2 p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <Send size={16} />
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm text-center">
-            <p className="text-xs text-gray-400">Please sign in to chat with support.</p>
+        <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
+          <div className="relative flex items-center">
+            <input 
+              type="text" 
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="w-full bg-black/50 border border-white/20 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors placeholder-gray-500"
+            />
+            <button 
+              type="submit"
+              disabled={!newMessage.trim()}
+              className="absolute right-2 p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              <Send size={16} />
+            </button>
           </div>
-        )}
+        </form>
       </div>
     </>
   );
