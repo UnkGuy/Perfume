@@ -209,13 +209,17 @@ const ProductPage = ({
             ) : selectedProduct ? (
               // --- FULL DETAILS VIEW COMPONENT ---
               <ProductDetails 
-                product={selectedProduct}
-                onBack={() => setSelectedProduct(null)}
-                onAddToCart={addToCart}
-                onToggleWishlist={toggleWishlist}
-                isInWishlist={wishlistItems?.some(item => item.id === selectedProduct.id)}
-                onOpenReviewModal={openReviewModal}
-              />
+          product={selectedProduct} 
+          onBack={() => setSelectedProduct(null)}
+          onAddToCart={(product) => {
+            addToCart(product);
+            setSelectedProduct(null);
+            }}
+             onToggleWishlist={toggleWishlist}
+            isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
+            user={user}           // <--- MUST BE PASSED DOWN HERE
+            showToast={showToast} // <--- MUST BE PASSED DOWN HERE
+            />
             ) : (
               // --- GRID VIEW ---
               <>
