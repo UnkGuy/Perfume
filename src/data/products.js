@@ -1,5 +1,5 @@
 // src/data/products.js
-
+// OBSOLETE but didn't delete just yet
 export const products = [
   { id: 1, name: "Luxury Parfum 1", brand: "Chanel", price: 99, rating: 4.8, size: "50ml", notes: ["Fresh", "Citrus", "Woody"], available: true },
   { id: 2, name: "Luxury Parfum 2", brand: "Dior", price: 109, rating: 4.5, size: "50ml", notes: ["Floral", "Sweet", "Musk"], available: true },

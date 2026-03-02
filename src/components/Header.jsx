@@ -10,6 +10,7 @@ const Header = ({
   searchQuery,
   setSearchQuery,
   user,           
+  userRole,       // <--- ADD THIS
   handleLogout    
 }) => {
 
@@ -29,7 +30,7 @@ const Header = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearchQuery(localSearch);
-    }, 300); // Waits 300ms after you stop typing to update the page
+    }, 300); 
 
     return () => clearTimeout(timer);
   }, [localSearch, setSearchQuery]);
@@ -121,13 +122,24 @@ const Header = ({
               {user ? (
                 <div className="relative group flex items-center gap-2">
                   <div 
-                    onClick={() => setCurrentPage('profile')}
+                    onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')}
                     className="w-8 h-8 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-xs font-bold uppercase cursor-pointer hover:bg-gold-400 hover:text-black transition-colors"
                   >
                     {user.email.charAt(0)}
                   </div>
                   
                   <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    
+                    {/* --- SECRET ADMIN BUTTON --- */}
+                    {userRole === 'admin' && (
+                      <button 
+                        onClick={() => setCurrentPage('admin')}
+                        className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5"
+                      >
+                        Dashboard
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => setCurrentPage('profile')}
                       className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5"
