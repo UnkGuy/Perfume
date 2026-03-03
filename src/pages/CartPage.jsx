@@ -3,16 +3,13 @@ import { ArrowLeft } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
-// Supabase
-import { supabase } from '../lib/supabase';
-
 // Cart Components
 import EmptyCart from '../components/cart/EmptyCart';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 
 const CartPage = ({ 
-  setCurrentPage, cartItems, removeFromCart, 
+  setCurrentPage, cartItems, removeFromCart, clearCart, 
   wishlistItems, onCartClick, onWishlistClick, 
   searchQuery, setSearchQuery, 
   user, handleLogout, showToast 
@@ -20,7 +17,6 @@ const CartPage = ({
   
   // --- STATE ---
   const [localItems, setLocalItems] = useState([]);
-  const [isSending, setIsSending] = useState(false);
 
   // --- INITIALIZATION ---
   useEffect(() => {
@@ -58,85 +54,6 @@ const CartPage = ({
   };
 
   const hasUnavailableItems = localItems.some(item => !item.available);
-
-  // --- SEND TO MESSENGER INTEGRATION ---
-  const handleCheckoutToChat = async () => {
-    // 1. Ensure user is logged in (Guest Block)
-    if (!user) {
-      if(showToast) showToast("Login Required", "Please sign in to message the seller.", "error");
-      setCurrentPage('login');
-      return;
-    }
-
-    setIsSending(true);
-    const total = calculateTotal();
-
-    try {
-      // STEP 1: Create the main Order record
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders')
-        .insert([{ 
-          user_id: user.id, 
-          total_amount: total,
-          status: 'pending' 
-        }])
-        .select() 
-        .single();
-
-      if (orderError) throw orderError;
-
-      const orderId = orderData.id;
-
-      // STEP 2: Create the Order Items
-      const orderItemsToInsert = localItems.map(item => ({
-        order_id: orderId,
-        product_id: item.id,
-        quantity: item.quantity,
-        price_at_time: item.price
-      }));
-
-      const { error: itemsError } = await supabase
-        .from('order_items')
-        .insert(orderItemsToInsert);
-
-      if (itemsError) throw itemsError;
-
-      // STEP 3: Send the Chat Message
-      const chatMetadataItems = localItems.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price
-      }));
-      
-      const { error: messageError } = await supabase
-        .from('messages')
-        .insert([{ 
-          sender_role: 'user', 
-          content: `Hi! I would like to inquire about Order #${orderId}:`, 
-          user_id: user.id,
-          metadata: {
-            type: 'order_inquiry',
-            order_id: orderId,
-            items: chatMetadataItems,
-            total: total
-          }
-        }]);
-
-      if (messageError) throw messageError;
-
-      // --- SUCCESS ---
-      if(showToast) showToast("Order Placed!", "Your order has been saved and sent to the seller.");
-      
-      setLocalItems([]);
-      // NOTE: You'll also want to clear the global cartItems state in App.jsx eventually!
-
-    } catch (err) {
-      console.error('Checkout error:', err);
-      if(showToast) showToast("Error", "Could not process order. Please try again.", "error");
-    } finally {
-      setIsSending(false);
-    }
-  };
   
   // --- RENDER EMPTY STATE ---
   if (localItems.length === 0) {
@@ -184,12 +101,20 @@ const CartPage = ({
             </button>
           </div>
 
+          {/* This is where the magic happens! */}
           <CartSummary 
             localItems={localItems}
             calculateTotal={calculateTotal}
             hasUnavailableItems={hasUnavailableItems}
-            isSending={isSending}
-            handleCheckoutToChat={handleCheckoutToChat}
+            user={user}
+            showToast={showToast}
+            setCurrentPage={setCurrentPage}
+            onCheckoutSuccess={() => {
+              // 1. Clear the local visual state
+              setLocalItems([]);
+              // 2. Clear the global state so the notification badge updates!
+              if (clearCart) clearCart(); 
+            }}
           />
         </div>
       </div>

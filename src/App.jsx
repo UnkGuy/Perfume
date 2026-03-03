@@ -28,10 +28,10 @@ function App() {
   // 2. Simply grab all our logic from the invisible Context clouds!
   const { user, userRole, handleLogout } = useAuth(); // <--- GRAB USER ROLE HERE
   const { 
-    cartItems, addToCart, removeFromCart, 
-    wishlistItems, toggleWishlist, 
-    toasts, showToast, removeToast 
-  } = useShop();
+  cartItems, addToCart, removeFromCart, clearCart, // <--- Grab it here
+  wishlistItems, toggleWishlist, 
+  toasts, showToast, removeToast 
+} = useShop();
 
   // Layout toggles
   const toggleCart = () => setIsCartOpen(!isCartOpen);
@@ -54,7 +54,7 @@ function App() {
 switch (currentPage) {
       case 'welcome': return <WelcomePage {...commonProps} />;
       case 'products': return <ProductPage {...commonProps} addToCart={addToCart} toggleWishlist={toggleWishlist} />;
-      case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} />;
+      case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} clearCart={clearCart} />;
       case 'login': return <LoginPage setCurrentPage={setCurrentPage} showToast={showToast} />;
       case 'profile': return <ProfilePage {...commonProps} />;
       
@@ -69,7 +69,7 @@ switch (currentPage) {
     <div className="min-h-screen bg-rich-black text-white font-sans">
       <Toast toasts={toasts} removeToast={removeToast} />
       
-{/* 2. TEMPORARY DEV BUTTON (Delete this before you launch!) */}
+{/* 2. TEMPORARY DEV BUTTON*/}
       <button 
         onClick={() => setCurrentPage('admin')}
         className="fixed bottom-6 left-6 z-[100] bg-red-500 text-white px-4 py-2 rounded-md font-bold shadow-lg hover:bg-red-600 transition-colors"

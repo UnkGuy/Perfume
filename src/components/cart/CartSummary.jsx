@@ -1,7 +1,103 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MessageSquare, AlertCircle, Check } from 'lucide-react';
+import { supabase } from '../../lib/supabase'; // Make sure the path matches your structure
 
-const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, isSending, handleCheckoutToChat }) => {
+const CartSummary = ({ 
+  localItems, 
+  calculateTotal, 
+  hasUnavailableItems, 
+  user, 
+  showToast, 
+  setCurrentPage, 
+  onCheckoutSuccess // New prop to tell the parent to clear the cart
+}) => {
+  const [isSending, setIsSending] = useState(false);
+
+  // --- SEND TO MESSENGER INTEGRATION ---
+  const handleCheckoutToChat = async () => {
+    // Guest Block
+    if (!user) {
+      if(showToast) showToast("Login Required", "Please sign in to message the seller.", "error");
+      setCurrentPage('login');
+      return;
+    }
+
+    setIsSending(true);
+    const total = calculateTotal();
+
+    try {
+      // STEP 1: Create the main Order record
+      const { data: orderData, error: orderError } = await supabase
+        .from('orders')
+        .insert([{ 
+          user_id: user.id, 
+          total_amount: total,
+          status: 'pending' 
+        }])
+        .select() 
+        .single();
+
+      if (orderError) throw orderError;
+      const orderId = orderData.id;
+
+      // STEP 2: Create the Order Items
+      const orderItemsToInsert = localItems.map(item => ({
+        order_id: orderId,
+        product_id: item.id,
+        quantity: item.quantity,
+        price_at_time: item.price
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      // STEP 3: Send the Chat Message
+      const chatMetadataItems = localItems.map(item => ({
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price
+      }));
+      
+      // Formatting the list with bullet points and line breaks
+      const itemListString = localItems.map(item => 
+        `• ${item.quantity}x ${item.name} (₱${(item.price * item.quantity).toLocaleString()})`
+      ).join('\n');
+
+      const formattedContent = `Hi! I would like to inquire about Order #${orderId}:\n\n${itemListString}\n\nEstimated Total: ₱${total.toLocaleString()}`;
+
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert([{ 
+          sender_role: 'user', 
+          content: formattedContent,
+          user_id: user.id,
+          metadata: {
+            type: 'order_inquiry',
+            order_id: orderId,
+            items: chatMetadataItems,
+            total: total
+          }
+        }]);
+
+      if (messageError) throw messageError;
+
+      // --- SUCCESS ---
+      if(showToast) showToast("Order Placed!", "Your order has been saved and sent to the seller.");
+      
+      // Trigger the parent component to clear the cart UI
+      if(onCheckoutSuccess) onCheckoutSuccess();
+
+    } catch (err) {
+      console.error('Checkout error:', err);
+      if(showToast) showToast("Error", "Could not process order. Please try again.", "error");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <div className="w-full lg:w-96">
       <div className="bg-white/5 border border-gold-400/20 rounded-2xl p-8 sticky top-32 backdrop-blur-sm">

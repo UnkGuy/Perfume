@@ -146,8 +146,8 @@ const ChatWidget = ({ user }) => {
                     </div>
                   </div>
                 ) : (
-                  <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
-                    {msg.content}
+                  <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
+                  {msg.content}
                   </div>
                 )}
 

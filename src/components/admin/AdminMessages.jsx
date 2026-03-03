@@ -10,20 +10,26 @@ const AdminMessages = ({ showToast }) => {
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef(null);
 
-  // 1. Fetch unique users who have sent messages
+  // 1. Fetch unique users who have sent messages (Now with Emails!)
   useEffect(() => {
     const fetchChats = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from('messages')
-        .select('user_id, created_at')
+        // We grab the email using the relation to auth_users
+        .select(`*, auth_users:user_id(email)`)
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        // Group by unique user_id
+        // Group by unique user_id and attach the email
         const uniqueUsers = Array.from(new Set(data.map(m => m.user_id)))
           .map(id => {
-            return { id, lastActive: data.find(m => m.user_id === id).created_at };
+            const latestMsg = data.find(m => m.user_id === id);
+            return { 
+              id, 
+              email: latestMsg.auth_users?.email || `Customer ${id.substring(0, 6)}`,
+              lastActive: latestMsg.created_at 
+            };
           });
         setActiveChats(uniqueUsers);
       }
@@ -91,7 +97,7 @@ const AdminMessages = ({ showToast }) => {
         <div className="p-4 border-b border-white/10">
           <h3 className="font-bold text-white tracking-widest uppercase text-sm">Active Inquiries</h3>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           {isLoading ? (
             <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gold-400" /></div>
           ) : activeChats.length === 0 ? (
@@ -103,11 +109,13 @@ const AdminMessages = ({ showToast }) => {
                 onClick={() => setSelectedUser(chat.id)}
                 className={`w-full p-4 flex items-center gap-3 text-left transition-colors border-b border-white/5 ${selectedUser === chat.id ? 'bg-gold-400/10' : 'hover:bg-white/5'}`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold ${selectedUser === chat.id ? 'bg-gold-400 text-black' : 'bg-white/10 text-white'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedUser === chat.id ? 'bg-gold-400 text-black' : 'bg-white/10 text-white'}`}>
                   <User size={16} />
                 </div>
                 <div className="overflow-hidden">
-                  <p className={`text-sm truncate ${selectedUser === chat.id ? 'text-gold-400 font-bold' : 'text-gray-300'}`}>Customer {chat.id.substring(0, 6)}</p>
+                  <p className={`text-sm truncate ${selectedUser === chat.id ? 'text-gold-400 font-bold' : 'text-gray-300'}`}>
+                    {chat.email}
+                  </p>
                   <p className="text-xs text-gray-500">{new Date(chat.lastActive).toLocaleDateString()}</p>
                 </div>
               </button>
@@ -125,7 +133,7 @@ const AdminMessages = ({ showToast }) => {
         ) : (
           <>
             {/* Messages Area */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-4">
+            <div className="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
               {messages.map(msg => {
                 const isAdmin = msg.sender_role === 'admin';
                 const isOrder = msg.metadata?.type === 'order_inquiry';
@@ -137,11 +145,13 @@ const AdminMessages = ({ showToast }) => {
                         <div className="flex items-center gap-2 mb-2 text-gold-400 font-bold border-b border-white/10 pb-2">
                           <ShoppingBag size={16} /> Order Inquiry #{msg.metadata.order_id}
                         </div>
-                        <p className="text-gray-300 mb-2">{msg.content}</p>
+                        {/* ADDED whitespace-pre-wrap HERE */}
+                        <p className="text-gray-300 mb-2 whitespace-pre-wrap">{msg.content}</p>
                         <p className="text-gold-400 font-mono">Total: ₱{msg.metadata.total?.toLocaleString()}</p>
                       </div>
                     ) : (
-                      <div className={`p-3 rounded-2xl max-w-[75%] text-sm ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
+                      // ADDED whitespace-pre-wrap HERE
+                      <div className={`p-3 rounded-2xl max-w-[75%] text-sm whitespace-pre-wrap ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
                         {msg.content}
                       </div>
                     )}
