@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Edit2, Trash2, Loader2, X } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle } from 'lucide-react';
+import ImageUploader from '../ImageUploader'; 
+import { scentNotes } from '../../data/products'; // <--- IMPORTING YOUR NOTES
 
 const AdminProducts = ({ showToast }) => {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Form State
+  // Notes is now initialized as an array [] instead of a string ''
   const [formData, setFormData] = useState({
-    name: '', brand: '', price: '', size: '50ml', gender: 'Unisex', stock_count: 10, notes: '', image_url: ''
+    name: '', brand: '', price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_url: '', available: true
   });
 
   const fetchProducts = async () => {
@@ -30,28 +31,38 @@ const AdminProducts = ({ showToast }) => {
       setEditingProduct(product);
       setFormData({
         name: product.name, brand: product.brand, price: product.price, size: product.size,
-        gender: product.gender || 'Unisex', stock_count: product.stock_count || 0,
-        notes: product.notes ? product.notes.join(', ') : '', // Convert array back to comma string
-        image_url: product.image_url || ''
+        gender: product.gender || 'Unisex', stock_count: product.stock_count || '',
+        notes: product.notes || [], // Keep as array
+        image_url: product.image_url || '',
+        available: product.available !== false
       });
     } else {
       setEditingProduct(null);
-      setFormData({ name: '', brand: '', price: '', size: '50ml', gender: 'Unisex', stock_count: 10, notes: '', image_url: '' });
+      setFormData({ name: '', brand: '', price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_url: '', available: true });
     }
     setIsModalOpen(true);
+  };
+
+  const handleNoteToggle = (note) => {
+    setFormData(prev => ({
+      ...prev,
+      notes: prev.notes.includes(note) 
+        ? prev.notes.filter(n => n !== note) // Remove if already selected
+        : [...prev.notes, note]              // Add if not selected
+    }));
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
 
-    // Format the data for the database
     const payload = {
       ...formData,
       price: parseFloat(formData.price),
-      stock_count: parseInt(formData.stock_count),
-      available: parseInt(formData.stock_count) > 0, // Auto-calculate availability!
-      notes: formData.notes.split(',').map(n => n.trim()).filter(n => n), // Turn comma string into clean array
+      stock_count: formData.stock_count ? parseInt(formData.stock_count) : null,
+      available: formData.available,
+      // No need to split(), it's already a clean array!
+      notes: formData.notes, 
     };
 
     try {
@@ -64,11 +75,12 @@ const AdminProducts = ({ showToast }) => {
         if (error) throw error;
         if (showToast) showToast('Added', `${payload.name} added to inventory.`);
       }
-      
       setIsModalOpen(false);
-      fetchProducts(); // Refresh table
+      fetchProducts(); 
     } catch (err) {
-      if (showToast) showToast('Error', 'Failed to save product.', 'error');
+      console.error("Supabase Save Error:", err); // Logs the full error to your browser console
+      // Shows the EXACT database error in your toast notification!
+      if (showToast) showToast('Error', err.message || 'Check browser console for details.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -99,37 +111,65 @@ const AdminProducts = ({ showToast }) => {
         </button>
       </div>
 
-      {/* --- INVENTORY TABLE --- */}
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
               <th className="p-4 font-medium">Product Name</th>
-              <th className="p-4 font-medium">Brand & Size</th>
               <th className="p-4 font-medium">Price</th>
               <th className="p-4 font-medium">Stock</th>
+              <th className="p-4 font-medium">Details</th>
+              <th className="p-4 font-medium">Status</th>
               <th className="p-4 font-medium text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5 text-sm text-gray-300">
             {isLoading ? (
-              <tr><td colSpan="5" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
+              <tr><td colSpan="6" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
             ) : products.length === 0 ? (
-              <tr><td colSpan="5" className="p-8 text-center text-gray-500">No products in inventory. Click "Add Perfume" to start.</td></tr>
+              <tr><td colSpan="6" className="p-8 text-center text-gray-500">No products in inventory. Click "Add Perfume" to start.</td></tr>
             ) : (
               products.map(product => (
                 <tr key={product.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 font-bold text-white">{product.name}</td>
-                  <td className="p-4">{product.brand} • {product.size}</td>
-                  <td className="p-4 text-gold-400">₱{product.price}</td>
+                  <td className="p-4 flex items-center gap-3">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
+                    ) : (
+                      <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>
+                    )}
+                    <div>
+                      <p className="font-bold text-white">{product.name}</p>
+                      <p className="text-xs text-gray-500">{product.brand} • {product.size}</p>
+                    </div>
+                  </td>
+                  <td className="p-4 text-gold-400 font-medium">₱{product.price}</td>
+                  
+                  {/* NEW: Stock Column */}
                   <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${product.stock_count > 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
-                      {product.stock_count} in stock
+                    {product.stock_count !== null && product.stock_count !== undefined ? (
+                      <span className="text-gray-300">{product.stock_count} units</span>
+                    ) : (
+                      <span className="text-gray-500 italic">Unlimited</span>
+                    )}
+                  </td>
+                  
+                  {/* NEW: Details/Gender Column */}
+                  <td className="p-4">
+                    <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">
+                      {product.gender}
                     </span>
                   </td>
+
+                  <td className="p-4">
+                    {product.available ? (
+                      <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>
+                    )}
+                  </td>
                   <td className="p-4 flex justify-end gap-2">
-                    <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors"><Edit2 size={16} /></button>
-                    <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors"><Trash2 size={16} /></button>
+                    <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit Product"><Edit2 size={16} /></button>
+                    <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete Product"><Trash2 size={16} /></button>
                   </td>
                 </tr>
               ))
@@ -138,60 +178,128 @@ const AdminProducts = ({ showToast }) => {
         </table>
       </div>
 
-      {/* --- ADD/EDIT MODAL --- */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-rich-black border border-gold-400/30 rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+          <div className="bg-rich-black border border-gold-400/30 rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-white">{editingProduct ? 'Edit Perfume' : 'Add New Perfume'}</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-white transition-colors"><X size={24} /></button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-4">
+            <form onSubmit={handleSave} className="space-y-6">
+              {/* Product Basics */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Perfume Name</label>
-                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none" placeholder="e.g. Baccarat Rouge 540" />
+                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Brand</label>
-                  <input required type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none" placeholder="e.g. Maison Francis Kurkdjian" />
+                  <input required type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Price (₱)</label>
-                  <input required type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none" />
+                  <input required type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Stock Count</label>
-                  <input required type="number" min="0" value={formData.stock_count} onChange={e => setFormData({...formData, stock_count: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none" />
+                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
+                    Stock Count <span className="text-gray-600">(Optional)</span>
+                  </label>
+                  <input type="number" min="0" value={formData.stock_count} onChange={e => setFormData({...formData, stock_count: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Leave blank if unlimited" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Size</label>
-                  <input required type="text" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none" placeholder="e.g. 50ml, 100ml" />
+                  <input required type="text" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Gender Focus</label>
-                  <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none">
+                  <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors">
                     <option>Unisex</option><option>Male</option><option>Female</option>
                   </select>
                 </div>
               </div>
 
+              {/* ✨ NEW: Clickable Fragrance Note Tags ✨ */}
               <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Fragrance Notes (Comma Separated)</label>
-                <textarea required value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none resize-none h-20" placeholder="e.g. Jasmine, Saffron, Cedarwood" />
+                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Fragrance Notes</label>
+                <div className="flex flex-wrap gap-2 p-4 bg-black/30 border border-white/5 rounded-lg max-h-48 overflow-y-auto custom-scrollbar">
+                  {scentNotes && scentNotes.map(note => {
+                    const isSelected = formData.notes.includes(note);
+                    return (
+                      <button
+                        key={note}
+                        type="button"
+                        onClick={() => handleNoteToggle(note)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
+                          isSelected 
+                          ? 'bg-gold-400 text-black border-gold-400 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
+                          : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50 hover:text-white'
+                        }`}
+                      >
+                        {note}
+                      </button>
+                    );
+                  })}
+                  {(!scentNotes || scentNotes.length === 0) && (
+                    <p className="text-sm text-gray-500">No scent notes available. Please check data/products.js</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Explicit Availability Toggle */}
+              <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-lg">
+                <input 
+                  type="checkbox" 
+                  id="available" 
+                  checked={formData.available} 
+                  onChange={e => setFormData({...formData, available: e.target.checked})}
+                  className="w-5 h-5 accent-gold-400 bg-transparent border-gray-600 rounded cursor-pointer"
+                />
+                <label htmlFor="available" className="text-sm font-bold text-white cursor-pointer select-none">
+                  Product is Available for Purchase
+                </label>
               </div>
               
-              <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Image URL (Optional)</label>
-                <input type="text" value={formData.image_url} onChange={e => setFormData({...formData, image_url: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none" placeholder="https://example.com/perfume.jpg" />
-                <p className="text-xs text-gray-500 mt-1">Leave blank to use the default luxury bottle image.</p>
+              {/* Product Image Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center bg-black/30 p-4 border border-white/5 rounded-lg">
+                <div>
+                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">
+                    Product Image
+                  </label>
+                  <ImageUploader 
+                    onUploadSuccess={(url) => setFormData({...formData, image_url: url})} 
+                    onError={(err) => { if(showToast) showToast('Error', err, 'error'); }} 
+                  />
+                </div>
+                
+                <div className="flex flex-col items-center justify-center">
+                  <span className="block text-xs text-gray-500 uppercase tracking-widest mb-2">Preview</span>
+                  {formData.image_url ? (
+                    <div className="relative group w-32 h-32 rounded-lg border-2 border-gold-400/50 overflow-hidden shadow-lg">
+                      <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button 
+                          type="button" 
+                          onClick={() => setFormData({...formData, image_url: ''})} 
+                          className="p-2 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
+                          title="Remove Image"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-32 h-32 rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center text-gray-600 bg-white/5">
+                      <p className="text-xs text-center px-4">No Image Uploaded</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-4 pt-4 border-t border-white/10">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-gray-400 hover:text-white transition-colors">Cancel</button>
-                <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-gold-400 hover:bg-gold-300 text-black font-bold rounded-lg transition-colors flex justify-center items-center">
-                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : 'Save Perfume'}
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors font-medium">Cancel</button>
+                <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-gold-400 hover:bg-gold-300 text-black font-bold rounded-lg transition-all shadow-lg flex justify-center items-center">
+                  {isSaving ? <Loader2 className="animate-spin" size={18} /> : 'Save Product'}
                 </button>
               </div>
             </form>

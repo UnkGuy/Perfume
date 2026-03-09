@@ -122,30 +122,34 @@ const Header = ({
               </button>
 
               {/* SMART USER ICON */}
-              {user ? (
-                <div className="relative group flex items-center gap-2">
-                  <button onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} className="text-gray-300 hover:text-gold-400 transition-colors">
-                    <UserIcon size={20} />
-                    </button>
-                  
-                  <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-                    
-                    {/* --- SECRET ADMIN BUTTON --- */}
-                    {userRole === 'admin' && (
-                      <button 
-                        onClick={() => setCurrentPage('admin')}
-                        className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5"
-                      >
-                        Dashboard
-                      </button>
-                    )}
+{user ? (
+  <div className="relative group flex items-center gap-2">
+    {/* Logged in icon */}
+    <button 
+      onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} 
+      className="text-gray-300 hover:text-gold-400 transition-colors py-2"
+    >
+      <User size={20} />
+    </button>
+    
+    <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+      
+      {/* --- SECRET ADMIN BUTTON --- */}
+      {userRole === 'admin' && (
+        <button 
+          onClick={() => setCurrentPage('admin')}
+          className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5"
+        >
+          Dashboard
+        </button>
+      )}
 
-                    <button 
-                      onClick={() => setCurrentPage('profile')}
-                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5"
-                    >
-                      My Account
-                    </button>
+      <button 
+        onClick={() => setCurrentPage('profile')}
+        className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5"
+      >
+        My Account
+      </button>
                     <button 
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
@@ -161,7 +165,6 @@ const Header = ({
               )}
 
               {/* Cart Icon */}
-              // Update the Cart Icon button in Header.jsx:
 <button 
   onClick={(e) => { 
     e.preventDefault(); 
@@ -178,7 +181,7 @@ const Header = ({
   {cartItems && cartItems.length > 0 && (
     <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full animate-bounce">
       {cartItems.length}
-      </span>
+    </span>
                 )}
               </button>
 

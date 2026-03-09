@@ -11,26 +11,33 @@ const AdminMessages = ({ showToast }) => {
   const messagesEndRef = useRef(null);
 
   // 1. Fetch unique users who have sent messages (Now with Emails!)
-  useEffect(() => {
+useEffect(() => {
     const fetchChats = async () => {
       setIsLoading(true);
-      // Change the select statement to this:
+      // Fetching username alongside email
       const { data, error } = await supabase
         .from('messages')
-        .select(`*, profiles(email)`) 
+        .select(`*, profiles(username, email)`) 
         .order('created_at', { ascending: false });
 
       if (!error && data) {
-        // Group by unique user_id and attach the email
+        // Group by unique user_id 
         const uniqueUsers = Array.from(new Set(data.map(m => m.user_id)))
           .map(id => {
-            const latestMsg = data.find(m => m.user_id === id);
+            const userMessages = data.filter(m => m.user_id === id);
+            // Get the absolute latest message for this user to dictate order
+            const latestMsg = userMessages[0]; 
+            
             return { 
               id, 
-              email: latestMsg.profiles?.email || `Customer ${id.substring(0, 6)}`, // <-- Updated here
+              // Prefers username, falls back to email, then ID
+              displayName: latestMsg.profiles?.username || latestMsg.profiles?.email || `Customer ${id.substring(0, 6)}`,
               lastActive: latestMsg.created_at 
             };
           });
+          
+        // Sort the sidebar by whoever messaged most recently
+        uniqueUsers.sort((a, b) => new Date(b.lastActive) - new Date(a.lastActive));
         setActiveChats(uniqueUsers);
       }
       setIsLoading(false);
@@ -135,32 +142,51 @@ const AdminMessages = ({ showToast }) => {
             {/* Messages Area */}
             <div className="flex-1 p-6 overflow-y-auto space-y-4 custom-scrollbar">
               {messages.map(msg => {
-                const isAdmin = msg.sender_role === 'admin';
-                const isOrder = msg.metadata?.type === 'order_inquiry';
+  const isAdmin = msg.sender_role === 'admin';
+  const isOrder = msg.metadata?.type === 'order_inquiry';
 
-                return (
-                  <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
-                    {isOrder ? (
-                      <div className="bg-black/60 border border-gold-400/30 p-4 rounded-xl max-w-[85%] text-sm">
-                        <div className="flex items-center gap-2 mb-2 text-gold-400 font-bold border-b border-white/10 pb-2">
-                          <ShoppingBag size={16} /> Order Inquiry #{msg.metadata.order_id}
-                        </div>
-                        {/* ADDED whitespace-pre-wrap HERE */}
-                        <p className="text-gray-300 mb-2 whitespace-pre-wrap">{msg.content}</p>
-                        <p className="text-gold-400 font-mono">Total: ₱{msg.metadata.total?.toLocaleString()}</p>
-                      </div>
-                    ) : (
-                      // ADDED whitespace-pre-wrap HERE
-                      <div className={`p-3 rounded-2xl max-w-[75%] text-sm whitespace-pre-wrap ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
-                        {msg.content}
-                      </div>
-                    )}
-                    <span className="text-[10px] text-gray-500 mt-1">
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                );
-              })}
+  return (
+    <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
+      {isOrder ? (
+        <div className="bg-black/60 border border-gold-400/30 p-4 rounded-xl w-full max-w-[90%] text-sm shadow-lg">
+          <div className="flex items-center gap-2 mb-3 text-gold-400 font-bold border-b border-white/10 pb-2">
+            <ShoppingBag size={16} /> Order Inquiry #{msg.metadata.order_id}
+          </div>
+          
+          {/* Item List */}
+          <div className="space-y-1 mb-3 bg-white/5 p-3 rounded">
+            {msg.metadata.items?.map((item, idx) => (
+              <div key={idx} className="flex justify-between gap-4">
+                <span className="text-gray-300">{item.quantity}x {item.name}</span>
+                <span className="text-gray-400">₱{item.price * item.quantity}</span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Customer Preferences */}
+          <div className="grid grid-cols-2 gap-2 text-xs text-gray-400 mb-3">
+            <div><span className="text-gray-500">Fulfillment:</span> {msg.metadata.fulfillment}</div>
+            <div><span className="text-gray-500">Payment:</span> {msg.metadata.payment}</div>
+            <div><span className="text-gray-500">Contact:</span> {msg.metadata.contact}</div>
+            <div className="col-span-2"><span className="text-gray-500">Location:</span> {msg.metadata.location || 'N/A'}</div>
+          </div>
+
+          <div className="flex justify-between items-center pt-2 border-t border-white/10">
+            <span className="text-gold-400 font-bold">Total Estimate</span>
+            <span className="text-gold-400 font-bold text-lg">₱{msg.metadata.total?.toLocaleString()}</span>
+          </div>
+        </div>
+      ) : (
+        <div className={`p-3 rounded-2xl max-w-[75%] text-sm whitespace-pre-wrap ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
+          {msg.content}
+        </div>
+      )}
+      <span className="text-[10px] text-gray-500 mt-1">
+        {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      </span>
+    </div>
+  );
+})}
               <div ref={messagesEndRef} />
             </div>
 
