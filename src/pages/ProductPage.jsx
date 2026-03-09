@@ -16,7 +16,7 @@ import PredictiveSearch from '../components/products/PredictiveSearch';
 const ProductPage = ({ 
   setCurrentPage, cartItems, addToCart, toggleWishlist, wishlistItems, showToast,
   searchQuery, setSearchQuery, onCartClick, onWishlistClick,
-  user, handleLogout // <--- ADD THEM HERE
+  user, userRole, handleLogout // <--- ADD userRole HERE
 }) => {
   
   // --- DATABASE STATES ---
@@ -116,7 +116,8 @@ const ProductPage = ({
 
   // --- FILTERING ENGINE ---
   const getProcessedProducts = () => {
-    let filtered = products.filter(product => {
+  let filtered = products.filter(product => {
+    if (!product.available) return false; 
       // 1. Search (using the global searchQuery prop)
       if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) && !product.brand.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
@@ -162,8 +163,9 @@ const ProductPage = ({
           onWishlistClick={onWishlistClick}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          user={user}                 // <--- PASS IT DOWN
-          handleLogout={handleLogout} // <--- PASS IT DOWN
+          user={user}                 
+          userRole={userRole}         // <--- ADD THIS LINE
+          handleLogout={handleLogout} 
         />
       </div>
 

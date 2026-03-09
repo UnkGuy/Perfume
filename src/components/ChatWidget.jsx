@@ -126,28 +126,41 @@ const ChatWidget = ({ user }) => {
                 )}
 
                 {isOrderInquiry ? (
-                  <div className="bg-white/5 border border-gold-400/30 p-4 rounded-2xl rounded-tr-sm max-w-[85%] text-white text-sm shadow-lg shadow-gold-400/5">
+                  <div className="bg-white/5 border border-gold-400/30 p-4 rounded-2xl rounded-tr-sm w-full max-w-[90%] text-white text-sm shadow-lg shadow-gold-400/5">
                     <div className="flex items-center gap-2 mb-3 text-gold-400 font-bold border-b border-white/10 pb-2">
                       <ShoppingBag size={16} />
-                      <span>Order Inquiry</span>
+                      <span>Order Inquiry #{msg.metadata.order_id}</span>
                     </div>
-                    <p className="mb-3 text-gray-300">{msg.content}</p>
-                    <div className="space-y-1 mb-3">
-                      {msg.metadata.items.map((item, idx) => (
+                    
+                    {/* Items List */}
+                    <div className="space-y-1 mb-3 bg-black/40 p-2 rounded">
+                      {msg.metadata.items?.map((item, idx) => (
                         <div key={idx} className="flex justify-between gap-4">
-                          <span className="text-gray-400">{item.quantity}x {item.name}</span>
-                          <span>₱{item.price * item.quantity}</span>
+                          <span className="text-gray-300">{item.quantity}x {item.name}</span>
+                          <span className="text-gray-400">₱{item.price * item.quantity}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="flex justify-between items-center pt-2 border-t border-white/10 font-bold">
-                      <span className="text-gold-400">Estimate</span>
-                      <span>₱{msg.metadata.total?.toLocaleString()}</span>
+
+                    {/* Customer Info Card */}
+                    <div className="grid grid-cols-1 gap-1 text-xs text-gray-400 mb-3 border-b border-white/10 pb-3">
+                      <div><span className="text-gray-500 font-medium">Method:</span> {msg.metadata.fulfillment}</div>
+                      <div><span className="text-gray-500 font-medium">Payment:</span> {msg.metadata.payment}</div>
+                      <div><span className="text-gray-500 font-medium">Contact:</span> {msg.metadata.contact}</div>
+                      {msg.metadata.location && (
+                        <div><span className="text-gray-500 font-medium">Location:</span> {msg.metadata.location}</div>
+                      )}
+                    </div>
+
+                    {/* Total */}
+                    <div className="flex justify-between items-center pt-1 font-bold">
+                      <span className="text-gold-400">Total Estimate</span>
+                      <span className="text-gold-400 text-base">₱{msg.metadata.total?.toLocaleString()}</span>
                     </div>
                   </div>
                 ) : (
-                  <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
-                    {msg.content}
+                  <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
+                  {msg.content}
                   </div>
                 )}
 
@@ -159,8 +172,7 @@ const ChatWidget = ({ user }) => {
           })}
           
           <div ref={messagesEndRef} />
-        </div>
-
+        </div> 
         {/* Chat Input Area */}
         <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
           <div className="relative flex items-center">

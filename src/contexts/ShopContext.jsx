@@ -32,7 +32,8 @@ export const ShopProvider = ({ children }) => {
 
   // --- TOAST LOGIC ---
   const showToast = (title, message, type = 'success') => {
-    const id = Date.now();
+    const id = crypto.randomUUID(); 
+    
     setToasts(prev => [...prev, { id, title, message, type }]);
     setTimeout(() => removeToast(id), 3000);
   };
@@ -50,6 +51,10 @@ export const ShopProvider = ({ children }) => {
     showToast("Removed", "Item removed from cart.", "error");
   };
 
+  const clearCart = () => {
+  setCartItems([]);
+};
+
   const toggleWishlist = async (product) => {
     const isSaved = wishlistItems.some(item => item.id === product.id);
 
@@ -65,13 +70,13 @@ export const ShopProvider = ({ children }) => {
   };
 
   return (
-    <ShopContext.Provider value={{ 
-      cartItems, addToCart, removeFromCart, 
-      wishlistItems, toggleWishlist, 
-      toasts, showToast, removeToast 
-    }}>
-      {children}
-    </ShopContext.Provider>
+  <ShopContext.Provider value={{ 
+    cartItems, addToCart, removeFromCart, clearCart, // <--- ADDED HERE
+    wishlistItems, toggleWishlist, 
+    toasts, showToast, removeToast 
+  }}>
+    {children}
+  </ShopContext.Provider>
   );
 };
 

@@ -50,13 +50,16 @@ const PredictiveSearch = ({
             <div 
               key={suggestion.id}
               onClick={() => onSelectProduct(suggestion)}
-              className="px-6 py-4 hover:bg-white/5 cursor-pointer flex justify-between items-center border-b border-white/5 last:border-0 transition-colors"
+              className={`px-6 py-4 hover:bg-white/5 cursor-pointer flex justify-between items-center border-b border-white/5 last:border-0 transition-colors ${!suggestion.available ? 'opacity-70' : ''}`}
             >
               <div>
                 <span className="font-bold text-white block">{suggestion.name}</span>
                 <span className="text-xs text-gray-400">{suggestion.brand}</span>
               </div>
-              <span className="text-gold-400 font-medium">₱{suggestion.price}</span>
+              <div className="flex flex-col items-end">
+                <span className="text-gold-400 font-medium">₱{suggestion.price}</span>
+                {!suggestion.available && <span className="text-[10px] text-red-400 font-bold tracking-widest mt-1">OUT OF STOCK</span>}
+              </div>
             </div>
           ))}
         </div>
