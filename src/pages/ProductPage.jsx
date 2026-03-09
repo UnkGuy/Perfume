@@ -116,7 +116,8 @@ const ProductPage = ({
 
   // --- FILTERING ENGINE ---
   const getProcessedProducts = () => {
-    let filtered = products.filter(product => {
+  let filtered = products.filter(product => {
+    if (!product.available) return false; 
       // 1. Search (using the global searchQuery prop)
       if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) && !product.brand.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;

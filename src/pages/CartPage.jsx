@@ -8,12 +8,26 @@ import EmptyCart from '../components/cart/EmptyCart';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 
+// In CartPage.jsx, update your props and Header component:
 const CartPage = ({ 
   setCurrentPage, cartItems, removeFromCart, clearCart, 
   wishlistItems, onCartClick, onWishlistClick, 
   searchQuery, setSearchQuery, 
-  user, handleLogout, showToast 
+  user, userRole, handleLogout, showToast // <--- ADD userRole HERE
 }) => {
+
+        <Header 
+          setCurrentPage={setCurrentPage} 
+          cartItems={cartItems} 
+          wishlistItems={wishlistItems}
+          onCartClick={onCartClick}
+          onWishlistClick={onWishlistClick}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          user={user}                 
+          userRole={userRole} // <--- AND PASS IT HERE
+          handleLogout={handleLogout} 
+        />
   
   // --- STATE ---
   const [localItems, setLocalItems] = useState([]);

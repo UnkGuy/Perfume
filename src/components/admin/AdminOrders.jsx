@@ -2,7 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Eye, EyeOff, MessageCircle, ChevronDown } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 
-const AdminOrders = ({ showToast }) => {
+const AdminOrders = ({ showToast, setActiveTab }) => {
+<button 
+  onClick={() => setActiveTab('messages')} 
+  className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" 
+  title="Go to Messages"
+>
+  <MessageCircle size={16} />
+</button>
+
   const [orders, setOrders] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedOrderId, setExpandedOrderId] = useState(null); // Tracks which order's details are open
@@ -15,6 +23,7 @@ const AdminOrders = ({ showToast }) => {
     setIsLoading(true);
     
     // THE MAGIC QUERY: We fetch orders + user email + order items + product names all at once!
+    // Change the select statement to this:
     const { data, error } = await supabase
       .from('orders')
       .select(`
@@ -22,7 +31,7 @@ const AdminOrders = ({ showToast }) => {
         created_at, 
         status, 
         total_amount,
-        auth_users:user_id(email),
+        profiles (email), 
         order_items (
           quantity, 
           price_at_time,
@@ -98,7 +107,7 @@ const AdminOrders = ({ showToast }) => {
                   <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
                     <td className="p-4 font-mono text-gold-400">#{order.id}</td>
                     <td className="p-4">{new Date(order.created_at).toLocaleDateString()}</td>
-                    <td className="p-4">{order.auth_users?.email || 'Unknown User'}</td>
+                    <td className="p-4">{order.profiles?.email || 'Unknown User'}</td>
                     <td className="p-4 font-bold text-white">₱{order.total_amount.toLocaleString()}</td>
                     <td className="p-4">
                       {/* STATUS DROPDOWN */}

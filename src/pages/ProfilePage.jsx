@@ -140,13 +140,13 @@ const ProfilePage = ({
                 {/* Order Items */}
                 <div className="p-5">
                   <div className="space-y-4 mb-6">
-                    {order.order_items.map(item => {
+                    {order.order_items.map((item, index) => {
                       const prod = item.products;
                       if (!prod) return null;
                       const imageSource = prod.image_url ? prod.image_url : FALLBACK_IMAGE;
 
                       return (
-                        <div key={item.id} className="flex items-center gap-4">
+                        <div key={index} className="flex items-center gap-4">
                           <div className="w-16 h-16 bg-white/10 rounded overflow-hidden flex-shrink-0">
                             <img src={imageSource} alt={prod.name} className="w-full h-full object-cover" />
                           </div>

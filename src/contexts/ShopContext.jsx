@@ -32,7 +32,8 @@ export const ShopProvider = ({ children }) => {
 
   // --- TOAST LOGIC ---
   const showToast = (title, message, type = 'success') => {
-    const id = Date.now();
+    const id = crypto.randomUUID(); 
+    
     setToasts(prev => [...prev, { id, title, message, type }]);
     setTimeout(() => removeToast(id), 3000);
   };

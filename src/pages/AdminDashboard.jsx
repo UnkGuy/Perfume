@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut } from 'lucide-react'; // ADDED MessageSquare
+import { LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut } from 'lucide-react'; 
 
 import AdminOverview from '../components/admin/AdminOverview';
 import AdminOrders from '../components/admin/AdminOrders';
 import AdminProducts from '../components/admin/AdminProducts';
-import AdminMessages from '../components/admin/AdminMessages'; // <--- IMPORT OUR NEW FILE
+import AdminMessages from '../components/admin/AdminMessages'; 
 
-const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => { // <--- Added showToast
+const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => { 
   const [activeTab, setActiveTab] = useState('overview');
 
   const adminLogout = () => {
@@ -32,7 +32,6 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => { 
             <ShoppingCart size={18} /> Order Inquiries
           </button>
 
-          {/* NEW TAB: MESSAGES */}
           <button onClick={() => setActiveTab('messages')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'messages' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <MessageSquare size={18} /> Messages
           </button>
@@ -42,7 +41,6 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => { 
           </button>
         </nav>
 
-        {/* ... Bottom admin profile section stays the same ... */}
         <div className="p-4 border-t border-white/10">
           <div className="flex items-center gap-3 mb-4 px-2">
             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold uppercase">{user?.email?.charAt(0) || 'A'}</div>
@@ -61,7 +59,10 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => { 
 
         <div className="min-h-[500px]">
           {activeTab === 'overview' && <AdminOverview />}
-          {activeTab === 'orders' && <AdminOrders />}
+          
+          {/* MAGIC HAPPENS HERE: Passing setActiveTab and showToast to AdminOrders */}
+          {activeTab === 'orders' && <AdminOrders showToast={showToast} setActiveTab={setActiveTab} />}
+          
           {activeTab === 'messages' && <AdminMessages showToast={showToast} />} 
           {activeTab === 'products' && <AdminProducts showToast={showToast} />}
         </div>

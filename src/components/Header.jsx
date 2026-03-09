@@ -27,9 +27,12 @@ const Header = ({
   }, [searchQuery]);
 
   // The actual debounce timer
+  // The actual debounce timer
   useEffect(() => {
     const timer = setTimeout(() => {
-      setSearchQuery(localSearch);
+      if (setSearchQuery) {
+        setSearchQuery(localSearch);
+      }
     }, 300); 
 
     return () => clearTimeout(timer);
@@ -121,12 +124,9 @@ const Header = ({
               {/* SMART USER ICON */}
               {user ? (
                 <div className="relative group flex items-center gap-2">
-                  <div 
-                    onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')}
-                    className="w-8 h-8 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-xs font-bold uppercase cursor-pointer hover:bg-gold-400 hover:text-black transition-colors"
-                  >
-                    {user.email.charAt(0)}
-                  </div>
+                  <button onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} className="text-gray-300 hover:text-gold-400 transition-colors">
+                    <UserIcon size={20} />
+                    </button>
                   
                   <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                     
@@ -161,15 +161,24 @@ const Header = ({
               )}
 
               {/* Cart Icon */}
-              <button 
-                onClick={(e) => { e.preventDefault(); if (onCartClick) onCartClick(); else setCurrentPage('cart'); }}
-                className="relative text-gray-300 hover:text-gold-400 transition-colors group"
-              >
-                <ShoppingBag size={20} />
-                {cartItems && cartItems.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full animate-bounce">
-                    {cartItems.length}
-                  </span>
+              // Update the Cart Icon button in Header.jsx:
+<button 
+  onClick={(e) => { 
+    e.preventDefault(); 
+    if (!user) {
+       setCurrentPage('login'); // Send guests to login!
+       if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
+       return;
+    }
+    if (onCartClick) onCartClick(); 
+    else setCurrentPage('cart'); 
+  }}
+>
+  <ShoppingBag size={20} />
+  {cartItems && cartItems.length > 0 && (
+    <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full animate-bounce">
+      {cartItems.length}
+      </span>
                 )}
               </button>
 

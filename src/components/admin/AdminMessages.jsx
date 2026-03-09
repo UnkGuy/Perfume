@@ -14,10 +14,10 @@ const AdminMessages = ({ showToast }) => {
   useEffect(() => {
     const fetchChats = async () => {
       setIsLoading(true);
+      // Change the select statement to this:
       const { data, error } = await supabase
         .from('messages')
-        // We grab the email using the relation to auth_users
-        .select(`*, auth_users:user_id(email)`)
+        .select(`*, profiles(email)`) 
         .order('created_at', { ascending: false });
 
       if (!error && data) {
@@ -27,7 +27,7 @@ const AdminMessages = ({ showToast }) => {
             const latestMsg = data.find(m => m.user_id === id);
             return { 
               id, 
-              email: latestMsg.auth_users?.email || `Customer ${id.substring(0, 6)}`,
+              email: latestMsg.profiles?.email || `Customer ${id.substring(0, 6)}`, // <-- Updated here
               lastActive: latestMsg.created_at 
             };
           });
