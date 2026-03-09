@@ -8,26 +8,12 @@ import EmptyCart from '../components/cart/EmptyCart';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 
-// In CartPage.jsx, update your props and Header component:
 const CartPage = ({ 
   setCurrentPage, cartItems, removeFromCart, clearCart, 
   wishlistItems, onCartClick, onWishlistClick, 
   searchQuery, setSearchQuery, 
-  user, userRole, handleLogout, showToast // <--- ADD userRole HERE
+  user, userRole, handleLogout, showToast
 }) => {
-
-        <Header 
-          setCurrentPage={setCurrentPage} 
-          cartItems={cartItems} 
-          wishlistItems={wishlistItems}
-          onCartClick={onCartClick}
-          onWishlistClick={onWishlistClick}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          user={user}                 
-          userRole={userRole} // <--- AND PASS IT HERE
-          handleLogout={handleLogout} 
-        />
   
   // --- STATE ---
   const [localItems, setLocalItems] = useState([]);
@@ -71,7 +57,20 @@ const CartPage = ({
   
   // --- RENDER EMPTY STATE ---
   if (localItems.length === 0) {
-    return <EmptyCart setCurrentPage={setCurrentPage} cartItems={cartItems} />;
+    return (
+      <EmptyCart 
+        setCurrentPage={setCurrentPage} 
+        cartItems={cartItems} 
+        wishlistItems={wishlistItems}
+        onCartClick={onCartClick}
+        onWishlistClick={onWishlistClick}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        user={user}
+        userRole={userRole}
+        handleLogout={handleLogout}
+      />
+    );
   }
 
   // --- RENDER FULL CART ---
@@ -87,6 +86,7 @@ const CartPage = ({
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           user={user}                 
+          userRole={userRole} 
           handleLogout={handleLogout} 
         />
       </div>
@@ -115,7 +115,6 @@ const CartPage = ({
             </button>
           </div>
 
-          {/* This is where the magic happens! */}
           <CartSummary 
             localItems={localItems}
             calculateTotal={calculateTotal}
@@ -124,9 +123,7 @@ const CartPage = ({
             showToast={showToast}
             setCurrentPage={setCurrentPage}
             onCheckoutSuccess={() => {
-              // 1. Clear the local visual state
               setLocalItems([]);
-              // 2. Clear the global state so the notification badge updates!
               if (clearCart) clearCart(); 
             }}
           />

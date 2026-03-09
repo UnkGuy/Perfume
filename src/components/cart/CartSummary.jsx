@@ -5,9 +5,8 @@ import { supabase } from '../../lib/supabase';
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, showToast, setCurrentPage, onCheckoutSuccess }) => {
   const [isSending, setIsSending] = useState(false);
   
-  // New State for Delivery Preferences
   const [checkoutInfo, setCheckoutInfo] = useState({
-    fulfillmentMethod: 'Delivery', // 'Delivery' | 'Meetup' | 'Pickup'
+    fulfillmentMethod: 'Delivery',
     paymentMethod: 'GCash',
     location: '',
     phoneNumber: ''
@@ -20,33 +19,30 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
       return;
     }
     
-    // Require location unless they are picking it up from your physical store
-    if (checkoutInfo.fulfillmentMethod !== 'Pickup' && (!checkoutInfo.location || !checkoutInfo.phoneNumber)) {
+    // BUG FIX: Matched the exact string from the select dropdown
+    if (checkoutInfo.fulfillmentMethod !== 'Store Pickup' && (!checkoutInfo.location || !checkoutInfo.phoneNumber)) {
        if(showToast) showToast("Missing Info", "Please provide a location and contact number.", "error");
        return;
     }
 
+    // Keep the rest of your original try/catch block exactly the same...
     setIsSending(true);
     const total = calculateTotal();
 
     try {
-      // 1. Create Order
       const { data: orderData, error: orderError } = await supabase
         .from('orders').insert([{ user_id: user.id, total_amount: total, status: 'pending' }]).select().single();
       if (orderError) throw orderError;
 
-      // 2. Create Order Items
       const orderItemsToInsert = localItems.map(item => ({
         order_id: orderData.id, product_id: item.id, quantity: item.quantity, price_at_time: item.price
       }));
       await supabase.from('order_items').insert(orderItemsToInsert);
 
-      // 3. Prepare the Metadata for the ChatWidget UI!
       const chatItems = localItems.map(item => ({
         name: item.name, quantity: item.quantity, price: item.price
       }));
       
-      // A fallback text string just in case, but the UI will rely on the metadata
       const formattedContent = `New Inquiry Placed.\nFulfillment: ${checkoutInfo.fulfillmentMethod}\nPayment: ${checkoutInfo.paymentMethod}\nContact: ${checkoutInfo.phoneNumber}\nLocation: ${checkoutInfo.location || 'N/A'}`;
 
       await supabase.from('messages').insert([{ 
@@ -57,7 +53,7 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
           type: 'order_inquiry', 
           order_id: orderData.id, 
           total: total,
-          items: chatItems, // <--- This is what your ChatWidget needs!
+          items: chatItems,
           fulfillment: checkoutInfo.fulfillmentMethod,
           payment: checkoutInfo.paymentMethod,
           contact: checkoutInfo.phoneNumber,
@@ -106,7 +102,7 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
             </select>
           </div>
 
-          {checkoutInfo.fulfillmentMethod !== 'Pickup' && (
+          {checkoutInfo.fulfillmentMethod !== 'Store Pickup' && (
             <div>
               <label className="block text-gray-400 mb-1">
                 {checkoutInfo.fulfillmentMethod === 'Meetup' ? 'Meetup Location' : 'Delivery Address'}
