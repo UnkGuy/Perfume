@@ -16,7 +16,7 @@ import PredictiveSearch from '../components/products/PredictiveSearch';
 const ProductPage = ({ 
   setCurrentPage, cartItems, addToCart, toggleWishlist, wishlistItems, showToast,
   searchQuery, setSearchQuery, onCartClick, onWishlistClick,
-  user, handleLogout // <--- ADD THEM HERE
+  user, userRole, handleLogout // <--- ADD userRole HERE
 }) => {
   
   // --- DATABASE STATES ---
@@ -163,8 +163,9 @@ const ProductPage = ({
           onWishlistClick={onWishlistClick}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          user={user}                 // <--- PASS IT DOWN
-          handleLogout={handleLogout} // <--- PASS IT DOWN
+          user={user}                 
+          userRole={userRole}         // <--- ADD THIS LINE
+          handleLogout={handleLogout} 
         />
       </div>
 
