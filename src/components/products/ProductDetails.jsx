@@ -74,7 +74,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
               className="w-full h-full object-cover transition-opacity duration-300" 
             />
             {isDiscounted && (
-              <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider shadow-lg">
+              <span className="absolute top-4 left-4 bg-gold-400 text-black text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider shadow-lg">
                 Sale
               </span>
             )}
@@ -143,7 +143,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
               {isDiscounted && (
                 <>
                   <p className="text-xl text-gray-500 line-through">₱{product.compare_at_price}</p>
-                  <span className="px-2 py-1 bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-bold rounded tracking-wide">
+                  <span className="px-2 py-1 bg-gold-400/10 text-gold-400 border border-gold-400/30 text-xs font-bold rounded tracking-wide">
                     {percentOff}% OFF
                   </span>
                 </>

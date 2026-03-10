@@ -42,7 +42,7 @@ const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWish
           {/* BADGES */}
           <div className="absolute top-3 left-3 flex flex-col gap-2">
             {product.available && !isDiscounted && <span className="bg-gold-400 text-black text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider shadow-lg">New</span>}
-            {product.available && isDiscounted && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider shadow-lg">Sale</span>}
+            {product.available && isDiscounted && <span className="bg-gold-400 text-black text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider shadow-lg">Sale</span>}
           </div>
 
           {!product.available && <span className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm text-white font-bold tracking-widest border-2 border-white/20 m-4">OUT OF STOCK</span>}
