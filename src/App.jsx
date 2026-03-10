@@ -78,8 +78,14 @@ switch (currentPage) {
       </button>
 
       <CartDrawer 
-        isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} 
-        cartItems={cartItems} removeFromCart={removeFromCart} setCurrentPage={setCurrentPage} 
+        isOpen={isCartOpen} 
+        onClose={() => setIsCartOpen(false)} 
+        cartItems={cartItems} 
+        removeFromCart={removeFromCart} 
+        setCurrentPage={setCurrentPage} 
+        // --- ADD THESE NEW PROPS ---
+        user={user}
+        showToast={showToast}
       />
       
       <WishlistDrawer 

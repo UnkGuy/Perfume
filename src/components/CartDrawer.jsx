@@ -4,7 +4,11 @@ import { X, Trash2, ShoppingBag, ArrowRight, AlertCircle } from 'lucide-react';
 // Use the Supabase fallback image
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const CartDrawer = ({ isOpen, onClose, cartItems, removeFromCart, setCurrentPage }) => {
+// Add user and showToast here!
+const CartDrawer = ({ 
+  isOpen, onClose, cartItems, removeFromCart, setCurrentPage, 
+  user, showToast // <--- ADD THESE TWO
+}) => {
   const total = cartItems.reduce((sum, item) => sum + item.price, 0);
   const hasUnavailableItems = cartItems.some(item => !item.available);
 
@@ -37,7 +41,7 @@ const CartDrawer = ({ isOpen, onClose, cartItems, removeFromCart, setCurrentPage
               </div>
             ) : (
               cartItems.map((item, index) => {
-                const imageSource = item.image_url ? item.image_url : FALLBACK_IMAGE;
+                const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;
                 
                 return (
                   <div key={index} className={`flex gap-4 items-start animate-fade-in ${!item.available ? 'opacity-60' : ''}`}>
@@ -82,20 +86,25 @@ const CartDrawer = ({ isOpen, onClose, cartItems, removeFromCart, setCurrentPage
                   <AlertCircle size={14} /> Please remove out-of-stock items to continue.
                 </p>
               )}
-              
               <button 
                 disabled={hasUnavailableItems}
                 onClick={() => {
-                  onClose();
-                  setCurrentPage('cart');
-                }}
-                className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all 
-                  ${hasUnavailableItems 
-                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-                    : 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:shadow-[0_0_25px_rgba(212,175,55,0.5)]'}`}
-              >
-                Review Inquiry <ArrowRight size={18} />
-              </button>
+                  if (!user) {
+      if (showToast) showToast("Login Required", "Please sign in to proceed.", "error");
+      setCurrentPage('login');
+      onClose();
+      return;
+    }
+    onClose();
+    setCurrentPage('cart');
+  }}
+  className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all 
+    ${hasUnavailableItems 
+      ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+      : 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:shadow-[0_0_25px_rgba(212,175,55,0.5)]'}`}
+>
+  Review Inquiry <ArrowRight size={18} />
+</button>
             </div>
           )}
         </div>

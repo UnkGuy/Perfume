@@ -3,8 +3,11 @@ import { Star, Eye, Heart } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWishlist, isInWishlist }) => {
-  const imageSource = product.image_url ? product.image_url : FALLBACK_IMAGE;
+const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWishlist, isInWishlist, user, setCurrentPage, showToast }) => {
+  const imageSource = product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE;
+  
+  // DISCOUNT LOGIC
+  const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
   
   return (
     <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex flex-col ${!product.available ? 'opacity-80' : ''}`}>
@@ -35,7 +38,13 @@ const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWish
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" 
           />
-          {product.available && <span className="absolute top-3 left-3 bg-gold-400 text-black text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider">New</span>}
+          
+          {/* BADGES */}
+          <div className="absolute top-3 left-3 flex flex-col gap-2">
+            {product.available && !isDiscounted && <span className="bg-gold-400 text-black text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider shadow-lg">New</span>}
+            {product.available && isDiscounted && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider shadow-lg">Sale</span>}
+          </div>
+
           {!product.available && <span className="absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm text-white font-bold tracking-widest border-2 border-white/20 m-4">OUT OF STOCK</span>}
       </div>
 
@@ -52,10 +61,26 @@ const ProductCard = ({ product, onSelect, onAddToCart, onQuickView, onToggleWish
         <div className="text-xs text-gray-400 mb-4 line-clamp-1">{product.notes?.join(" • ")}</div>
 
         <div className="mt-auto flex items-center justify-between pt-4 border-t border-white/10">
-          <span className="text-xl font-medium text-white">₱{product.price}</span>
+          
+          {/* PRICE DISPLAY */}
+          <div className="flex flex-col">
+            <div className="flex items-end gap-2">
+              <span className="text-xl font-medium text-white">₱{product.price}</span>
+              {isDiscounted && <span className="text-sm text-gray-500 line-through mb-0.5">₱{product.compare_at_price}</span>}
+            </div>
+          </div>
+
           <button 
             disabled={!product.available}
-            onClick={(e) => { e.stopPropagation(); onAddToCart(product); }}
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              if (!user) {
+                if (showToast) showToast("Login Required", "Please sign in to add items to your cart.", "error");
+                setCurrentPage('login');
+                return;
+              }
+              onAddToCart(product); 
+            }}
             className={`p-2 rounded-full transition-colors ${product.available ? 'bg-gold-400 text-black hover:bg-gold-300' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
             title="Add to Cart"
           >

@@ -76,7 +76,7 @@ const ChatWidget = ({ user }) => {
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-[90] p-4 bg-gold-400 text-rich-black rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:scale-110 hover:bg-gold-300 transition-all duration-300 ${isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'}`}
+        className={`fixed bottom-6 right-6 z-[40] p-4 bg-gold-400 text-rich-black rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:scale-110 hover:bg-gold-300 transition-all duration-300 ${isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'}`}
       >
         <MessageCircle size={28} />
       </button>

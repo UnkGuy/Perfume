@@ -5,41 +5,33 @@ import ReviewModal from './ReviewModal';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWishlist, showToast }) => {
+const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWishlist, showToast, user, setCurrentPage }) => {
   const [reviews, setReviews] = useState([]);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [averageRating, setAverageRating] = useState(product?.rating || 5);
-  
-  // --- BULLETPROOF USER STATE ---
   const [currentUser, setCurrentUser] = useState(null);
+  
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  const imageSource = product?.image_url ? product.image_url : FALLBACK_IMAGE;
+  const images = product?.image_urls?.length > 0 ? product.image_urls : [FALLBACK_IMAGE];
 
-  // --- DATABASE LOGIC ---
+  // DISCOUNT LOGIC & MATH
+  const isDiscounted = product?.compare_at_price && product.compare_at_price > product.price;
+  const percentOff = isDiscounted ? Math.round((1 - (product.price / product.compare_at_price)) * 100) : 0;
+
   const fetchReviewsData = async () => {
     if (!product) return;
-
-    // 1. Fetch the user directly from Supabase
     const { data: { session } } = await supabase.auth.getSession();
-    const loggedInUser = session?.user || null;
-    setCurrentUser(loggedInUser);
+    setCurrentUser(session?.user || null);
 
-    // 2. Fetch real reviews 
-    const { data: reviewData, error } = await supabase
+    const { data: reviewData } = await supabase
       .from('reviews')
       .select('*')
       .eq('product_id', product.id)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error("Error fetching reviews:", error);
-      return;
-    }
-
     if (reviewData) {
       setReviews(reviewData);
-      
-      // Calculate dynamic average rating
       if (reviewData.length > 0) {
         const total = reviewData.reduce((acc, curr) => acc + curr.rating, 0);
         setAverageRating((total / reviewData.length).toFixed(1));
@@ -49,20 +41,15 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
     }
   };
 
-  useEffect(() => {
-    fetchReviewsData();
-  }, [product]);
+  useEffect(() => { fetchReviewsData(); }, [product]);
 
   if (!product) return null;
 
-  // --- ANTI-SPAM LOGIC ---
   const hasReviewed = currentUser ? reviews.some(review => review.user_id === currentUser.id) : false;
   const canReview = currentUser && !hasReviewed;
 
   return (
     <div className="animate-fade-in w-full max-w-6xl mx-auto">
-      
-      {/* Review Modal */}
       <ReviewModal 
         isOpen={isReviewModalOpen} 
         onClose={() => setIsReviewModalOpen(false)} 
@@ -78,20 +65,43 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
         
-        {/* Left: Image */}
-        <div className="relative aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 group">
-          <img 
-            src={imageSource} 
-            alt={product.name} 
-            loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-          />
-          <button 
-            onClick={() => onToggleWishlist(product)}
-            className="absolute top-4 right-4 p-3 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 hover:border-red-500 hover:text-red-500 transition-colors z-20"
-          >
-            <Heart size={20} className={isInWishlist ? "fill-red-500 text-red-500" : ""} />
-          </button>
+        {/* Left: Interactive Image Gallery */}
+        <div className="flex flex-col gap-4">
+          <div className="relative aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 group">
+            <img 
+              src={images[activeImageIndex]} 
+              alt={product.name} 
+              className="w-full h-full object-cover transition-opacity duration-300" 
+            />
+            {isDiscounted && (
+              <span className="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider shadow-lg">
+                Sale
+              </span>
+            )}
+            <button 
+              onClick={() => onToggleWishlist(product)}
+              className="absolute top-4 right-4 p-3 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 hover:border-red-500 hover:text-red-500 transition-colors z-20"
+            >
+              <Heart size={20} className={isInWishlist ? "fill-red-500 text-red-500" : ""} />
+            </button>
+          </div>
+
+          {/* Thumbnail Strip */}
+          {images.length > 1 && (
+            <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
+              {images.map((img, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => setActiveImageIndex(idx)}
+                  className={`relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${
+                    activeImageIndex === idx ? 'border-gold-400 shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-white/10 hover:border-gold-400/50 opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right: Info Section */}
@@ -104,7 +114,6 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
 
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{product.name}</h1>
           
-          {/* Dynamic Ratings & Review Button */}
           <div className="mb-6">
             <div className="flex items-center gap-4 mb-2">
               <div className="flex gap-1">
@@ -125,15 +134,22 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
                 <Edit3 size={14} /> Write a Review
               </button>
             )}
-            
-            {hasReviewed && (
-              <span className="text-xs text-gray-500 mt-2 block italic">
-                You have already reviewed this product.
-              </span>
-            )}
           </div>
 
-          <p className="text-3xl font-light text-white mb-8">₱{product.price}</p>
+          {/* DYNAMIC PRICE DISPLAY */}
+          <div className="mb-8">
+            <div className="flex items-center gap-4">
+              <p className="text-3xl font-light text-white">₱{product.price}</p>
+              {isDiscounted && (
+                <>
+                  <p className="text-xl text-gray-500 line-through">₱{product.compare_at_price}</p>
+                  <span className="px-2 py-1 bg-red-500/10 text-red-500 border border-red-500/20 text-xs font-bold rounded tracking-wide">
+                    {percentOff}% OFF
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
           
           <div className="space-y-4 mb-8">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">Fragrance Notes</h3>
@@ -160,23 +176,30 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
 
           <button 
             disabled={!product.available}
-            onClick={() => onAddToCart(product)}
+            onClick={() => {
+              if (!user) {
+                if (showToast) showToast("Login Required", "Please sign in to add items to your cart.", "error");
+                setCurrentPage('login');
+                return;
+              }
+              onAddToCart(product);
+            }}
             className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all shadow-lg text-lg
-              ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-gold-400/20 hover:shadow-gold-400/40' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-80'}
+              ${product.available 
+                ? 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-gold-400/20 hover:shadow-gold-400/40' 
+                : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-80'}
             `}
           >
             {product.available ? 'Add to Cart' : 'Out of Stock'}
           </button>
         </div>
       </div>
-
-      {/* --- REVIEWS LIST SECTION --- */}
+      
+      {/* ... REVIEWS SECTION ... */}
       <div id="reviews-section" className="pt-12 border-t border-white/10">
         <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
-          Customer Reviews 
-          <span className="text-sm font-normal text-gray-500 bg-white/5 px-3 py-1 rounded-full">{reviews.length}</span>
+          Customer Reviews <span className="text-sm font-normal text-gray-500 bg-white/5 px-3 py-1 rounded-full">{reviews.length}</span>
         </h2>
-
         {reviews.length === 0 ? (
           <div className="text-center py-12 bg-white/5 rounded-2xl border border-white/5">
             <Star size={32} className="mx-auto text-gray-600 mb-4" />
@@ -192,13 +215,8 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
                       <UserIcon size={16} />
                     </div>
                     <div>
-                      {/* Scrubbed the 'Verified' text - it just says Customer now */}
-                      <p className="font-bold text-white text-sm">
-                        Customer
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(review.created_at).toLocaleDateString()}
-                      </p>
+                      <p className="font-bold text-white text-sm">Customer</p>
+                      <p className="text-xs text-gray-500">{new Date(review.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -213,7 +231,6 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
           </div>
         )}
       </div>
-
     </div>
   );
 };

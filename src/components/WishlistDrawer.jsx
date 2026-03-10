@@ -35,7 +35,8 @@ const WishlistDrawer = ({ isOpen, onClose, wishlistItems, toggleWishlist, addToC
               </div>
             ) : (
               wishlistItems.map((item, index) => {
-                const imageSource = item.image_url ? item.image_url : FALLBACK_IMAGE;
+                // FIXED IMAGE LOGIC FOR MULTI-IMAGE
+                const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;
 
                 return (
                   <div key={index} className="flex gap-4 items-start animate-fade-in bg-white/5 p-3 rounded-lg border border-white/5">

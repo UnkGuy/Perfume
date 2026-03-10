@@ -4,7 +4,7 @@ import { Trash2, Check, Plus, Minus, AlertCircle } from 'lucide-react';
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const CartItem = ({ item, index, handleQuantity, handleRemove, setCurrentPage }) => {
-  const imageSource = item.image_url ? item.image_url : FALLBACK_IMAGE;
+  const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;  
 
   return (
     <div className={`flex flex-col sm:flex-row gap-6 p-6 rounded-xl transition-all duration-500 ease-out group 

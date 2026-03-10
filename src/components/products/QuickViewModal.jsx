@@ -3,10 +3,14 @@ import { Star, X, Heart } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const QuickViewModal = ({ product, onClose, onAddToCart, onToggleWishlist, isInWishlist }) => {
+// Add user, setCurrentPage, and showToast here!
+const QuickViewModal = ({ 
+  product, onClose, onAddToCart, onToggleWishlist, isInWishlist,
+  user, setCurrentPage, showToast 
+}) => {
   if (!product) return null;
 
-  const imageSource = product.image_url ? product.image_url : FALLBACK_IMAGE;
+  const imageSource = product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -53,7 +57,17 @@ const QuickViewModal = ({ product, onClose, onAddToCart, onToggleWishlist, isInW
           <div className="flex gap-4 mt-auto">
             <button 
               disabled={!product.available}
-              onClick={() => { onAddToCart(product); onClose(); }}
+              onClick={() => { 
+                // GUEST CHECK
+                if (!user) {
+                  if (showToast) showToast("Login Required", "Please sign in to add to cart.", "error");
+                  setCurrentPage('login');
+                  onClose();
+                  return;
+                }
+                onAddToCart(product); 
+                onClose(); 
+              }}
               className={`flex-1 py-3 font-bold rounded transition-colors
                 ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}
               `}

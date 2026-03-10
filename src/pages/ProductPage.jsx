@@ -211,17 +211,19 @@ const ProductPage = ({
             ) : selectedProduct ? (
               // --- FULL DETAILS VIEW COMPONENT ---
               <ProductDetails 
-          product={selectedProduct} 
-          onBack={() => setSelectedProduct(null)}
-          onAddToCart={(product) => {
-            addToCart(product);
-            setSelectedProduct(null);
-            }}
-             onToggleWishlist={toggleWishlist}
-            isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
-            user={user}           // <--- MUST BE PASSED DOWN HERE
-            showToast={showToast} // <--- MUST BE PASSED DOWN HERE
-            />
+  product={selectedProduct} 
+  onBack={() => setSelectedProduct(null)}
+  onAddToCart={(product) => {
+    addToCart(product);
+    setSelectedProduct(null);
+  }}
+  onToggleWishlist={toggleWishlist}
+  isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
+  showToast={showToast}
+  // --- PASS THESE NEW PROPS ---
+  user={user}
+  setCurrentPage={setCurrentPage}
+/>
             ) : (
               // --- GRID VIEW ---
               <>
@@ -247,14 +249,17 @@ const ProductPage = ({
                   {processedProducts.length > 0 ? (
                     processedProducts.map(product => (
                       <ProductCard 
-                        key={product.id} 
-                        product={product}
-                        onSelect={setSelectedProduct}
-                        onAddToCart={addToCart}
-                        onQuickView={setQuickViewProduct}
-                        onToggleWishlist={toggleWishlist}
-                        isInWishlist={wishlistItems?.some(item => item.id === product.id)}
-                      />
+  key={product.id} 
+  product={product}
+  onSelect={setSelectedProduct}
+  onAddToCart={addToCart}
+  onQuickView={setQuickViewProduct}
+  onToggleWishlist={toggleWishlist}
+  isInWishlist={wishlistItems?.some(item => item.id === product.id)}
+  user={user}                 // <--- ADD THIS
+  setCurrentPage={setCurrentPage} // <--- ADD THIS
+  showToast={showToast}       // <--- ADD THIS
+/>
                     ))
                   ) : (
                     <div className="col-span-full py-24 text-center">
@@ -291,12 +296,15 @@ const ProductPage = ({
       {/* --- MODALS --- */}
       
       <QuickViewModal 
-        product={quickViewProduct} 
-        onClose={() => setQuickViewProduct(null)}
-        onAddToCart={addToCart}
-        onToggleWishlist={toggleWishlist}
-        isInWishlist={wishlistItems?.some(item => item.id === quickViewProduct?.id)}
-      />
+  product={quickViewProduct} 
+  onClose={() => setQuickViewProduct(null)}
+  onAddToCart={addToCart}
+  onToggleWishlist={toggleWishlist}
+  isInWishlist={wishlistItems?.some(item => item.id === quickViewProduct?.id)}
+  user={user}                 // <--- ADD THIS
+  setCurrentPage={setCurrentPage} // <--- ADD THIS
+  showToast={showToast}       // <--- ADD THIS
+/>
 
       {isReviewOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={() => setIsReviewOpen(false)}>

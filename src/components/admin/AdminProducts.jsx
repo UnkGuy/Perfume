@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag } from 'lucide-react';
 import ImageUploader from '../ImageUploader'; 
-import { scentNotes } from '../../data/products'; // <--- IMPORTING YOUR NOTES
+import { scentNotes } from '../../data/products';
 
 const AdminProducts = ({ showToast }) => {
   const [products, setProducts] = useState([]);
@@ -12,9 +12,9 @@ const AdminProducts = ({ showToast }) => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Notes is now initialized as an array [] instead of a string ''
+  // ADDED: compare_at_price
   const [formData, setFormData] = useState({
-    name: '', brand: '', price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_url: '', available: true
+    name: '', brand: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
   });
 
   const fetchProducts = async () => {
@@ -30,15 +30,14 @@ const AdminProducts = ({ showToast }) => {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        name: product.name, brand: product.brand, price: product.price, size: product.size,
-        gender: product.gender || 'Unisex', stock_count: product.stock_count || '',
-        notes: product.notes || [], // Keep as array
-        image_url: product.image_url || '',
-        available: product.available !== false
+        name: product.name, brand: product.brand, price: product.price, 
+        compare_at_price: product.compare_at_price || '', // Load original price
+        size: product.size, gender: product.gender || 'Unisex', stock_count: product.stock_count || '',
+        notes: product.notes || [], image_urls: product.image_urls || [], available: product.available !== false
       });
     } else {
       setEditingProduct(null);
-      setFormData({ name: '', brand: '', price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_url: '', available: true });
+      setFormData({ name: '', brand: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true });
     }
     setIsModalOpen(true);
   };
@@ -47,8 +46,15 @@ const AdminProducts = ({ showToast }) => {
     setFormData(prev => ({
       ...prev,
       notes: prev.notes.includes(note) 
-        ? prev.notes.filter(n => n !== note) // Remove if already selected
-        : [...prev.notes, note]              // Add if not selected
+        ? prev.notes.filter(n => n !== note)
+        : [...prev.notes, note]
+    }));
+  };
+
+  const handleRemoveImage = (indexToRemove) => {
+    setFormData(prev => ({
+      ...prev,
+      image_urls: prev.image_urls.filter((_, index) => index !== indexToRemove)
     }));
   };
 
@@ -59,10 +65,12 @@ const AdminProducts = ({ showToast }) => {
     const payload = {
       ...formData,
       price: parseFloat(formData.price),
+      // NEW: Save the compare price if it exists
+      compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
       stock_count: formData.stock_count ? parseInt(formData.stock_count) : null,
       available: formData.available,
-      // No need to split(), it's already a clean array!
       notes: formData.notes, 
+      image_urls: formData.image_urls
     };
 
     try {
@@ -78,9 +86,8 @@ const AdminProducts = ({ showToast }) => {
       setIsModalOpen(false);
       fetchProducts(); 
     } catch (err) {
-      console.error("Supabase Save Error:", err); // Logs the full error to your browser console
-      // Shows the EXACT database error in your toast notification!
-      if (showToast) showToast('Error', err.message || 'Check browser console for details.', 'error');
+      console.error("Supabase Save Error:", err);
+      if (showToast) showToast('Error', err.message || 'Check browser console.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -101,7 +108,7 @@ const AdminProducts = ({ showToast }) => {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-2xl font-bold text-white">Inventory Management</h3>
-          <p className="text-gray-400 text-sm mt-1">Add, edit, or remove perfumes from your catalog.</p>
+          <p className="text-gray-400 text-sm mt-1">Add, edit, or set discounts for your catalog.</p>
         </div>
         <button 
           onClick={() => handleOpenModal()}
@@ -129,50 +136,62 @@ const AdminProducts = ({ showToast }) => {
             ) : products.length === 0 ? (
               <tr><td colSpan="6" className="p-8 text-center text-gray-500">No products in inventory. Click "Add Perfume" to start.</td></tr>
             ) : (
-              products.map(product => (
-                <tr key={product.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 flex items-center gap-3">
-                    {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
-                    ) : (
-                      <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>
-                    )}
-                    <div>
-                      <p className="font-bold text-white">{product.name}</p>
-                      <p className="text-xs text-gray-500">{product.brand} • {product.size}</p>
-                    </div>
-                  </td>
-                  <td className="p-4 text-gold-400 font-medium">₱{product.price}</td>
-                  
-                  {/* NEW: Stock Column */}
-                  <td className="p-4">
-                    {product.stock_count !== null && product.stock_count !== undefined ? (
-                      <span className="text-gray-300">{product.stock_count} units</span>
-                    ) : (
-                      <span className="text-gray-500 italic">Unlimited</span>
-                    )}
-                  </td>
-                  
-                  {/* NEW: Details/Gender Column */}
-                  <td className="p-4">
-                    <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">
-                      {product.gender}
-                    </span>
-                  </td>
+              products.map(product => {
+                const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
 
-                  <td className="p-4">
-                    {product.available ? (
-                      <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>
-                    )}
-                  </td>
-                  <td className="p-4 flex justify-end gap-2">
-                    <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit Product"><Edit2 size={16} /></button>
-                    <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete Product"><Trash2 size={16} /></button>
-                  </td>
-                </tr>
-              ))
+                return (
+                  <tr key={product.id} className="hover:bg-white/5 transition-colors">
+                    <td className="p-4 flex items-center gap-3">
+                      {product.image_urls && product.image_urls.length > 0 ? (
+                        <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-white">{product.name}</p>
+                          {isDiscounted && <Tag size={12} className="text-green-400" title="On Sale" />}
+                        </div>
+                        <p className="text-xs text-gray-500">{product.brand} • {product.size}</p>
+                      </div>
+                    </td>
+                    
+                    {/* Price Column with Discount Logic */}
+                    <td className="p-4">
+                      {isDiscounted ? (
+                        <div className="flex flex-col">
+                          <span className="text-green-400 font-bold">₱{product.price}</span>
+                          <span className="text-xs text-gray-500 line-through">₱{product.compare_at_price}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gold-400 font-medium">₱{product.price}</span>
+                      )}
+                    </td>
+
+                    <td className="p-4">
+                      {product.stock_count !== null && product.stock_count !== undefined ? (
+                        <span className="text-gray-300">{product.stock_count} units</span>
+                      ) : (
+                        <span className="text-gray-500 italic">Unlimited</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">{product.gender}</span>
+                    </td>
+                    <td className="p-4">
+                      {product.available ? (
+                        <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
+                      ) : (
+                        <span className="flex items-center gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>
+                      )}
+                    </td>
+                    <td className="p-4 flex justify-end gap-2">
+                      <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit Product"><Edit2 size={16} /></button>
+                      <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete Product"><Trash2 size={16} /></button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -187,7 +206,6 @@ const AdminProducts = ({ showToast }) => {
             </div>
 
             <form onSubmit={handleSave} className="space-y-6">
-              {/* Product Basics */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Perfume Name</label>
@@ -197,29 +215,42 @@ const AdminProducts = ({ showToast }) => {
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Brand</label>
                   <input required type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                 </div>
+
+                {/* NEW: Final Selling Price */}
                 <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Price (₱)</label>
-                  <input required type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
+                  <label className="block text-xs text-gold-400 font-bold uppercase tracking-widest mb-1">Selling Price (₱)</label>
+                  <input required type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-black/50 border border-gold-400/30 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Final Price" />
                 </div>
+
+                {/* NEW: Original Price (For Discounts) */}
+                <div>
+                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
+                    Original Price (₱) <span className="text-gray-600">(Optional Sale)</span>
+                  </label>
+                  <input type="number" min="0" value={formData.compare_at_price} onChange={e => setFormData({...formData, compare_at_price: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Leave blank if not on sale" />
+                </div>
+
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
                     Stock Count <span className="text-gray-600">(Optional)</span>
                   </label>
                   <input type="number" min="0" value={formData.stock_count} onChange={e => setFormData({...formData, stock_count: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Leave blank if unlimited" />
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Size</label>
-                  <input required type="text" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Gender Focus</label>
-                  <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors">
-                    <option>Unisex</option><option>Male</option><option>Female</option>
-                  </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Size</label>
+                    <input required type="text" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Gender</label>
+                    <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors">
+                      <option>Unisex</option><option>Male</option><option>Female</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* ✨ NEW: Clickable Fragrance Note Tags ✨ */}
+              {/* ... Fragrance Notes, Availability Toggle, and Multi-Image Uploader remain exactly the same below ... */}
               <div>
                 <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Fragrance Notes</label>
                 <div className="flex flex-wrap gap-2 p-4 bg-black/30 border border-white/5 rounded-lg max-h-48 overflow-y-auto custom-scrollbar">
@@ -231,22 +262,16 @@ const AdminProducts = ({ showToast }) => {
                         type="button"
                         onClick={() => handleNoteToggle(note)}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
-                          isSelected 
-                          ? 'bg-gold-400 text-black border-gold-400 shadow-[0_0_10px_rgba(212,175,55,0.3)]' 
-                          : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50 hover:text-white'
+                          isSelected ? 'bg-gold-400 text-black border-gold-400 shadow-[0_0_10px_rgba(212,175,55,0.3)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50 hover:text-white'
                         }`}
                       >
                         {note}
                       </button>
                     );
                   })}
-                  {(!scentNotes || scentNotes.length === 0) && (
-                    <p className="text-sm text-gray-500">No scent notes available. Please check data/products.js</p>
-                  )}
                 </div>
               </div>
 
-              {/* Explicit Availability Toggle */}
               <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-lg">
                 <input 
                   type="checkbox" 
@@ -260,37 +285,39 @@ const AdminProducts = ({ showToast }) => {
                 </label>
               </div>
               
-              {/* Product Image Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center bg-black/30 p-4 border border-white/5 rounded-lg">
-                <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">
-                    Product Image
+              <div className="bg-black/30 p-4 border border-white/5 rounded-lg">
+                <div className="flex justify-between items-end mb-4">
+                  <label className="block text-xs text-gray-400 uppercase tracking-widest">
+                    Product Images ({formData.image_urls.length}/4)
                   </label>
-                  <ImageUploader 
-                    onUploadSuccess={(url) => setFormData({...formData, image_url: url})} 
-                    onError={(err) => { if(showToast) showToast('Error', err, 'error'); }} 
-                  />
+                  <span className="text-xs text-gray-500">First image is the main thumbnail</span>
                 </div>
                 
-                <div className="flex flex-col items-center justify-center">
-                  <span className="block text-xs text-gray-500 uppercase tracking-widest mb-2">Preview</span>
-                  {formData.image_url ? (
-                    <div className="relative group w-32 h-32 rounded-lg border-2 border-gold-400/50 overflow-hidden shadow-lg">
-                      <img src={formData.image_url} alt="Preview" className="w-full h-full object-cover" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {formData.image_urls.map((url, index) => (
+                    <div key={index} className="relative group aspect-square rounded-lg border-2 border-white/10 overflow-hidden bg-white/5">
+                      <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button 
                           type="button" 
-                          onClick={() => setFormData({...formData, image_url: ''})} 
+                          onClick={() => handleRemoveImage(index)} 
                           className="p-2 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
-                          title="Remove Image"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
+                      {index === 0 && (
+                        <span className="absolute top-2 left-2 bg-gold-400 text-black text-[10px] font-bold px-2 py-0.5 rounded shadow-lg">MAIN</span>
+                      )}
                     </div>
-                  ) : (
-                    <div className="w-32 h-32 rounded-lg border-2 border-dashed border-white/10 flex items-center justify-center text-gray-600 bg-white/5">
-                      <p className="text-xs text-center px-4">No Image Uploaded</p>
+                  ))}
+                  
+                  {formData.image_urls.length < 4 && (
+                    <div className="aspect-square">
+                      <ImageUploader 
+                        onUploadSuccess={(url) => setFormData(prev => ({ ...prev, image_urls: [...prev.image_urls, url] }))} 
+                        onError={(err) => { if(showToast) showToast('Error', err, 'error'); }} 
+                      />
                     </div>
                   )}
                 </div>
