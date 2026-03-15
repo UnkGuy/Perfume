@@ -13,8 +13,9 @@ const AdminProducts = ({ showToast }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   // ADDED: compare_at_price
+  // Make sure description: '' is in here!
   const [formData, setFormData] = useState({
-    name: '', brand: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
+    name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
   });
 
   const fetchProducts = async () => {
@@ -30,14 +31,18 @@ const AdminProducts = ({ showToast }) => {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        name: product.name, brand: product.brand, price: product.price, 
-        compare_at_price: product.compare_at_price || '', // Load original price
+        name: product.name, brand: product.brand, 
+        description: product.description || '', // <--- Add this
+        price: product.price, 
+        compare_at_price: product.compare_at_price || '',
         size: product.size, gender: product.gender || 'Unisex', stock_count: product.stock_count || '',
         notes: product.notes || [], image_urls: product.image_urls || [], available: product.available !== false
       });
     } else {
       setEditingProduct(null);
-      setFormData({ name: '', brand: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true });
+      setFormData({ 
+        name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true 
+      });
     }
     setIsModalOpen(true);
   };
@@ -64,8 +69,8 @@ const AdminProducts = ({ showToast }) => {
 
     const payload = {
       ...formData,
+      description: formData.description.trim(), // Added this line
       price: parseFloat(formData.price),
-      // NEW: Save the compare price if it exists
       compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
       stock_count: formData.stock_count ? parseInt(formData.stock_count) : null,
       available: formData.available,
@@ -249,7 +254,20 @@ const AdminProducts = ({ showToast }) => {
                   </div>
                 </div>
               </div>
-
+              {/* ✨ NEW: Description Text Area ✨ */}
+              <div>
+                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
+                  Product Description <span className="text-gray-600">{formData.description.length}/800</span>
+                </label>
+                <textarea 
+                  required 
+                  maxLength={800}
+                  value={formData.description} 
+                  onChange={e => setFormData({...formData, description: e.target.value})} 
+                  className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors resize-none h-24 custom-scrollbar" 
+                  placeholder="Describe the scent profile, inspiration, and feeling of this perfume..." 
+                />
+              </div>
               {/* ... Fragrance Notes, Availability Toggle, and Multi-Image Uploader remain exactly the same below ... */}
               <div>
                 <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Fragrance Notes</label>

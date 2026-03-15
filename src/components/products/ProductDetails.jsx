@@ -150,6 +150,16 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
               )}
             </div>
           </div>
+
+          {/* ✨ NEW: PRODUCT DESCRIPTION ✨ */}
+          {product.description && (
+            <div className="mb-8">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">About the Scent</h3>
+              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
+                {product.description}
+              </p>
+            </div>
+          )}
           
           <div className="space-y-4 mb-8">
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">Fragrance Notes</h3>

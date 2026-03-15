@@ -3,7 +3,6 @@ import { Star, X, Heart } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-// Add user, setCurrentPage, and showToast here!
 const QuickViewModal = ({ 
   product, onClose, onAddToCart, onToggleWishlist, isInWishlist,
   user, setCurrentPage, showToast 
@@ -48,6 +47,15 @@ const QuickViewModal = ({
           </div>
 
           <p className="text-2xl font-light text-white mb-6">₱{product.price}</p>
+
+          {/* ✨ NEW: PRODUCT DESCRIPTION SNIPPET ✨ */}
+          {product.description && (
+            <div className="mb-4">
+              <p className="text-sm text-gray-300 leading-relaxed line-clamp-3">
+                {product.description}
+              </p>
+            </div>
+          )}
 
           <div className="mb-8 flex-1">
             <p className="text-sm text-gray-400 mb-2">Key Notes:</p>

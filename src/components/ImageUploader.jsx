@@ -53,7 +53,6 @@ const ImageUploader = ({ onUploadSuccess, onError, bucketName = 'product-images'
           if (error) {
             console.error("Storage Error:", error);
             setIsUploading(false);
-            // This will tell you if it's a policy issue or a bucket name issue!
             if (onError) onError(`Upload failed: ${error.message}`); 
           } else {
             // Use data.path to guarantee we are getting the exact file we just uploaded
@@ -62,24 +61,7 @@ const ImageUploader = ({ onUploadSuccess, onError, bucketName = 'product-images'
             onUploadSuccess(publicUrlData.publicUrl); 
           }
         }, 'image/jpeg', 0.85);
-      };// Convert canvas to a compressed JPEG blob
-        canvas.toBlob(async (blob) => {
-          const fileName = `perfume_${Date.now()}.jpg`;
-          
-          // --- SUPABASE UPLOAD ---
-          const { data, error } = await supabase.storage
-            .from(bucketName)
-            .upload(fileName, blob, { contentType: 'image/jpeg' });
-
-          if (error) {
-            setIsUploading(false);
-            if (onError) onError(error.message);
-          } else {
-            const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(fileName);
-            setIsUploading(false);
-            onUploadSuccess(publicUrlData.publicUrl); 
-          }
-        }, 'image/jpeg', 0.85); 
+      };
     };
   };
 
@@ -92,9 +74,16 @@ const ImageUploader = ({ onUploadSuccess, onError, bucketName = 'product-images'
   return (
     <div 
       className="relative"
-      onDragEnter={() => setDragActive(true)}
-      onDragLeave={() => setDragActive(false)}
-      onDrop={() => setDragActive(false)}
+      onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
+      onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          processAndUploadFile(e.dataTransfer.files[0]);
+        }
+      }}
     >
       <input 
         type="file" 
