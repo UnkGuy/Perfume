@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Star, X, Loader2 } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../services/supabase';
 
 const ReviewModal = ({ isOpen, onClose, product, user, onReviewSubmitted, showToast }) => {
   const [rating, setRating] = useState(0);

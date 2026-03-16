@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MessageSquare, AlertCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase'; 
+import { supabase } from '../../services/supabase'; 
 
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, showToast, setCurrentPage, onCheckoutSuccess }) => {
   const [isSending, setIsSending] = useState(false);

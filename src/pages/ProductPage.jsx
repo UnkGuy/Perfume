@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Star, Loader } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
 
 // Supabase
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabase';
 
 // Components
 import ProductCard from '../components/products/ProductCard';

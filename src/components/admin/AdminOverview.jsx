@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, Users, ShoppingBag, AlertCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../services/supabase';
 
 const AdminOverview = () => {
   const [stats, setStats] = useState({ inquiries: 0, revenue: 0, activeUsers: 0, outOfStock: 0 });

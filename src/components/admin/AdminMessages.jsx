@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../services/supabase';
 import { User, Send, ShoppingBag, Loader2 } from 'lucide-react';
 
 const AdminMessages = ({ showToast }) => {

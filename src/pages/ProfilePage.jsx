@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Clock, RefreshCw, LogOut, User as UserIcon, ArrowLeft } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
-import { supabase } from '../lib/supabase';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
+import { supabase } from '../services/supabase';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 

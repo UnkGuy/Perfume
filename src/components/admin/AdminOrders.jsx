@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Eye, EyeOff, MessageCircle, ChevronDown } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../services/supabase';
 
 const AdminOrders = ({ showToast, setActiveTab }) => {
 <button 

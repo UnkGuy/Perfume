@@ -9,10 +9,10 @@ import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard'; // <--- NEW IMPORT
 
 // Components
-import CartDrawer from './components/CartDrawer';
-import WishlistDrawer from './components/WishlistDrawer';
-import Toast from './components/Toast'; 
-import ChatWidget from './components/ChatWidget';
+import CartDrawer from './components/common/CartDrawer';
+import WishlistDrawer from './components/common/WishlistDrawer';
+import Toast from './components/common/Toast'; 
+import ChatWidget from './components/common/ChatWidget';
 
 // 1. Import our custom hooks!
 import { useAuth } from './contexts/AuthContext';

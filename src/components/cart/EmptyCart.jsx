@@ -1,7 +1,7 @@
 import React from 'react';
 import { ShoppingBag, ArrowRight } from 'lucide-react';
-import Header from '../Header';
-import Footer from '../Footer';
+import Header from '../common/Header';
+import Footer from '../common/Footer';
 
 // Receives ALL props to prevent Header from crashing when cart is empty
 const EmptyCart = ({ 

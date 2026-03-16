@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Loader2, UploadCloud, AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../services/supabase';
 
 const ImageUploader = ({ onUploadSuccess, onError, bucketName = 'product-images' }) => {
   const [isUploading, setIsUploading] = useState(false);

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../services/supabase';
 import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag } from 'lucide-react';
-import ImageUploader from '../ImageUploader'; 
+import ImageUploader from '../common/ImageUploader'; 
 import { scentNotes } from '../../data/products';
+import { useProducts } from '../../hooks/useProducts';
 
 const AdminProducts = ({ showToast }) => {
   const [products, setProducts] = useState([]);

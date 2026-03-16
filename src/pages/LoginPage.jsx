@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Gem, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase'; // Import the database client!
+import { supabase } from '../services/supabase'; // Import the database client!
 
 const LoginPage = ({ setCurrentPage, showToast }) => {
   const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'

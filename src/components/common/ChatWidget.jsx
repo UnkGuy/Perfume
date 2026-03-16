@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageCircle, X, Send, User, ShoppingBag } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../services/supabase';
 
 const ChatWidget = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
