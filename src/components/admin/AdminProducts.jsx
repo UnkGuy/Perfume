@@ -1,43 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../services/supabase';
+import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag } from 'lucide-react';
-import ImageUploader from '../common/ImageUploader'; 
+import ImageUploader from '../ImageUploader'; 
 import { scentNotes } from '../../data/products';
-import { useProducts } from '../../hooks/useProducts';
+import { useProducts } from '../../hooks/useProducts'; // <-- NEW HOOK IMPORT
 
 const AdminProducts = ({ showToast }) => {
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // 1. ALL DATA LOGIC MOVED TO THE HOOK
+  const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
   
+  // 2. ONLY UI STATE REMAINS HERE
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ADDED: compare_at_price
-  // Make sure description: '' is in here!
   const [formData, setFormData] = useState({
     name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
   });
-
-  const fetchProducts = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
-    if (!error && data) setProducts(data);
-    setIsLoading(false);
-  };
-
-  useEffect(() => { fetchProducts(); }, []);
 
   const handleOpenModal = (product = null) => {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        name: product.name, brand: product.brand, 
-        description: product.description || '', // <--- Add this
-        price: product.price, 
-        compare_at_price: product.compare_at_price || '',
-        size: product.size, gender: product.gender || 'Unisex', stock_count: product.stock_count || '',
-        notes: product.notes || [], image_urls: product.image_urls || [], available: product.available !== false
+        name: product.name, brand: product.brand, description: product.description || '', price: product.price, compare_at_price: product.compare_at_price || '', size: product.size, gender: product.gender || 'Unisex', stock_count: product.stock_count || '', notes: product.notes || [], image_urls: product.image_urls || [], available: product.available !== false
       });
     } else {
       setEditingProduct(null);
@@ -50,18 +34,12 @@ const AdminProducts = ({ showToast }) => {
 
   const handleNoteToggle = (note) => {
     setFormData(prev => ({
-      ...prev,
-      notes: prev.notes.includes(note) 
-        ? prev.notes.filter(n => n !== note)
-        : [...prev.notes, note]
+      ...prev, notes: prev.notes.includes(note) ? prev.notes.filter(n => n !== note) : [...prev.notes, note]
     }));
   };
 
   const handleRemoveImage = (indexToRemove) => {
-    setFormData(prev => ({
-      ...prev,
-      image_urls: prev.image_urls.filter((_, index) => index !== indexToRemove)
-    }));
+    setFormData(prev => ({ ...prev, image_urls: prev.image_urls.filter((_, index) => index !== indexToRemove) }));
   };
 
   const handleSave = async (e) => {
@@ -70,7 +48,7 @@ const AdminProducts = ({ showToast }) => {
 
     const payload = {
       ...formData,
-      description: formData.description.trim(), // Added this line
+      description: formData.description.trim(),
       price: parseFloat(formData.price),
       compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
       stock_count: formData.stock_count ? parseInt(formData.stock_count) : null,
@@ -80,19 +58,12 @@ const AdminProducts = ({ showToast }) => {
     };
 
     try {
-      if (editingProduct) {
-        const { error } = await supabase.from('products').update(payload).eq('id', editingProduct.id);
-        if (error) throw error;
-        if (showToast) showToast('Updated', `${payload.name} has been updated.`);
-      } else {
-        const { error } = await supabase.from('products').insert([payload]);
-        if (error) throw error;
-        if (showToast) showToast('Added', `${payload.name} added to inventory.`);
-      }
+      // 3. USE THE HOOK TO SAVE (Pass the ID if we are editing)
+      await saveProduct(payload, editingProduct ? editingProduct.id : null);
+      if (showToast) showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved successfully.`);
       setIsModalOpen(false);
-      fetchProducts(); 
     } catch (err) {
-      console.error("Supabase Save Error:", err);
+      console.error(err);
       if (showToast) showToast('Error', err.message || 'Check browser console.', 'error');
     } finally {
       setIsSaving(false);
@@ -101,10 +72,12 @@ const AdminProducts = ({ showToast }) => {
 
   const handleDelete = async (id, name) => {
     if (window.confirm(`Are you sure you want to delete ${name}? This cannot be undone.`)) {
-      const { error } = await supabase.from('products').delete().eq('id', id);
-      if (!error) {
+      try {
+        // 4. USE THE HOOK TO DELETE
+        await deleteProduct(id);
         if (showToast) showToast('Deleted', `${name} removed.`);
-        fetchProducts();
+      } catch (err) {
+        if (showToast) showToast('Error', 'Failed to delete product', 'error');
       }
     }
   };
@@ -162,7 +135,6 @@ const AdminProducts = ({ showToast }) => {
                       </div>
                     </td>
                     
-                    {/* Price Column with Discount Logic */}
                     <td className="p-4">
                       {isDiscounted ? (
                         <div className="flex flex-col">
@@ -222,13 +194,11 @@ const AdminProducts = ({ showToast }) => {
                   <input required type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                 </div>
 
-                {/* NEW: Final Selling Price */}
                 <div>
                   <label className="block text-xs text-gold-400 font-bold uppercase tracking-widest mb-1">Selling Price (₱)</label>
                   <input required type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-black/50 border border-gold-400/30 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Final Price" />
                 </div>
 
-                {/* NEW: Original Price (For Discounts) */}
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
                     Original Price (₱) <span className="text-gray-600">(Optional Sale)</span>
@@ -255,7 +225,7 @@ const AdminProducts = ({ showToast }) => {
                   </div>
                 </div>
               </div>
-              {/* ✨ NEW: Description Text Area ✨ */}
+
               <div>
                 <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
                   Product Description <span className="text-gray-600">{formData.description.length}/800</span>
@@ -269,7 +239,7 @@ const AdminProducts = ({ showToast }) => {
                   placeholder="Describe the scent profile, inspiration, and feeling of this perfume..." 
                 />
               </div>
-              {/* ... Fragrance Notes, Availability Toggle, and Multi-Image Uploader remain exactly the same below ... */}
+
               <div>
                 <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Fragrance Notes</label>
                 <div className="flex flex-wrap gap-2 p-4 bg-black/30 border border-white/5 rounded-lg max-h-48 overflow-y-auto custom-scrollbar">

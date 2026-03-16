@@ -1,73 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, Eye, EyeOff, MessageCircle, ChevronDown } from 'lucide-react';
-import { supabase } from '../../services/supabase';
+import React, { useState } from 'react';
+import { Loader2, Eye, EyeOff, MessageCircle } from 'lucide-react';
+import { useOrders } from '../../hooks/useOrders'; // <-- NEW HOOK IMPORT
 
 const AdminOrders = ({ showToast, setActiveTab }) => {
-<button 
-  onClick={() => setActiveTab('messages')} 
-  className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" 
-  title="Go to Messages"
->
-  <MessageCircle size={16} />
-</button>
-
-  const [orders, setOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [expandedOrderId, setExpandedOrderId] = useState(null); // Tracks which order's details are open
-
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    
-    // THE MAGIC QUERY: We fetch orders + user email + order items + product names all at once!
-    // Change the select statement to this:
-    const { data, error } = await supabase
-      .from('orders')
-      .select(`
-        id, 
-        created_at, 
-        status, 
-        total_amount,
-        profiles (email), 
-        order_items (
-          quantity, 
-          price_at_time,
-          products (name)
-        )
-      `)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      setOrders(data);
-    } else if (error) {
-      console.error("Error fetching orders:", error);
-      if(showToast) showToast('Error', 'Could not load orders.', 'error');
-    }
-    
-    setIsLoading(false);
-  };
-
-  // --- UPDATE ORDER STATUS ---
-  const handleStatusChange = async (orderId, newStatus) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: newStatus })
-      .eq('id', orderId);
-
-    if (error) {
-      if(showToast) showToast('Error', 'Failed to update status', 'error');
-      console.error(error);
-    } else {
-      if(showToast) showToast('Success', `Order #${orderId} marked as ${newStatus}`);
-      // Update local state so we don't have to refetch everything
-      setOrders(orders.map(order => 
-        order.id === orderId ? { ...order, status: newStatus } : order
-      ));
-    }
-  };
+  // 1. ALL DATA LOGIC MOVED TO THE HOOK
+  const { orders, isLoading, changeOrderStatus } = useOrders(showToast);
+  
+  // 2. ONLY UI STATE REMAINS HERE
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
 
   const toggleExpand = (id) => {
     setExpandedOrderId(expandedOrderId === id ? null : id);
@@ -83,6 +23,18 @@ const AdminOrders = ({ showToast, setActiveTab }) => {
 
   return (
     <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+      
+      {/* Messages Shortcut Button */}
+      <div className="p-4 border-b border-white/10 flex justify-end">
+        <button 
+          onClick={() => setActiveTab('messages')} 
+          className="flex items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold" 
+          title="Go to Messages"
+        >
+          <MessageCircle size={16} /> Open Messages Console
+        </button>
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -110,10 +62,10 @@ const AdminOrders = ({ showToast, setActiveTab }) => {
                     <td className="p-4">{order.profiles?.email || 'Unknown User'}</td>
                     <td className="p-4 font-bold text-white">₱{order.total_amount.toLocaleString()}</td>
                     <td className="p-4">
-                      {/* STATUS DROPDOWN */}
+                      {/* 3. USE THE HOOK FUNCTION HERE */}
                       <select 
                         value={order.status}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                        onChange={(e) => changeOrderStatus(order.id, e.target.value)}
                         className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${
                           order.status === 'pending' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' : 
                           order.status === 'shipped' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
@@ -133,7 +85,11 @@ const AdminOrders = ({ showToast, setActiveTab }) => {
                       >
                         {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
-                      <button className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" title="Go to Messages">
+                      <button 
+                        onClick={() => setActiveTab('messages')}
+                        className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" 
+                        title="Go to Messages"
+                      >
                         <MessageCircle size={16} />
                       </button>
                     </td>
