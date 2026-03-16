@@ -1,34 +1,18 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, Users, ShoppingBag, AlertCircle } from 'lucide-react';
-import { supabase } from '../../services/supabase';
+import React from 'react';
+import { TrendingUp, Users, ShoppingBag, AlertCircle, Loader2 } from 'lucide-react';
+import { useDashboardStats } from '../../hooks/useDashboardStats';
 
 const AdminOverview = () => {
-  const [stats, setStats] = useState({ inquiries: 0, revenue: 0, activeUsers: 0, outOfStock: 0 });
+  // Look how clean this is now!
+  const { stats, isLoading } = useDashboardStats();
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      // 1. Total Inquiries & Revenue
-      const { data: orders } = await supabase.from('orders').select('total_amount');
-      const totalRev = orders?.reduce((sum, order) => sum + Number(order.total_amount), 0) || 0;
-      
-      // 2. Active Users (Users who have placed at least one inquiry)
-      const uniqueUsers = new Set(orders?.map(o => o.user_id)).size;
-
-      // 3. Unavailable Products
-      const { count: unavailableCount } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('available', false);
-
-      setStats({
-        inquiries: orders?.length || 0,
-        revenue: totalRev,
-        activeUsers: uniqueUsers,
-        outOfStock: unavailableCount || 0
-      });
-    };
-    fetchStats();
-  }, []);
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64 text-gold-400">
+        <Loader2 className="animate-spin" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -42,7 +26,7 @@ const AdminOverview = () => {
   );
 };
 
-// Reusable mini-component to keep it clean
+// Reusable mini-component
 const StatCard = ({ icon, color, title, value }) => {
   const colorMap = {
     gold: 'bg-gold-400/10 text-gold-400',
@@ -62,4 +46,5 @@ const StatCard = ({ icon, color, title, value }) => {
     </div>
   );
 };
+
 export default AdminOverview;

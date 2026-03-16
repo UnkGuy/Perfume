@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { MessageSquare, AlertCircle } from 'lucide-react';
-import { supabase } from '../../services/supabase'; 
+import { useCheckout } from '../../hooks/useCheckout'; // <-- NEW HOOK IMPORT
 
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, showToast, setCurrentPage, onCheckoutSuccess }) => {
-  const [isSending, setIsSending] = useState(false);
+  // 1. Pull in the logic from our custom hook
+  const { submitCheckout, isSending } = useCheckout(showToast, setCurrentPage);
   
+  // 2. Keep the local form state exactly where it belongs: in the UI component
   const [checkoutInfo, setCheckoutInfo] = useState({
     fulfillmentMethod: 'Delivery',
     paymentMethod: 'GCash',
@@ -13,61 +15,9 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
   });
 
   const handleCheckoutToChat = async () => {
-    if (!user) {
-      if(showToast) showToast("Login Required", "Please sign in to message the seller.", "error");
-      setCurrentPage('login');
-      return;
-    }
-    
-    // BUG FIX: Matched the exact string from the select dropdown
-    if (checkoutInfo.fulfillmentMethod !== 'Store Pickup' && (!checkoutInfo.location || !checkoutInfo.phoneNumber)) {
-       if(showToast) showToast("Missing Info", "Please provide a location and contact number.", "error");
-       return;
-    }
-
-    // Keep the rest of your original try/catch block exactly the same...
-    setIsSending(true);
     const total = calculateTotal();
-
-    try {
-      const { data: orderData, error: orderError } = await supabase
-        .from('orders').insert([{ user_id: user.id, total_amount: total, status: 'pending' }]).select().single();
-      if (orderError) throw orderError;
-
-      const orderItemsToInsert = localItems.map(item => ({
-        order_id: orderData.id, product_id: item.id, quantity: item.quantity, price_at_time: item.price
-      }));
-      await supabase.from('order_items').insert(orderItemsToInsert);
-
-      const chatItems = localItems.map(item => ({
-        name: item.name, quantity: item.quantity, price: item.price
-      }));
-      
-      const formattedContent = `New Inquiry Placed.\nFulfillment: ${checkoutInfo.fulfillmentMethod}\nPayment: ${checkoutInfo.paymentMethod}\nContact: ${checkoutInfo.phoneNumber}\nLocation: ${checkoutInfo.location || 'N/A'}`;
-
-      await supabase.from('messages').insert([{ 
-        sender_role: 'user', 
-        content: formattedContent,
-        user_id: user.id,
-        metadata: { 
-          type: 'order_inquiry', 
-          order_id: orderData.id, 
-          total: total,
-          items: chatItems,
-          fulfillment: checkoutInfo.fulfillmentMethod,
-          payment: checkoutInfo.paymentMethod,
-          contact: checkoutInfo.phoneNumber,
-          location: checkoutInfo.location
-        }
-      }]);
-
-      if(showToast) showToast("Inquiry Sent!", "Check your chat widget for details.");
-      if(onCheckoutSuccess) onCheckoutSuccess();
-    } catch (err) {
-      if(showToast) showToast("Error", "Could not process order.", "error");
-    } finally {
-      setIsSending(false);
-    }
+    // 3. Call the hook function and pass it the data!
+    await submitCheckout(user, total, localItems, checkoutInfo, onCheckoutSuccess);
   };
 
   return (
