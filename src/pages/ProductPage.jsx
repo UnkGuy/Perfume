@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, Star, Loader } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Star, Loader, ChevronDown, SlidersHorizontal } from 'lucide-react';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 
@@ -41,6 +41,20 @@ const ProductPage = ({
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedGender, setSelectedGender] = useState([]);
+
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+
+  // Array of our sorting options to make rendering easier
+  const sortOptions = [
+    { value: 'date', label: 'Date: Newest' },
+    { value: 'price-asc', label: 'Price: Low to High' },
+    { value: 'price-desc', label: 'Price: High to Low' },
+    { value: 'rating-desc', label: 'Rating: High to Low' }
+  ];
+
+  // Helper to get the current label
+  const currentSortLabel = sortOptions.find(opt => opt.value === sortOption)?.label;
 
   // --- FETCH DATA FROM SUPABASE ---
   useEffect(() => {
@@ -185,18 +199,43 @@ const ProductPage = ({
           
           {/* --- SIDEBAR FILTERS --- */}
           {!selectedProduct && (
-            <ProductFilters 
-              ratingFilter={ratingFilter} setRatingFilter={setRatingFilter}
-              priceRange={priceRange} setPriceRange={setPriceRange}
-              handleInput={handleInput} handleSliderChange={handleSliderChange} getPercent={getPercent}
-              selectedGender={selectedGender} setSelectedGender={setSelectedGender}
-              selectedNotes={selectedNotes} setSelectedNotes={setSelectedNotes}
-              selectedSizes={selectedSizes} setSelectedSizes={setSelectedSizes}
-              selectedBrands={selectedBrands} setSelectedBrands={setSelectedBrands}
-              clearAllFilters={clearAllFilters}
-              hasActiveFilters={hasActiveFilters}
-              MIN_LIMIT={MIN_LIMIT} MAX_LIMIT={MAX_LIMIT}
-            />
+            <aside className="w-full lg:w-72 flex-shrink-0">
+              
+              {/* Filter Toggle Button */}
+              <button
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                className="w-full flex items-center justify-between bg-black/40 border border-gold-400/30 p-4 rounded-xl text-gold-400 font-bold hover:bg-white/5 transition-colors mb-4 shadow-lg"
+              >
+                <div className="flex items-center gap-3">
+                  <SlidersHorizontal size={18} />
+                  <span>Filter Collection</span>
+                </div>
+                <ChevronDown
+                  size={18}
+                  className={`transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+
+              {/* Animated Collapsible Wrapper */}
+              <div 
+                className={`transition-all duration-500 ease-in-out overflow-hidden ${
+                  isFiltersOpen ? 'max-h-[2000px] opacity-100 mb-8' : 'max-h-0 opacity-0'
+                }`}
+              >
+                <ProductFilters 
+                  ratingFilter={ratingFilter} setRatingFilter={setRatingFilter}
+                  priceRange={priceRange} setPriceRange={setPriceRange}
+                  handleInput={handleInput} handleSliderChange={handleSliderChange} getPercent={getPercent}
+                  selectedGender={selectedGender} setSelectedGender={setSelectedGender}
+                  selectedNotes={selectedNotes} setSelectedNotes={setSelectedNotes}
+                  selectedSizes={selectedSizes} setSelectedSizes={setSelectedSizes}
+                  selectedBrands={selectedBrands} setSelectedBrands={setSelectedBrands}
+                  clearAllFilters={clearAllFilters}
+                  hasActiveFilters={hasActiveFilters}
+                  MIN_LIMIT={MIN_LIMIT} MAX_LIMIT={MAX_LIMIT}
+                />
+              </div>
+            </aside>
           )}
 
           {/* --- MAIN CONTENT AREA --- */}
@@ -227,25 +266,56 @@ const ProductPage = ({
             ) : (
               // --- GRID VIEW ---
               <>
-                <div className="flex flex-col md:flex-row justify-between items-end md:items-center mb-8 gap-4 animate-fade-in">
+                {/* --- HEADER & SORTING ROW --- */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-40 animate-fade-in">
+                  
+                  {/* Title Area */}
                   <div>
                     <h2 className="text-3xl font-bold text-white mb-1">All Perfumes</h2>
                     <p className="text-gray-500 text-sm">Showing {processedProducts.length} luxury scents</p>
                   </div>
-                  
-                  <select 
-                    value={sortOption} 
-                    onChange={(e) => setSortOption(e.target.value)}
-                    className="bg-black/40 border border-gold-400/30 text-gold-400 text-sm rounded px-4 py-2 outline-none focus:border-gold-400 cursor-pointer"
-                  >
-                    <option value="date">Date: Newest</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="rating-desc">Rating: High to Low</option>
-                  </select>
+
+                  {/* Custom Sort Dropdown */}
+                  <div className="relative w-full md:w-auto flex justify-start md:justify-end">
+                    <div className="relative">
+                      <button 
+                        onClick={() => setIsSortOpen(!isSortOpen)}
+                        onBlur={() => setTimeout(() => setIsSortOpen(false), 200)} 
+                        className="bg-black/40 border border-gold-400/30 text-gold-400 text-sm rounded pl-4 pr-3 py-2 outline-none hover:border-gold-400 cursor-pointer flex items-center gap-3 transition-colors"
+                      >
+                        {currentSortLabel}
+                        <ChevronDown 
+                          size={16} 
+                          className={`transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`} 
+                        />
+                      </button>
+
+                      {/* The Custom Dropdown Menu */}
+                      {isSortOpen && (
+                        <div className="absolute left-0 md:left-auto md:right-0 top-full mt-2 w-48 bg-rich-black border border-gold-400/30 rounded-lg shadow-2xl overflow-hidden animate-fade-in">
+                          {sortOptions.map((option) => (
+                            <div 
+                              key={option.value}
+                              onClick={() => {
+                                setSortOption(option.value);
+                                setIsSortOpen(false);
+                              }}
+                              className={`px-4 py-3 text-sm cursor-pointer transition-colors ${
+                                sortOption === option.value 
+                                  ? 'bg-gold-400/10 text-gold-400 border-l-2 border-gold-400' 
+                                  : 'text-gray-400 hover:bg-white/5 hover:text-gold-300 border-l-2 border-transparent'
+                              }`}
+                            >
+                              {option.label}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
                   {processedProducts.length > 0 ? (
                     processedProducts.map(product => (
                       <ProductCard 

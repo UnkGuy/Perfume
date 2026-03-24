@@ -26,9 +26,8 @@ const Footer = () => {
 
         {/* Optional: Social Icons (Common in footers) */}
         <div className="flex gap-6 mb-10">
-          <SocialIcon icon={<Instagram size={20} />} />
-          <SocialIcon icon={<Facebook size={20} />} />
-          <SocialIcon icon={<Twitter size={20} />} />
+          <SocialIcon href="https://www.instagram.com/klscentsph" icon={<Instagram size={20} />} />
+          <SocialIcon href="https://www.facebook.com/profile.php?id=61568097239499" icon={<Facebook size={20} />} />
         </div>
 
         {/* Divider */}

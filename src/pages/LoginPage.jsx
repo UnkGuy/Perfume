@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Gem, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { supabase } from '../lib/supabase'; // Import the database client!
+import { supabase } from '../lib/supabase';
 
 const LoginPage = ({ setCurrentPage, showToast }) => {
   const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
@@ -41,41 +41,31 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
 
     try {
       if (view === 'register') {
-        // --- SUPABASE SIGN UP ---
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
-        
         if (error) throw error;
-        
         if (showToast) showToast('Success', 'Account created! You are now logged in.');
         setCurrentPage('products');
 
       } else if (view === 'login') {
-        // --- SUPABASE SIGN IN ---
         const { data, error } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
-
         if (error) throw error;
-        
         if (showToast) showToast('Welcome Back', 'Successfully logged in.');
         setCurrentPage('products');
 
       } else if (view === 'forgot') {
-        // --- SUPABASE RESET PASSWORD ---
         const { error } = await supabase.auth.resetPasswordForEmail(formData.email);
-        
         if (error) throw error;
-        
         if (showToast) showToast('Email Sent', 'Check your inbox for the reset link.');
         setView('login');
       }
     } catch (err) {
-      // Supabase returns nice, human-readable error messages
-      setError(err.message); 
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
@@ -97,10 +87,20 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
       {/* Background aesthetics */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold-400/10 rounded-full blur-[120px] pointer-events-none"></div>
       
-      <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
+      {/* Added 'relative' to the card container to keep the absolute button inside it */}
+      <div className="relative w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
         
-        {/* Header */}ava
-        <div className="text-center mb-8">
+        {/* Back button — top-left corner inside the card */}
+        <button
+          onClick={() => setCurrentPage('welcome')}
+          className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-gray-400 hover:text-gold-400 transition-colors group"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          Back to Home
+        </button>
+        
+        {/* Header */}
+        <div className="text-center mb-8 mt-2">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold-400/10 text-gold-400 mb-4 border border-gold-400/20">
             <Gem size={32} />
           </div>
@@ -208,11 +208,11 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
                 Continue as Guest
               </button>
 
-              <div className="text-center text-sm text-gray-400 pt-2 border-t border-white/10">
+              <div className="text-center text-sm text-gray-400 pt-6 mt-4 border-t border-white/10">
                 {view === 'login' ? "Don't have an account? " : "Already have an account? "}
                 <button 
                   onClick={() => { setView(view === 'login' ? 'register' : 'login'); setError(''); }}
-                  className="text-gold-400 hover:text-gold-300 font-medium"
+                  className="text-gold-400 hover:text-gold-300 font-bold"
                 >
                   {view === 'login' ? 'Sign up free' : 'Sign in'}
                 </button>
