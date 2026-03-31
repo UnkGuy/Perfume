@@ -12,6 +12,7 @@ import ProductFilters from '../components/products/ProductFilters';
 import ProductDetails from '../components/products/ProductDetails';
 import QuickViewModal from '../components/products/QuickViewModal';
 import PredictiveSearch from '../components/products/PredictiveSearch';
+import ProductSkeleton from '../components/products/ProductSkeleton';
 
 const ProductPage = ({ 
   setCurrentPage, cartItems, addToCart, toggleWishlist, wishlistItems, showToast,
@@ -160,9 +161,10 @@ const ProductPage = ({
 
           <main className={`flex-1 ${selectedProduct ? 'w-full' : ''}`}>
             {isLoading ? (
-              <div className="flex flex-col items-center justify-center h-96 text-gold-400 animate-fade-in">
-                <Loader className="animate-spin mb-4" size={48} />
-                <p className="text-gray-400 font-medium tracking-widest uppercase text-sm">Loading Collection...</p>
+              <div className={gridClasses}>
+                {[...Array(8)].map((_, index) => (
+                   <ProductSkeleton key={index} isCompact={viewMode === 'compact'} />
+                ))}
               </div>
             ) : selectedProduct ? (
               <ProductDetails 
