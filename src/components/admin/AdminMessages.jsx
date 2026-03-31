@@ -1,19 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Send, ShoppingBag, Loader2, Ban, CheckCircle } from 'lucide-react';
+import { User, Send, ShoppingBag, Loader2, Ban, CheckCircle, Search } from 'lucide-react'; // <-- ADDED SEARCH ICON
 import { useActiveChats, useMessageThread } from '../../hooks/useMessages';
-import { useUserBan } from '../../hooks/useUserBan'; // <-- NEW HOOK
+import { useUserBan } from '../../hooks/useUserBan'; 
 
 const AdminMessages = ({ showToast }) => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [reply, setReply] = useState('');
+  const [searchQuery, setSearchQuery] = useState(''); // <-- NEW SEARCH STATE
   const messagesEndRef = useRef(null);
 
-  // Hooks
   const { activeChats, isLoading: chatsLoading } = useActiveChats();
   const { messages, sendMessage } = useMessageThread(selectedUser, 'admin');
-  const { isBanned, toggleBan } = useUserBan(selectedUser, showToast); // <-- BAN LOGIC
+  const { isBanned, toggleBan } = useUserBan(selectedUser, showToast); 
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -29,22 +28,39 @@ const AdminMessages = ({ showToast }) => {
   };
 
   const selectedChatData = activeChats.find(c => c.id === selectedUser);
+  
+  // <-- FILTER LOGIC -->
+  const filteredChats = activeChats.filter(chat => 
+    chat.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="h-[600px] bg-white/5 border border-white/10 rounded-xl overflow-hidden flex animate-fade-in">
       
       {/* LEFT: Chat List */}
       <div className="w-1/3 border-r border-white/10 flex flex-col bg-black/40">
-        <div className="p-4 border-b border-white/10">
+        <div className="p-4 border-b border-white/10 flex flex-col gap-3">
           <h3 className="font-bold text-white tracking-widest uppercase text-sm">Active Inquiries</h3>
+          
+          {/* <-- SEARCH BAR --> */}
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input 
+              type="text" 
+              placeholder="Search email..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-xs text-white focus:outline-none focus:border-gold-400 transition-colors"
+            />
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
           {chatsLoading ? (
             <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gold-400" /></div>
-          ) : activeChats.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 text-sm">No active chats.</div>
+          ) : filteredChats.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 text-sm">No active chats found.</div>
           ) : (
-            activeChats.map(chat => (
+            filteredChats.map(chat => (
               <button 
                 key={chat.id}
                 onClick={() => setSelectedUser(chat.id)}
@@ -67,7 +83,7 @@ const AdminMessages = ({ showToast }) => {
         </div>
       </div>
 
-      {/* RIGHT: Chat Window */}
+      {/* RIGHT: Chat Window (REMAINS EXACTLY THE SAME) */}
       <div className="w-2/3 flex flex-col relative">
         {!selectedUser ? (
           <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -75,7 +91,6 @@ const AdminMessages = ({ showToast }) => {
           </div>
         ) : (
           <>
-            {/* NEW: Chat Header with Ban Button */}
             <div className="p-4 border-b border-white/10 bg-black/20 flex justify-between items-center">
               <div className="flex flex-col">
                 <span className="font-bold text-white">{selectedChatData?.email}</span>
@@ -94,13 +109,11 @@ const AdminMessages = ({ showToast }) => {
               </button>
             </div>
 
-            {/* Messages Area */}
             <div className="flex-1 p-6 overflow-y-auto custom-scrollbar">
               {messages.map((msg, index) => {
                 const isAdmin = msg.sender_role === 'admin';
                 const isOrder = msg.metadata?.type === 'order_inquiry';
 
-                // --- MESSENGER TIMESTAMPS LOGIC ---
                 let showTimestampDivider = false;
                 let timeString = '';
 
@@ -109,13 +122,12 @@ const AdminMessages = ({ showToast }) => {
                 } else {
                   const prevTime = new Date(messages[index - 1].created_at).getTime();
                   const currTime = new Date(msg.created_at).getTime();
-                  if (currTime - prevTime > 1800000) showTimestampDivider = true; // 30 minutes
+                  if (currTime - prevTime > 1800000) showTimestampDivider = true; 
                 }
 
                 if (showTimestampDivider) {
                   timeString = new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
                 }
-                // ----------------------------------
 
                 return (
                   <React.Fragment key={msg.id}>
@@ -164,7 +176,6 @@ const AdminMessages = ({ showToast }) => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
             <form onSubmit={handleReply} className="p-4 border-t border-white/10 bg-black/40">
               <div className="relative flex items-center">
                 <input 

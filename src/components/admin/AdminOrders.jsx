@@ -1,17 +1,22 @@
 import React, { useState } from 'react';
-import { Loader2, Eye, EyeOff, MessageCircle } from 'lucide-react';
-import { useOrders } from '../../hooks/useOrders'; // <-- NEW HOOK IMPORT
+import { Loader2, Eye, EyeOff, MessageCircle, Search } from 'lucide-react'; // <-- ADDED SEARCH
+import { useOrders } from '../../hooks/useOrders'; 
 
 const AdminOrders = ({ showToast, setActiveTab }) => {
-  // 1. ALL DATA LOGIC MOVED TO THE HOOK
   const { orders, isLoading, changeOrderStatus } = useOrders(showToast);
-  
-  // 2. ONLY UI STATE REMAINS HERE
   const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState(''); // <-- NEW SEARCH STATE
 
   const toggleExpand = (id) => {
     setExpandedOrderId(expandedOrderId === id ? null : id);
   };
+
+  // <-- FILTER LOGIC -->
+  const filteredOrders = orders.filter(order => 
+    order.id.toString().includes(searchQuery) ||
+    (order.profiles?.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    order.status.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -24,8 +29,19 @@ const AdminOrders = ({ showToast, setActiveTab }) => {
   return (
     <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
       
-      {/* Messages Shortcut Button */}
-      <div className="p-4 border-b border-white/10 flex justify-end">
+      {/* HEADER ACTIONS */}
+      <div className="p-4 border-b border-white/10 flex justify-between items-center bg-black/20">
+        <div className="relative w-64">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+          <input 
+            type="text" 
+            placeholder="Search ID, email, or status..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+          />
+        </div>
+
         <button 
           onClick={() => setActiveTab('messages')} 
           className="flex items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold" 
@@ -48,12 +64,12 @@ const AdminOrders = ({ showToast, setActiveTab }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5 text-sm text-gray-300">
-            {orders.length === 0 ? (
+            {filteredOrders.length === 0 ? (
               <tr>
-                <td colSpan="6" className="p-8 text-center text-gray-500">No orders found.</td>
+                <td colSpan="6" className="p-8 text-center text-gray-500">No orders found matching "{searchQuery}".</td>
               </tr>
             ) : (
-              orders.map((order) => (
+              filteredOrders.map((order) => (
                 <React.Fragment key={order.id}>
                   {/* MAIN ROW */}
                   <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
@@ -62,7 +78,6 @@ const AdminOrders = ({ showToast, setActiveTab }) => {
                     <td className="p-4">{order.profiles?.email || 'Unknown User'}</td>
                     <td className="p-4 font-bold text-white">₱{order.total_amount.toLocaleString()}</td>
                     <td className="p-4">
-                      {/* 3. USE THE HOOK FUNCTION HERE */}
                       <select 
                         value={order.status}
                         onChange={(e) => changeOrderStatus(order.id, e.target.value)}

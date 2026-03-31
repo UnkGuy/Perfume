@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search } from 'lucide-react'; // <-- ADDED SEARCH
 import ImageUploader from '../common/ImageUploader'; 
 import { scentNotes } from '../../data/products';
-import { useProducts } from '../../hooks/useProducts'; // <-- NEW HOOK IMPORT
+import { useProducts } from '../../hooks/useProducts'; 
 
 const AdminProducts = ({ showToast }) => {
-  // 1. ALL DATA LOGIC MOVED TO THE HOOK
   const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
   
-  // 2. ONLY UI STATE REMAINS HERE
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // <-- NEW SEARCH STATE
 
   const [formData, setFormData] = useState({
     name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
@@ -58,7 +57,6 @@ const AdminProducts = ({ showToast }) => {
     };
 
     try {
-      // 3. USE THE HOOK TO SAVE (Pass the ID if we are editing)
       await saveProduct(payload, editingProduct ? editingProduct.id : null);
       if (showToast) showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved successfully.`);
       setIsModalOpen(false);
@@ -73,7 +71,6 @@ const AdminProducts = ({ showToast }) => {
   const handleDelete = async (id, name) => {
     if (window.confirm(`Are you sure you want to delete ${name}? This cannot be undone.`)) {
       try {
-        // 4. USE THE HOOK TO DELETE
         await deleteProduct(id);
         if (showToast) showToast('Deleted', `${name} removed.`);
       } catch (err) {
@@ -82,19 +79,40 @@ const AdminProducts = ({ showToast }) => {
     }
   };
 
+  // <-- FILTER LOGIC -->
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.brand.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="animate-fade-in">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h3 className="text-2xl font-bold text-white">Inventory Management</h3>
           <p className="text-gray-400 text-sm mt-1">Add, edit, or set discounts for your catalog.</p>
         </div>
-        <button 
-          onClick={() => handleOpenModal()}
-          className="flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-black px-4 py-2 rounded-lg font-bold transition-colors shadow-lg"
-        >
-          <Plus size={18} /> Add Perfume
-        </button>
+        
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          {/* <-- SEARCH BAR --> */}
+          <div className="relative flex-1 md:w-64">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input 
+              type="text" 
+              placeholder="Search perfumes..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+            />
+          </div>
+
+          <button 
+            onClick={() => handleOpenModal()}
+            className="flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-black px-4 py-2 rounded-lg font-bold transition-colors shadow-lg flex-shrink-0"
+          >
+            <Plus size={18} /> Add Perfume
+          </button>
+        </div>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
@@ -112,10 +130,10 @@ const AdminProducts = ({ showToast }) => {
           <tbody className="divide-y divide-white/5 text-sm text-gray-300">
             {isLoading ? (
               <tr><td colSpan="6" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
-            ) : products.length === 0 ? (
-              <tr><td colSpan="6" className="p-8 text-center text-gray-500">No products in inventory. Click "Add Perfume" to start.</td></tr>
+            ) : filteredProducts.length === 0 ? (
+              <tr><td colSpan="6" className="p-8 text-center text-gray-500">No products found matching "{searchQuery}".</td></tr>
             ) : (
-              products.map(product => {
+              filteredProducts.map(product => {
                 const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
 
                 return (
@@ -184,6 +202,7 @@ const AdminProducts = ({ showToast }) => {
             </div>
 
             <form onSubmit={handleSave} className="space-y-6">
+              {/* Form Content Remains Exactly the Same */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Perfume Name</label>
