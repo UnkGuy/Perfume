@@ -9,7 +9,6 @@ const PredictiveSearch = ({
 }) => {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // The zero-cost predictive logic lives here now!
   const searchSuggestions = products
     .filter(p => 
       p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -18,7 +17,8 @@ const PredictiveSearch = ({
     .slice(0, 5);
 
   return (
-    <div className="relative max-w-2xl mx-auto mb-12 group animate-fade-in z-40">
+    // ✨ CHANGED z-40 to z-[60] HERE ✨
+    <div className="relative max-w-2xl mx-auto mb-12 group animate-fade-in z-[60]">
       <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gold-400 transition-colors group-hover:text-gold-300" size={20} />
       
       {searchQuery && (
@@ -43,7 +43,6 @@ const PredictiveSearch = ({
         className="w-full bg-white/5 border border-white/10 rounded-full py-4 pl-14 pr-12 text-white placeholder-gray-500 focus:outline-none focus:border-gold-400/50 focus:ring-1 focus:ring-gold-400/50 transition-all shadow-lg"
       />
 
-      {/* PREDICTIVE DROPDOWN MENU */}
       {showSuggestions && searchQuery && searchSuggestions.length > 0 && (
         <div className="absolute top-full left-0 w-full mt-2 bg-rich-black border border-gold-400/30 rounded-xl shadow-2xl overflow-hidden animate-slide-in z-[100]">
           {searchSuggestions.map(suggestion => (

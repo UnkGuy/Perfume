@@ -18,15 +18,14 @@ const ProductPage = ({
   searchQuery, setSearchQuery, onCartClick, onWishlistClick, user, userRole, handleLogout 
 }) => {
   
-  // 1. ALL DATA LOGIC MOVED TO THE HOOK
   const { products, isLoading } = useStoreProducts(showToast);
 
-  // 2. ONLY UI STATE REMAINS HERE
   const [activePage, setActivePage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null); 
   const [quickViewProduct, setQuickViewProduct] = useState(null); 
   
-  const [priceRange, setPriceRange] = useState({ min: 0, max: 1000 });
+  // ✨ INCREASED DEFAULT MAX PRICE TO 20000 ✨
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 20000 });
   const [sortOption, setSortOption] = useState('date');
   const [ratingFilter, setRatingFilter] = useState(0);
   
@@ -46,7 +45,8 @@ const ProductPage = ({
   ];
   const currentSortLabel = sortOptions.find(opt => opt.value === sortOption)?.label;
 
-  const MIN_LIMIT = 0; const MAX_LIMIT = 1000; const GAP = 50;
+  // ✨ INCREASED MAX LIMIT TO 20000 ✨
+  const MIN_LIMIT = 0; const MAX_LIMIT = 20000; const GAP = 50;
   const getPercent = (value) => Math.round(((value - MIN_LIMIT) / (MAX_LIMIT - MIN_LIMIT)) * 100);
 
   const handleInput = (e, type) => {
@@ -72,7 +72,10 @@ const ProductPage = ({
   };
 
   const clearAllFilters = () => {
-    setRatingFilter(0); setPriceRange({min:0, max:1000}); setSearchQuery('');
+    setRatingFilter(0); 
+    // ✨ ENSURE IT RESETS TO 20000 ✨
+    setPriceRange({min:0, max:20000}); 
+    setSearchQuery('');
     setSelectedNotes([]); setSelectedSizes([]); setSelectedBrands([]); setSelectedGender([]);
   };
 
@@ -153,11 +156,21 @@ const ProductPage = ({
               </div>
             ) : selectedProduct ? (
               <ProductDetails 
-                product={selectedProduct} onBack={() => setSelectedProduct(null)}
-                onAddToCart={(product) => { addToCart(product); setSelectedProduct(null); }}
-                onToggleWishlist={toggleWishlist} isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
-                showToast={showToast} user={user} setCurrentPage={setCurrentPage}
-              />
+  product={selectedProduct} 
+  onBack={() => setSelectedProduct(null)}
+  onAddToCart={(product) => {
+    addToCart(product);
+    setSelectedProduct(null);
+  }}
+  onToggleWishlist={toggleWishlist}
+  isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
+  showToast={showToast}
+  user={user}
+  setCurrentPage={setCurrentPage}
+  // --- ADD THESE TWO LINES ---
+  onSelect={setSelectedProduct} 
+  wishlistItems={wishlistItems}
+/>
             ) : (
               <>
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-40 animate-fade-in">

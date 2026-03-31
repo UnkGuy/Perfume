@@ -8,7 +8,7 @@ import EmptyCart from '../components/cart/EmptyCart';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 import SuggestedProducts from '../components/common/SuggestedProducts';
-
+import { useShop } from '../contexts/ShopContext'; // <-- ADD THIS IMPORT
 const CartPage = ({ 
   setCurrentPage, cartItems, removeFromCart, clearCart, 
   wishlistItems, onCartClick, onWishlistClick, 
@@ -16,6 +16,9 @@ const CartPage = ({
   user, userRole, handleLogout, showToast
 }) => {
   
+  // <-- ADD THIS LINE RIGHT HERE -->
+  const { addToCart } = useShop(); 
+
   // --- STATE ---
   const [localItems, setLocalItems] = useState([]);
 

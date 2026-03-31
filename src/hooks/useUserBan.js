@@ -1,29 +1,31 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchUserBanStatusAPI, toggleUserBanAPI } from '../services/userApi';
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
 
-export const useUserBan = (userId, showToast) => {
+export const useUserBan = (targetUserId, showToast) => {
   const queryClient = useQueryClient();
+  const { user: adminUser } = useAuth();
 
   const { data: isBanned, isLoading } = useQuery({
-    queryKey: ['userBan', userId],
-    queryFn: () => fetchUserBanStatusAPI(userId),
-    enabled: !!userId,
+    queryKey: ['userBan', targetUserId],
+    queryFn: () => fetchUserBanStatusAPI(targetUserId),
+    enabled: !!targetUserId,
   });
 
   const banMutation = useMutation({
-    mutationFn: (newBanStatus) => toggleUserBanAPI(userId, newBanStatus),
+    mutationFn: (newBanStatus) => toggleUserBanAPI(targetUserId, newBanStatus),
     onSuccess: (_, newBanStatus) => {
-      queryClient.invalidateQueries({ queryKey: ['userBan', userId] });
-      if (showToast) showToast('Success', newBanStatus ? 'User has been blocked.' : 'User has been unblocked.');
+      queryClient.invalidateQueries({ queryKey: ['userBan', targetUserId] });
+      if (showToast) showToast('Success', newBanStatus ? 'User blocked.' : 'User unblocked.');
+      
+      // Log the Ban/Unban
+      const actionType = newBanStatus ? 'Blocked User' : 'Unblocked User';
+      logAdminActionAPI(adminUser?.email, actionType, `User ID: ${targetUserId}`);
     },
-    onError: () => {
-      if (showToast) showToast('Error', 'Failed to update user status.', 'error');
-    }
   });
 
-  const toggleBan = async (newBanStatus) => {
-    await banMutation.mutateAsync(newBanStatus);
-  };
+  const toggleBan = async (newBanStatus) => await banMutation.mutateAsync(newBanStatus);
 
   return { isBanned, isLoading, toggleBan };
 };

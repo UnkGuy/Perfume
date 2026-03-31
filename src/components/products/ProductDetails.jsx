@@ -1,21 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, ArrowLeft, Heart, Check, AlertCircle, Edit3, User as UserIcon } from 'lucide-react';
 import ReviewModal from './ReviewModal';
-import { useReviews } from '../../hooks/useReviews'; // <-- IMPORT THE HOOK
+import SuggestedProducts from '../common/SuggestedProducts'; // <-- NEW IMPORT
+import { useReviews } from '../../hooks/useReviews'; 
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWishlist, showToast, user, setCurrentPage }) => {
+// NOTE: We added `onSelect` and `wishlistItems` to the props here so the suggestion cards work perfectly!
+const ProductDetails = ({ 
+  product, onBack, onAddToCart, onToggleWishlist, isInWishlist, 
+  showToast, user, setCurrentPage, onSelect, wishlistItems 
+}) => {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
-  // Grab EVERYTHING from our new hook!
   const { reviews, averageRating, canReview, submitNewReview } = useReviews(product?.id, product?.rating, user);
 
   const images = product?.image_urls?.length > 0 ? product.image_urls : [FALLBACK_IMAGE];
-
   const isDiscounted = product?.compare_at_price && product.compare_at_price > product.price;
   const percentOff = isDiscounted ? Math.round((1 - (product.price / product.compare_at_price)) * 100) : 0;
+
+  // Smooth scroll to top when a user clicks a "Suggested Product"
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setActiveImageIndex(0); // Reset image gallery to the first image
+  }, [product]);
 
   if (!product) return null;
 
@@ -25,7 +34,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
         isOpen={isReviewModalOpen} 
         onClose={() => setIsReviewModalOpen(false)} 
         product={product} 
-        submitNewReview={submitNewReview} // <-- PASS DOWN THE HOOK'S FUNCTION
+        submitNewReview={submitNewReview}
         showToast={showToast}
       />
 
@@ -34,6 +43,8 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
+        
+        {/* Left: Interactive Image Gallery */}
         <div className="flex flex-col gap-4">
           <div className="relative aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 group">
             <img src={images[activeImageIndex]} alt={product.name} className="w-full h-full object-cover transition-opacity duration-300" />
@@ -48,6 +59,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
             </button>
           </div>
 
+          {/* Thumbnail Strip */}
           {images.length > 1 && (
             <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
               {images.map((img, idx) => (
@@ -62,6 +74,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
           )}
         </div>
 
+        {/* Right: Info Section */}
         <div className="flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-bold tracking-widest text-gold-400 uppercase">{product.brand}</span>
@@ -93,6 +106,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
             )}
           </div>
 
+          {/* DYNAMIC PRICE DISPLAY */}
           <div className="mb-8">
             <div className="flex items-center gap-4">
               <p className="text-3xl font-light text-white">₱{product.price}</p>
@@ -150,6 +164,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
         </div>
       </div>
       
+      {/* REVIEWS SECTION */}
       <div id="reviews-section" className="pt-12 border-t border-white/10">
         <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
           Customer Reviews <span className="text-sm font-normal text-gray-500 bg-white/5 px-3 py-1 rounded-full">{reviews.length}</span>
@@ -185,6 +200,21 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
           </div>
         )}
       </div>
+
+      {/* ✨ SUGGESTED PRODUCTS SECTION ✨ */}
+      <SuggestedProducts 
+        currentProductId={product.id}
+        referenceNotes={product.notes}
+        referenceGender={product.gender}
+        onSelect={onSelect} 
+        onAddToCart={onAddToCart}
+        onToggleWishlist={onToggleWishlist}
+        wishlistItems={wishlistItems || []} 
+        user={user}
+        setCurrentPage={setCurrentPage}
+        showToast={showToast}
+      />
+      
     </div>
   );
 };
