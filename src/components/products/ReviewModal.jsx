@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { Star, X, Loader2 } from 'lucide-react';
-import { supabase } from '../../services/supabase';
 
-const ReviewModal = ({ isOpen, onClose, product, user, onReviewSubmitted, showToast }) => {
+// Notice NO supabase import! We just use the function passed in.
+const ReviewModal = ({ isOpen, onClose, product, submitNewReview, showToast }) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  if (!isOpen || !product || !user) return null;
+  if (!isOpen || !product) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,29 +23,19 @@ const ReviewModal = ({ isOpen, onClose, product, user, onReviewSubmitted, showTo
     setIsSubmitting(true);
 
     try {
-      const { error: submitError } = await supabase
-        .from('reviews')
-        .insert([{
-          product_id: product.id,
-          user_id: user.id,
-          rating: rating,
-          comment: comment.trim()
-        }]);
-
-      if (submitError) {
-        // Handle the unique constraint error if they already reviewed it
-        if (submitError.code === '23505') {
-          throw new Error('You have already reviewed this product.');
-        }
-        throw submitError;
-      }
-
+      // Use the function from our hook!
+      await submitNewReview(rating, comment);
+      
       if (showToast) showToast('Success', 'Your review has been published!');
-      onReviewSubmitted(); // Tell the parent component to refresh the reviews!
-      onClose(); // Close the modal
+      onClose();
       
     } catch (err) {
-      setError(err.message);
+      // Handle the unique constraint error
+      if (err.code === '23505') {
+        setError('You have already reviewed this product.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -71,7 +61,6 @@ const ReviewModal = ({ isOpen, onClose, product, user, onReviewSubmitted, showTo
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-          {/* Interactive Star Rating */}
           <div className="flex flex-col items-center gap-2">
             <span className="text-sm text-gray-400 uppercase tracking-widest">Overall Rating</span>
             <div className="flex gap-2">
@@ -93,7 +82,6 @@ const ReviewModal = ({ isOpen, onClose, product, user, onReviewSubmitted, showTo
             </div>
           </div>
 
-          {/* Comment Textarea */}
           <div className="flex flex-col gap-2">
             <label className="text-sm text-gray-400 uppercase tracking-widest">Your Review</label>
             <textarea

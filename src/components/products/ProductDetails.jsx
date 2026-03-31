@@ -1,52 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Star, ArrowLeft, Heart, Check, AlertCircle, Edit3, User as UserIcon } from 'lucide-react';
-import { supabase } from '../../services/supabase';
 import ReviewModal from './ReviewModal';
+import { useReviews } from '../../hooks/useReviews'; // <-- IMPORT THE HOOK
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWishlist, showToast, user, setCurrentPage }) => {
-  const [reviews, setReviews] = useState([]);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [averageRating, setAverageRating] = useState(product?.rating || 5);
-  const [currentUser, setCurrentUser] = useState(null);
-  
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Grab EVERYTHING from our new hook!
+  const { reviews, averageRating, canReview, submitNewReview } = useReviews(product?.id, product?.rating, user);
 
   const images = product?.image_urls?.length > 0 ? product.image_urls : [FALLBACK_IMAGE];
 
-  // DISCOUNT LOGIC & MATH
   const isDiscounted = product?.compare_at_price && product.compare_at_price > product.price;
   const percentOff = isDiscounted ? Math.round((1 - (product.price / product.compare_at_price)) * 100) : 0;
 
-  const fetchReviewsData = async () => {
-    if (!product) return;
-    const { data: { session } } = await supabase.auth.getSession();
-    setCurrentUser(session?.user || null);
-
-    const { data: reviewData } = await supabase
-      .from('reviews')
-      .select('*')
-      .eq('product_id', product.id)
-      .order('created_at', { ascending: false });
-
-    if (reviewData) {
-      setReviews(reviewData);
-      if (reviewData.length > 0) {
-        const total = reviewData.reduce((acc, curr) => acc + curr.rating, 0);
-        setAverageRating((total / reviewData.length).toFixed(1));
-      } else {
-        setAverageRating(product.rating || 5);
-      }
-    }
-  };
-
-  useEffect(() => { fetchReviewsData(); }, [product]);
-
   if (!product) return null;
-
-  const hasReviewed = currentUser ? reviews.some(review => review.user_id === currentUser.id) : false;
-  const canReview = currentUser && !hasReviewed;
 
   return (
     <div className="animate-fade-in w-full max-w-6xl mx-auto">
@@ -54,9 +25,8 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
         isOpen={isReviewModalOpen} 
         onClose={() => setIsReviewModalOpen(false)} 
         product={product} 
-        user={currentUser} 
+        submitNewReview={submitNewReview} // <-- PASS DOWN THE HOOK'S FUNCTION
         showToast={showToast}
-        onReviewSubmitted={fetchReviewsData} 
       />
 
       <button onClick={onBack} className="flex items-center gap-2 text-gold-400 hover:text-white mb-8 transition-colors">
@@ -64,19 +34,11 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-        
-        {/* Left: Interactive Image Gallery */}
         <div className="flex flex-col gap-4">
           <div className="relative aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 group">
-            <img 
-              src={images[activeImageIndex]} 
-              alt={product.name} 
-              className="w-full h-full object-cover transition-opacity duration-300" 
-            />
+            <img src={images[activeImageIndex]} alt={product.name} className="w-full h-full object-cover transition-opacity duration-300" />
             {isDiscounted && (
-              <span className="absolute top-4 left-4 bg-gold-400 text-black text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider shadow-lg">
-                Sale
-              </span>
+              <span className="absolute top-4 left-4 bg-gold-400 text-black text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider shadow-lg">Sale</span>
             )}
             <button 
               onClick={() => onToggleWishlist(product)}
@@ -86,16 +48,12 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
             </button>
           </div>
 
-          {/* Thumbnail Strip */}
           {images.length > 1 && (
             <div className="flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
               {images.map((img, idx) => (
                 <button 
-                  key={idx}
-                  onClick={() => setActiveImageIndex(idx)}
-                  className={`relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${
-                    activeImageIndex === idx ? 'border-gold-400 shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-white/10 hover:border-gold-400/50 opacity-60 hover:opacity-100'
-                  }`}
+                  key={idx} onClick={() => setActiveImageIndex(idx)}
+                  className={`relative w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${activeImageIndex === idx ? 'border-gold-400 shadow-[0_0_15px_rgba(212,175,55,0.3)]' : 'border-white/10 hover:border-gold-400/50 opacity-60 hover:opacity-100'}`}
                 >
                   <img src={img} alt={`Thumbnail ${idx}`} className="w-full h-full object-cover" />
                 </button>
@@ -104,7 +62,6 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
           )}
         </div>
 
-        {/* Right: Info Section */}
         <div className="flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-bold tracking-widest text-gold-400 uppercase">{product.brand}</span>
@@ -136,28 +93,22 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
             )}
           </div>
 
-          {/* DYNAMIC PRICE DISPLAY */}
           <div className="mb-8">
             <div className="flex items-center gap-4">
               <p className="text-3xl font-light text-white">₱{product.price}</p>
               {isDiscounted && (
                 <>
                   <p className="text-xl text-gray-500 line-through">₱{product.compare_at_price}</p>
-                  <span className="px-2 py-1 bg-gold-400/10 text-gold-400 border border-gold-400/30 text-xs font-bold rounded tracking-wide">
-                    {percentOff}% OFF
-                  </span>
+                  <span className="px-2 py-1 bg-gold-400/10 text-gold-400 border border-gold-400/30 text-xs font-bold rounded tracking-wide">{percentOff}% OFF</span>
                 </>
               )}
             </div>
           </div>
 
-          {/* ✨ NEW: PRODUCT DESCRIPTION ✨ */}
           {product.description && (
             <div className="mb-8">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">About the Scent</h3>
-              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">
-                {product.description}
-              </p>
+              <p className="text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{product.description}</p>
             </div>
           )}
           
@@ -165,9 +116,7 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
             <h3 className="text-sm font-bold text-white uppercase tracking-wider">Fragrance Notes</h3>
             <div className="flex flex-wrap gap-2">
               {product.notes?.map(note => (
-                <span key={note} className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm text-gray-300">
-                  {note}
-                </span>
+                <span key={note} className="px-4 py-2 bg-white/5 border border-white/10 rounded-full text-sm text-gray-300">{note}</span>
               ))}
             </div>
           </div>
@@ -194,18 +143,13 @@ const ProductDetails = ({ product, onBack, onAddToCart, onToggleWishlist, isInWi
               }
               onAddToCart(product);
             }}
-            className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all shadow-lg text-lg
-              ${product.available 
-                ? 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-gold-400/20 hover:shadow-gold-400/40' 
-                : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-80'}
-            `}
+            className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all shadow-lg text-lg ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-gold-400/20 hover:shadow-gold-400/40' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-80'}`}
           >
             {product.available ? 'Add to Cart' : 'Out of Stock'}
           </button>
         </div>
       </div>
       
-      {/* ... REVIEWS SECTION ... */}
       <div id="reviews-section" className="pt-12 border-t border-white/10">
         <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
           Customer Reviews <span className="text-sm font-normal text-gray-500 bg-white/5 px-3 py-1 rounded-full">{reviews.length}</span>

@@ -1,32 +1,37 @@
 import React, { useState } from 'react';
 import { Gem, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
-import { supabase } from '../services/supabase'; // Import the database client!
+import { supabase } from '../lib/supabase';
 
 const LoginPage = ({ setCurrentPage, showToast }) => {
+  // 1. State Management
   const [view, setView] = useState('login'); // 'login' | 'register' | 'forgot'
-  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     confirmPassword: ''
   });
-
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 2. Input Handlers
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    if (error) setError('');
+    setFormData({ 
+      ...formData, 
+      [e.target.name]: e.target.value 
+    });
+    if (error) setError(''); // Clear error when user starts typing
   };
 
   const handleGuestAccess = () => {
-    setCurrentPage('products');
+    if (setCurrentPage) setCurrentPage('products');
   };
 
+  // 3. Form Submission Logic
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    // Basic Validation
     if (!formData.email || (view !== 'forgot' && !formData.password)) {
       setError('Please fill in all required fields.');
       return;
@@ -41,46 +46,40 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
 
     try {
       if (view === 'register') {
-        // --- SUPABASE SIGN UP ---
-        const { data, error } = await supabase.auth.signUp({
+        const { error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
-        
-        if (error) throw error;
+        if (signUpError) throw signUpError;
         
         if (showToast) showToast('Success', 'Account created! You are now logged in.');
         setCurrentPage('products');
 
       } else if (view === 'login') {
-        // --- SUPABASE SIGN IN ---
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error: signInError } = await supabase.auth.signInWithPassword({
           email: formData.email,
           password: formData.password,
         });
+        if (signInError) throw signInError;
 
-        if (error) throw error;
-        
         if (showToast) showToast('Welcome Back', 'Successfully logged in.');
         setCurrentPage('products');
 
       } else if (view === 'forgot') {
-        // --- SUPABASE RESET PASSWORD ---
-        const { error } = await supabase.auth.resetPasswordForEmail(formData.email);
-        
-        if (error) throw error;
+        const { error: resetError } = await supabase.auth.resetPasswordForEmail(formData.email);
+        if (resetError) throw resetError;
         
         if (showToast) showToast('Email Sent', 'Check your inbox for the reset link.');
         setView('login');
       }
     } catch (err) {
-      // Supabase returns nice, human-readable error messages
-      setError(err.message); 
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 4. Dynamic UI Helpers
   const renderHeader = () => {
     switch(view) {
       case 'register': return { title: 'Create Account', subtitle: 'Join the luxury experience' };
@@ -97,10 +96,19 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
       {/* Background aesthetics */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold-400/10 rounded-full blur-[120px] pointer-events-none"></div>
       
-      <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
+      <div className="relative w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
         
-        {/* Header */}ava
-        <div className="text-center mb-8">
+        {/* Back button */}
+        <button
+          onClick={() => setCurrentPage('welcome')}
+          className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-gray-400 hover:text-gold-400 transition-colors group"
+        >
+          <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          Back
+        </button>
+        
+        {/* Header Section */}
+        <div className="text-center mb-8 mt-4">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold-400/10 text-gold-400 mb-4 border border-gold-400/20">
             <Gem size={32} />
           </div>
@@ -117,7 +125,7 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Email */}
+          {/* Email Input */}
           <div>
             <label className="block text-sm font-medium text-gray-400 mb-1.5">Email Address</label>
             <input 
@@ -130,7 +138,7 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
             />
           </div>
 
-          {/* Password */}
+          {/* Password Input */}
           {view !== 'forgot' && (
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
@@ -145,7 +153,7 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
             </div>
           )}
 
-          {/* Confirm Password */}
+          {/* Confirm Password (Register Only) */}
           {view === 'register' && (
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
@@ -160,20 +168,16 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
             </div>
           )}
 
-          {/* Options Row */}
+          {/* Forgot Password Link (Login Only) */}
           {view === 'login' && (
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="accent-gold-400 w-4 h-4 bg-transparent border-gray-600 rounded" />
-                <span className="text-gray-400">Remember me</span>
-              </label>
+            <div className="flex justify-end text-sm">
               <button type="button" onClick={() => { setView('forgot'); setError(''); }} className="text-gold-400 hover:text-gold-300 transition-colors">
                 Forgot password?
               </button>
             </div>
           )}
 
-          {/* Submit Button */}
+          {/* Main Action Button */}
           <button 
             type="submit"
             disabled={isLoading}
@@ -190,7 +194,7 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
           </button>
         </form>
 
-        {/* Alternate Actions */}
+        {/* Footer Actions */}
         <div className="mt-6 space-y-4">
           {view === 'forgot' ? (
             <button 
@@ -208,11 +212,11 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
                 Continue as Guest
               </button>
 
-              <div className="text-center text-sm text-gray-400 pt-2 border-t border-white/10">
+              <div className="text-center text-sm text-gray-400 pt-6 mt-4 border-t border-white/10">
                 {view === 'login' ? "Don't have an account? " : "Already have an account? "}
                 <button 
                   onClick={() => { setView(view === 'login' ? 'register' : 'login'); setError(''); }}
-                  className="text-gold-400 hover:text-gold-300 font-medium"
+                  className="text-gold-400 hover:text-gold-300 font-bold"
                 >
                   {view === 'login' ? 'Sign up free' : 'Sign in'}
                 </button>
