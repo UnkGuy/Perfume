@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase'; // <-- ADD THIS IMPORT
 
 // Pages
 import WelcomePage from './pages/WelcomePage';
@@ -7,6 +8,7 @@ import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
 import ProfilePage from './pages/ProfilePage';
 import AdminDashboard from './pages/AdminDashboard'; // <--- NEW IMPORT
+import ResetPasswordPage from './pages/ResetPasswordPage'; // <-- IMPORT THE NEW PAGE
 
 // Components
 import CartDrawer from './components/CartDrawer';
@@ -28,10 +30,34 @@ function App() {
   // 2. Simply grab all our logic from the invisible Context clouds!
   const { user, userRole, handleLogout } = useAuth(); // <--- GRAB USER ROLE HERE
   const { 
-  cartItems, addToCart, removeFromCart, clearCart, // <--- Grab it here
+  cartItems, addToCart, removeFromCart, clearCart,
   wishlistItems, toggleWishlist, 
   toasts, showToast, removeToast 
 } = useShop();
+
+  // --- PASSWORD RESET HANDLING ---
+  // This effect listens for the password recovery event from Supabase Auth
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setCurrentPage('reset-password');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // --- GUEST ACCESS CONTROL ---
+  // This function checks if a user is logged in before allowing an action.
+  // If not logged in, it redirects them to the login page.
+  const handleRestrictedAction = (action) => {
+    if (!user) {
+      showToast('Login Required', 'You need to be logged in to perform this action.', 'info');
+      setCurrentPage('login');
+    } else {
+      action();
+    }
+  };
 
   // Layout toggles
   const toggleCart = () => setIsCartOpen(!isCartOpen);
@@ -53,13 +79,34 @@ function App() {
     
 switch (currentPage) {
       case 'welcome': return <WelcomePage {...commonProps} />;
-      case 'products': return <ProductPage {...commonProps} addToCart={addToCart} toggleWishlist={toggleWishlist} />;
+      // Pass the handleRestrictedAction to the ProductPage
+      case 'products': return <ProductPage {...commonProps} addToCart={(item) => handleRestrictedAction(() => addToCart(item))} toggleWishlist={toggleWishlist} />;
       case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} clearCart={clearCart} />;
       case 'login': return <LoginPage setCurrentPage={setCurrentPage} showToast={showToast} />;
-      case 'profile': return <ProfilePage {...commonProps} />;
+      // Protect the profile page
+      case 'profile':
+        if (!user) {
+          showToast('Login Required', 'You need to be logged in to view your profile.', 'info');
+          return <LoginPage setCurrentPage={setCurrentPage} showToast={showToast} />;
+        }
+        return <ProfilePage {...commonProps} />;
       
-      // 1. TEMPORARILY UNLOCKED THE VAULT
-      case 'admin': return <AdminDashboard {...commonProps} />; 
+      // NEW: Add the route for the reset password page
+      case 'reset-password':
+        return <ResetPasswordPage 
+          setCurrentPage={setCurrentPage} 
+          showToast={showToast}
+          onPasswordUpdate={() => setCurrentPage('login')} // Redirect to login on success
+        />;
+
+      // 1. If the user is an admin, show the admin dashboard. Otherwise, redirect to the welcome page.
+      case 'admin':
+        if (userRole === 'admin') {
+          return <AdminDashboard {...commonProps} />;
+        }
+        // Redirect non-admins to the welcome page
+        showToast('Unauthorized', 'You do not have permission to access this page.', 'error');
+        return <WelcomePage {...commonProps} />;
           
       default: return <WelcomePage {...commonProps} />;
     }
@@ -69,13 +116,17 @@ switch (currentPage) {
     <div className="min-h-screen bg-rich-black text-white font-sans">
       <Toast toasts={toasts} removeToast={removeToast} />
       
-{/* 2. TEMPORARY DEV BUTTON*/}
-      <button 
-        onClick={() => setCurrentPage('admin')}
-        className="fixed bottom-6 left-6 z-[100] bg-red-500 text-white px-4 py-2 rounded-md font-bold shadow-lg hover:bg-red-600 transition-colors"
-      >
-        DEV: Go to Admin
-      </button>
+      {/* --- ADMIN-ONLY BUTTON --- */}
+      {/* This button is only visible to users with the 'admin' role. */}
+      {/* It provides a secure way to access the admin dashboard. */}
+      {userRole === 'admin' && (
+        <button
+          onClick={() => setCurrentPage('admin')}
+          className="fixed bottom-6 left-6 z-[100] bg-green-500 text-white px-4 py-2 rounded-md font-bold shadow-lg hover:bg-green-600 transition-colors"
+        >
+          Go to Admin Dashboard
+        </button>
+      )}
 
       <CartDrawer 
         isOpen={isCartOpen} 
@@ -86,6 +137,14 @@ switch (currentPage) {
         // --- ADD THESE NEW PROPS ---
         user={user}
         showToast={showToast}
+        // NEW: Use handleRestrictedAction for checkout
+        onCheckout={() => handleRestrictedAction(() => {
+          // In a real app, you'd navigate to a checkout page.
+          // For now, we'll just show a toast.
+          showToast('Success', 'Proceeding to checkout!');
+          setIsCartOpen(false); // Close the drawer
+          // setCurrentPage('checkout'); // Example of navigating to a checkout page
+        })}
       />
       
       <WishlistDrawer 

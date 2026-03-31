@@ -23,6 +23,37 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
     setCurrentPage('products');
   };
 
+  // --- NEW: Google Sign-In Handler ---
+  const handleGoogleSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message || 'Failed to sign in with Google.');
+      setIsLoading(false); // Stop loading on error
+    }
+    // Note: The page will redirect to Google, so setIsLoading(false) might not be reached on success.
+  };
+
+  // --- NEW: Facebook Sign-In Handler ---
+  const handleFacebookSignIn = async () => {
+    setError('');
+    setIsLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message || 'Failed to sign in with Facebook.');
+      setIsLoading(false); // Stop loading on error
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -42,12 +73,25 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
     try {
       if (view === 'register') {
         // --- SUPABASE SIGN UP ---
-        const { data, error } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
         });
         
-        if (error) throw error;
+        if (signUpError) throw signUpError;
+
+        // NEW: Assign the 'customer' role to the new user in the user_roles table
+        if (signUpData.user) {
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({ user_id: signUpData.user.id, role: 'customer' });
+
+          if (roleError) {
+            // Optional: Handle case where role insertion fails.
+            // For now, we'll log it and proceed.
+            console.error('Error assigning user role:', roleError);
+          }
+        }
         
         if (showToast) showToast('Success', 'Account created! You are now logged in.');
         setCurrentPage('products');
@@ -99,7 +143,7 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
       
       <div className="w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
         
-        {/* Header */}ava
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold-400/10 text-gold-400 mb-4 border border-gold-400/20">
             <Gem size={32} />
@@ -190,6 +234,18 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
           </button>
         </form>
 
+        {/* --- NEW: OR Divider --- */}
+        {view !== 'forgot' && (
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-white/10"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-rich-black px-2 text-gray-500">OR</span>
+            </div>
+          </div>
+        )}
+
         {/* Alternate Actions */}
         <div className="mt-6 space-y-4">
           {view === 'forgot' ? (
@@ -201,6 +257,33 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
             </button>
           ) : (
             <>
+              {/* --- Google Sign-In Button --- */}
+              <button
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 48 48">
+                  <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path>
+                  <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path>
+                  <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19 5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.618-3.229-11.303-7.518l-6.571 4.819C9.656 39.663 16.318 44 24 44z"></path>
+                  <path fill="#1976D2" d="M43.611 20.083H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C43.021 36.251 46 30.693 46 24c0-1.341-.138-2.65-.389-3.917z"></path>
+                </svg>
+                Sign in with Google
+              </button>
+
+              {/* --- NEW: Facebook Sign-In Button --- */}
+              <button
+                onClick={handleFacebookSignIn}
+                disabled={isLoading}
+                className="w-full py-3 bg-[#1877F2] hover:bg-[#166bda] border border-transparent text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3"
+              >
+                <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
+                  <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.005A9.963 9.963 0 0022 12z" />
+                </svg>
+                Sign in with Facebook
+              </button>
+
               <button 
                 onClick={handleGuestAccess}
                 className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/5 text-white font-medium rounded-lg transition-colors"
