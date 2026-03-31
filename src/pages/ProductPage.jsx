@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight, X, Star, Loader, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Star, Loader, ChevronDown, SlidersHorizontal, LayoutGrid, List } from 'lucide-react';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 
@@ -24,15 +24,18 @@ const ProductPage = ({
   const [selectedProduct, setSelectedProduct] = useState(null); 
   const [quickViewProduct, setQuickViewProduct] = useState(null); 
   
-  // ✨ INCREASED DEFAULT MAX PRICE TO 20000 ✨
   const [priceRange, setPriceRange] = useState({ min: 0, max: 20000 });
   const [sortOption, setSortOption] = useState('date');
   const [ratingFilter, setRatingFilter] = useState(0);
+  
+  // ✨ NEW: VIEW MODE STATE ✨
+  const [viewMode, setViewMode] = useState('large'); // 'large' | 'compact'
   
   const [selectedNotes, setSelectedNotes] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [selectedBrands, setSelectedBrands] = useState([]);
   const [selectedGender, setSelectedGender] = useState([]);
+  const [showOutOfStock, setShowOutOfStock] = useState(false);
 
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -45,7 +48,6 @@ const ProductPage = ({
   ];
   const currentSortLabel = sortOptions.find(opt => opt.value === sortOption)?.label;
 
-  // ✨ INCREASED MAX LIMIT TO 20000 ✨
   const MIN_LIMIT = 0; const MAX_LIMIT = 20000; const GAP = 50;
   const getPercent = (value) => Math.round(((value - MIN_LIMIT) / (MAX_LIMIT - MIN_LIMIT)) * 100);
 
@@ -72,16 +74,17 @@ const ProductPage = ({
   };
 
   const clearAllFilters = () => {
-    setRatingFilter(0); 
-    // ✨ ENSURE IT RESETS TO 20000 ✨
-    setPriceRange({min:0, max:20000}); 
-    setSearchQuery('');
+    setRatingFilter(0); setPriceRange({min:0, max:20000}); setSearchQuery('');
     setSelectedNotes([]); setSelectedSizes([]); setSelectedBrands([]); setSelectedGender([]);
+    setShowOutOfStock(false); // ✨ Reset this too! ✨
   };
 
   const getProcessedProducts = () => {
   let filtered = products.filter(product => {
-      if (!product.available) return false; 
+      // ✨ NEW: Only hide unavailable products if the toggle is OFF ✨
+      if (!showOutOfStock && !product.available) return false; 
+      
+      if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) && !product.brand.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) && !product.brand.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       if (product.rating < ratingFilter) return false;
       if (product.price < priceRange.min || product.price > priceRange.max) return false;
@@ -103,6 +106,11 @@ const ProductPage = ({
   const processedProducts = getProcessedProducts();
   const hasActiveFilters = ratingFilter > 0 || priceRange.min > 0 || searchQuery || selectedNotes.length > 0 || selectedSizes.length > 0 || selectedBrands.length > 0;
 
+  // ✨ NEW: DYNAMIC GRID CLASSES BASED ON VIEW MODE ✨
+  const gridClasses = viewMode === 'compact'
+    ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 relative z-0"
+    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative z-0";
+
   return (
     <div className="min-h-screen bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
       <div className="relative z-50">
@@ -113,14 +121,14 @@ const ProductPage = ({
         />
       </div>
 
-      <div className="container mx-auto px-6 py-24 max-w-7xl">
+      <div className="container mx-auto px-6 py-24 max-w-[1600px]">
         {!selectedProduct && (
           <PredictiveSearch products={products} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSelectProduct={setSelectedProduct} />
         )}
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-12">
           {!selectedProduct && (
-            <aside className="w-full lg:w-72 flex-shrink-0">
+            <aside className="w-full lg:w-72 flex-shrink-0 relative z-20">
               <button
                 onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                 className="w-full flex items-center justify-between bg-black/40 border border-gold-400/30 p-4 rounded-xl text-gold-400 font-bold hover:bg-white/5 transition-colors mb-4 shadow-lg"
@@ -143,6 +151,8 @@ const ProductPage = ({
                   selectedBrands={selectedBrands} setSelectedBrands={setSelectedBrands}
                   clearAllFilters={clearAllFilters} hasActiveFilters={hasActiveFilters}
                   MIN_LIMIT={MIN_LIMIT} MAX_LIMIT={MAX_LIMIT}
+                  showOutOfStock={showOutOfStock}           // ✨ ADD THIS
+                  setShowOutOfStock={setShowOutOfStock}     // ✨ ADD THIS
                 />
               </div>
             </aside>
@@ -156,30 +166,49 @@ const ProductPage = ({
               </div>
             ) : selectedProduct ? (
               <ProductDetails 
-  product={selectedProduct} 
-  onBack={() => setSelectedProduct(null)}
-  onAddToCart={(product) => {
-    addToCart(product);
-    setSelectedProduct(null);
-  }}
-  onToggleWishlist={toggleWishlist}
-  isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
-  showToast={showToast}
-  user={user}
-  setCurrentPage={setCurrentPage}
-  // --- ADD THESE TWO LINES ---
-  onSelect={setSelectedProduct} 
-  wishlistItems={wishlistItems}
-/>
+                product={selectedProduct} 
+                onBack={() => setSelectedProduct(null)}
+                onAddToCart={(product) => {
+                  addToCart(product);
+                  setSelectedProduct(null);
+                }}
+                onToggleWishlist={toggleWishlist}
+                isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
+                showToast={showToast}
+                user={user}
+                setCurrentPage={setCurrentPage}
+                onSelect={setSelectedProduct} 
+                wishlistItems={wishlistItems}
+              />
             ) : (
               <>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-40 animate-fade-in">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-10 animate-fade-in">
                   <div>
                     <h2 className="text-3xl font-bold text-white mb-1">All Perfumes</h2>
                     <p className="text-gray-500 text-sm">Showing {processedProducts.length} luxury scents</p>
                   </div>
 
-                  <div className="relative w-full md:w-auto flex justify-start md:justify-end">
+                  <div className="relative w-full md:w-auto flex flex-wrap items-center justify-start md:justify-end gap-3">
+                    
+                    {/* ✨ NEW: VIEW MODE TOGGLE ✨ */}
+                    <div className="flex items-center bg-black/40 border border-gold-400/30 rounded-lg p-1">
+                      <button
+                        onClick={() => setViewMode('large')}
+                        className={`p-1.5 rounded transition-colors ${viewMode === 'large' ? 'bg-gold-400 text-black' : 'text-gray-500 hover:text-white'}`}
+                        title="Large Grid View"
+                      >
+                        <LayoutGrid size={18} />
+                      </button>
+                      <button
+                        onClick={() => setViewMode('compact')}
+                        className={`p-1.5 rounded transition-colors ${viewMode === 'compact' ? 'bg-gold-400 text-black' : 'text-gray-500 hover:text-white'}`}
+                        title="Compact View"
+                      >
+                        <List size={18} />
+                      </button>
+                    </div>
+
+                    {/* Sort Dropdown */}
                     <div className="relative">
                       <button 
                         onClick={() => setIsSortOpen(!isSortOpen)} onBlur={() => setTimeout(() => setIsSortOpen(false), 200)} 
@@ -190,7 +219,7 @@ const ProductPage = ({
                       </button>
 
                       {isSortOpen && (
-                        <div className="absolute left-0 md:left-auto md:right-0 top-full mt-2 w-48 bg-rich-black border border-gold-400/30 rounded-lg shadow-2xl overflow-hidden animate-fade-in">
+                        <div className="absolute left-0 md:left-auto md:right-0 top-full mt-2 w-48 bg-rich-black border border-gold-400/30 rounded-lg shadow-2xl overflow-hidden animate-fade-in z-50">
                           {sortOptions.map((option) => (
                             <div 
                               key={option.value}
@@ -206,14 +235,22 @@ const ProductPage = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 relative z-10">
+                {/* ✨ DYNAMIC GRID ✨ */}
+                <div className={gridClasses}>
                   {processedProducts.length > 0 ? (
                     processedProducts.map(product => (
                       <ProductCard 
-                        key={product.id} product={product} onSelect={setSelectedProduct} onAddToCart={addToCart}
-                        onQuickView={setQuickViewProduct} onToggleWishlist={toggleWishlist}
+                        key={product.id} 
+                        product={product} 
+                        onSelect={setSelectedProduct} 
+                        onAddToCart={addToCart}
+                        onQuickView={setQuickViewProduct} 
+                        onToggleWishlist={toggleWishlist}
                         isInWishlist={wishlistItems?.some(item => item.id === product.id)}
-                        user={user} setCurrentPage={setCurrentPage} showToast={showToast}
+                        user={user} 
+                        setCurrentPage={setCurrentPage} 
+                        showToast={showToast}
+                        isCompact={viewMode === 'compact'} // Pass the state down!
                       />
                     ))
                   ) : (

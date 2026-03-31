@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { loginAPI, registerAPI, resetPasswordAPI } from '../services/authApi';
+import { loginAPI, registerAPI, resetPasswordAPI, fetchUserRoleAPI } from '../services/authApi';
 
 export const useAuthForm = (showToast, setCurrentPage) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,10 +25,19 @@ export const useAuthForm = (showToast, setCurrentPage) => {
         await registerAPI(formData.email, formData.password);
         if (showToast) showToast('Success', 'Account created! You are now logged in.');
         setCurrentPage('products');
+        
       } else if (view === 'login') {
-        await loginAPI(formData.email, formData.password);
+        // 1. Log the user in and get their data
+        const data = await loginAPI(formData.email, formData.password);
+        
+        // 2. Instantly check if they are an admin
+        const role = await fetchUserRoleAPI(data.user.id);
+        
         if (showToast) showToast('Welcome Back', 'Successfully logged in.');
-        setCurrentPage('products');
+        
+        // 3. Route them to the correct page!
+        setCurrentPage(role === 'admin' ? 'admin' : 'products');
+        
       } else if (view === 'forgot') {
         await resetPasswordAPI(formData.email);
         if (showToast) showToast('Email Sent', 'Check your inbox for the reset link.');

@@ -1,8 +1,7 @@
 import React from 'react';
-import { Filter, Star, Droplets, Ruler, User } from 'lucide-react';
-
-// Make sure your data/products.js has these arrays exported!
+import { Filter, Star, Droplets, Ruler, User, PackageX } from 'lucide-react'; 
 import { scentNotes, bottleSizes } from '../../data/products'; 
+
 
 const ProductFilters = ({ 
   ratingFilter, setRatingFilter, 
@@ -13,7 +12,9 @@ const ProductFilters = ({
   selectedBrands, setSelectedBrands,
   clearAllFilters,
   hasActiveFilters,
-  MIN_LIMIT, MAX_LIMIT
+  MIN_LIMIT, MAX_LIMIT,
+  showOutOfStock,      // ✨ ADD THIS
+  setShowOutOfStock    // ✨ ADD THIS
 }) => {
 
   const brands = ['Chanel', 'Dior', 'Tom Ford', 'Versace'];
@@ -26,7 +27,8 @@ const ProductFilters = ({
 
   return (
     <aside className="w-full lg:w-72 flex-shrink-0 space-y-6 animate-slide-in">
-      <div className="bg-white/5 border border-white/5 rounded-2xl p-6 backdrop-blur-sm sticky top-24 max-h-[85vh] overflow-y-auto custom-scrollbar">
+      {/* ✨ REMOVED 'sticky top-24 max-h-[85vh] overflow-y-auto' ✨ */}
+      <div className="bg-white/5 border border-white/5 rounded-2xl p-6 backdrop-blur-sm">
         
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -66,7 +68,7 @@ const ProductFilters = ({
           </div>
         </div>
 
-        {/* 🛠️ FIXED: Price Range Slider 🛠️ */}
+        {/* Price Range Slider */}
         <div className="mb-8">
           <h4 className="font-medium text-white mb-4">Price Range</h4>
           
@@ -82,19 +84,14 @@ const ProductFilters = ({
             </div>
           </div>
           
-          {/* The Slider Container */}
           <div className="relative h-1 w-full bg-gray-700 rounded-full mb-4 mt-4">
-            {/* The Gold Fill */}
             <div className="absolute h-full bg-gold-400 rounded-full z-10" style={{ left: `${getPercent(priceRange.min)}%`, width: `${getPercent(priceRange.max) - getPercent(priceRange.min)}%` }}></div>
-            
-            {/* Native Input Min */}
             <input 
               type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.min} onChange={(e) => handleSliderChange(e, 'min')} 
               className="absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-20
                 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer
                 [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold-400 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer" 
             />
-            {/* Native Input Max */}
             <input 
               type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.max} onChange={(e) => handleSliderChange(e, 'max')} 
               className="absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-30
@@ -126,7 +123,8 @@ const ProductFilters = ({
             <Droplets size={16} className="text-gold-400" />
             <h4>Fragrance Notes</h4>
           </div>
-          <div className="h-40 overflow-y-auto pr-2 custom-scrollbar grid grid-cols-1 gap-2">
+          {/* Changed this to a normal div so it expands fully */}
+          <div className="grid grid-cols-1 gap-2">
             {scentNotes.map(note => (
               <div key={note} className="flex items-center gap-2">
                 <input type="checkbox" id={note} checked={selectedNotes.includes(note)} onChange={() => toggleFilter(note, selectedNotes, setSelectedNotes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
@@ -165,6 +163,26 @@ const ProductFilters = ({
                 <label htmlFor={brand} className="text-sm cursor-pointer hover:text-gold-400">{brand}</label>
               </div>
             ))}
+          </div>
+        </div>
+        
+        {/* ✨ NEW: Availability Toggle ✨ */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3 text-white font-medium">
+            <PackageX size={16} className="text-gold-400" />
+            <h4>Availability</h4>
+          </div>
+          <div className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              id="outOfStock" 
+              checked={showOutOfStock} 
+              onChange={(e) => setShowOutOfStock(e.target.checked)} 
+              className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" 
+            />
+            <label htmlFor="outOfStock" className="text-sm cursor-pointer hover:text-gold-400">
+              Include Out of Stock
+            </label>
           </div>
         </div>
         

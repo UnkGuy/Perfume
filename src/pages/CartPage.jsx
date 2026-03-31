@@ -8,7 +8,10 @@ import EmptyCart from '../components/cart/EmptyCart';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 import SuggestedProducts from '../components/common/SuggestedProducts';
-import { useShop } from '../contexts/ShopContext'; // <-- ADD THIS IMPORT
+
+// Hook
+import { useShop } from '../contexts/ShopContext';
+
 const CartPage = ({ 
   setCurrentPage, cartItems, removeFromCart, clearCart, 
   wishlistItems, onCartClick, onWishlistClick, 
@@ -16,8 +19,7 @@ const CartPage = ({
   user, userRole, handleLogout, showToast
 }) => {
   
-  // <-- ADD THIS LINE RIGHT HERE -->
-  const { addToCart } = useShop(); 
+  const { addToCart } = useShop();
 
   // --- STATE ---
   const [localItems, setLocalItems] = useState([]);
@@ -58,6 +60,10 @@ const CartPage = ({
   };
 
   const hasUnavailableItems = localItems.some(item => !item.available);
+
+  // --- AGGREGATE NOTES FOR RECOMMENDATIONS ---
+  const cartNotes = localItems.flatMap(item => item.notes || []);
+  const cartGender = localItems.length > 0 ? localItems[0].gender : 'Unisex';
   
   // --- RENDER EMPTY STATE ---
   if (localItems.length === 0) {
@@ -77,25 +83,25 @@ const CartPage = ({
     );
   }
 
-  // --- NEW: AGGREGATE NOTES FOR RECOMMENDATIONS ---
-  // Combine all notes from all items in the cart into one array
-  const cartNotes = localItems.flatMap(item => item.notes || []);
-  // Grab the gender of the first item as a baseline (or default to Unisex)
-  const cartGender = localItems.length > 0 ? localItems[0].gender : 'Unisex';
-  
   // --- RENDER FULL CART ---
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
       <div className="relative z-50">
         <Header 
-          setCurrentPage={setCurrentPage} cartItems={cartItems} wishlistItems={wishlistItems}
-          onCartClick={onCartClick} onWishlistClick={onWishlistClick}
-          searchQuery={searchQuery} setSearchQuery={setSearchQuery}
-          user={user} userRole={userRole} handleLogout={handleLogout} 
+          setCurrentPage={setCurrentPage} 
+          cartItems={cartItems} 
+          wishlistItems={wishlistItems}
+          onCartClick={onCartClick}
+          onWishlistClick={onWishlistClick}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          user={user}                 
+          userRole={userRole} 
+          handleLogout={handleLogout} 
         />
       </div>
       
-      <div className="flex-1 container mx-auto px-6 py-32 max-w-6xl">
+      <div className="flex-1 container mx-auto px-6 py-32 max-w-[1600px]">
         <div className="mb-12">
           <h1 className="text-4xl font-bold mb-2">Your Selected Items</h1>
           <p className="text-gray-400">Review your items before messaging the seller</p>
@@ -105,8 +111,12 @@ const CartPage = ({
           <div className="flex-1 space-y-6">
             {localItems.map((item, index) => (
               <CartItem 
-                key={index} item={item} index={index} 
-                handleQuantity={handleQuantity} handleRemove={handleRemove} setCurrentPage={setCurrentPage} 
+                key={index} 
+                item={item} 
+                index={index} 
+                handleQuantity={handleQuantity} 
+                handleRemove={handleRemove} 
+                setCurrentPage={setCurrentPage} 
               />
             ))}
 
@@ -116,27 +126,34 @@ const CartPage = ({
           </div>
 
           <CartSummary 
-            localItems={localItems} calculateTotal={calculateTotal}
-            hasUnavailableItems={hasUnavailableItems} user={user}
-            showToast={showToast} setCurrentPage={setCurrentPage}
-            onCheckoutSuccess={() => { setLocalItems([]); if (clearCart) clearCart(); }}
+            localItems={localItems}
+            calculateTotal={calculateTotal}
+            hasUnavailableItems={hasUnavailableItems}
+            user={user}
+            showToast={showToast}
+            setCurrentPage={setCurrentPage}
+            onCheckoutSuccess={() => {
+              setLocalItems([]);
+              if (clearCart) clearCart(); 
+            }}
           />
         </div>
 
-        {/* --- NEW: SUGGESTED PRODUCTS IN CART --- */}
+        {/* --- SUGGESTED PRODUCTS --- */}
         <SuggestedProducts 
-          currentProductId={null} // Pass null so it doesn't filter out anything unnecessarily 
+          currentProductId={null} 
           referenceNotes={cartNotes}
           referenceGender={cartGender}
-          onSelect={(product) => setCurrentPage('products')} // Route them back to shop to view it
-          onAddToCart={addToCart} // Let them add directly from cart page!
+          onSelect={(product) => setCurrentPage('products')} 
+          onAddToCart={addToCart} 
           wishlistItems={wishlistItems}
           user={user}
           setCurrentPage={setCurrentPage}
           showToast={showToast}
         />
-
+        
       </div>
+      
       <Footer />
     </div>
   );

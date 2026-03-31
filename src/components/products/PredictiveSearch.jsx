@@ -17,8 +17,7 @@ const PredictiveSearch = ({
     .slice(0, 5);
 
   return (
-    // ✨ CHANGED z-40 to z-[60] HERE ✨
-    <div className="relative max-w-2xl mx-auto mb-12 group animate-fade-in z-[60]">
+    <div className="relative max-w-2xl mx-auto mb-12 group animate-fade-in z-[100]">
       <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gold-400 transition-colors group-hover:text-gold-300" size={20} />
       
       {searchQuery && (
@@ -44,7 +43,7 @@ const PredictiveSearch = ({
       />
 
       {showSuggestions && searchQuery && searchSuggestions.length > 0 && (
-        <div className="absolute top-full left-0 w-full mt-2 bg-rich-black border border-gold-400/30 rounded-xl shadow-2xl overflow-hidden animate-slide-in z-[100]">
+        <div className="absolute top-full left-0 w-full mt-2 bg-rich-black border border-gold-400/30 rounded-xl shadow-2xl overflow-hidden animate-slide-in">
           {searchSuggestions.map(suggestion => (
             <div 
               key={suggestion.id}
