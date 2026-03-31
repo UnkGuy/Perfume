@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, User, Search, Menu, X, Heart } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext'; // <-- ADD THIS LINE
 
 const Header = ({ 
   setCurrentPage, 

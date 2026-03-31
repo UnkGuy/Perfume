@@ -1,27 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchUserOrdersAPI } from '../services/orderApi';
 
 export const useUserOrders = (userId) => {
-  const [orderHistory, setOrderHistory] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, isLoading } = useQuery({
+    // Create a unique cache just for this specific user
+    queryKey: ['userOrders', userId],
+    queryFn: () => fetchUserOrdersAPI(userId),
+    // Only run this query if a userId actually exists
+    enabled: !!userId,
+  });
 
-  useEffect(() => {
-    if (!userId) return;
-
-    const loadOrders = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchUserOrdersAPI(userId);
-        setOrderHistory(data || []);
-      } catch (error) {
-        console.error("Error fetching history:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadOrders();
-  }, [userId]);
-
-  return { orderHistory, isLoading };
+  return { 
+    orderHistory: data || [], 
+    isLoading 
+  };
 };

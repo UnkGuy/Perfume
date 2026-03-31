@@ -1,44 +1,36 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchOrdersAPI, updateOrderStatusAPI } from '../services/orderApi';
 
 export const useOrders = (showToast) => {
-  const [orders, setOrders] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const loadOrders = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await fetchOrdersAPI();
-      setOrders(data || []);
-    } catch (err) {
-      console.error("Error fetching orders:", err);
-      if (showToast) showToast('Error', 'Could not load orders.', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
+  // 1. Fetch the data
+  const { data: orders, isLoading } = useQuery({
+    queryKey: ['adminOrders'],
+    queryFn: fetchOrdersAPI,
+  });
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
-
-  const changeOrderStatus = async (orderId, newStatus) => {
-    try {
-      await updateOrderStatusAPI(orderId, newStatus);
-      
-      // Optimistic Update: Update the local state instantly without refetching from DB
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === orderId ? { ...order, status: newStatus } : order
-        )
-      );
-      
-      if (showToast) showToast('Success', `Order #${orderId} marked as ${newStatus}`);
-    } catch (err) {
-      console.error(err);
+  // 2. Setup the mutation to change status
+  const statusMutation = useMutation({
+    mutationFn: ({ orderId, newStatus }) => updateOrderStatusAPI(orderId, newStatus),
+    onSuccess: (_, variables) => {
+      // Refresh the table instantly!
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      if (showToast) showToast('Success', `Order #${variables.orderId} updated to ${variables.newStatus}`);
+    },
+    onError: () => {
       if (showToast) showToast('Error', 'Failed to update status', 'error');
     }
+  });
+
+  // 3. The function we expose to the UI
+  const changeOrderStatus = async (orderId, newStatus) => {
+    await statusMutation.mutateAsync({ orderId, newStatus });
   };
 
-  return { orders, isLoading, changeOrderStatus };
+  return { 
+    orders: orders || [], 
+    isLoading, 
+    changeOrderStatus 
+  };
 };

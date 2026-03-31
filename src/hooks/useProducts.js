@@ -1,36 +1,45 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchProductsAPI, saveProductAPI, deleteProductAPI } from '../services/productApi';
 
-export const useProducts = (showToast) => {
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const useProducts = () => {
+  const queryClient = useQueryClient();
 
-  const loadProducts = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const data = await fetchProductsAPI();
-      setProducts(data || []);
-    } catch (err) {
-      console.error(err);
-      if (showToast) showToast('Error', 'Could not load products', 'error');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [showToast]);
+  // 1. FETCH PRODUCTS (Same as the storefront!)
+  const { data: products, isLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProductsAPI,
+  });
 
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  // 2. SAVE PRODUCT MUTATION
+  const saveMutation = useMutation({
+    mutationFn: ({ payload, id }) => saveProductAPI(payload, id),
+    onSuccess: () => {
+      // Tell the cache to refresh the 'products' list instantly
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
 
+  // 3. DELETE PRODUCT MUTATION
+  const deleteMutation = useMutation({
+    mutationFn: (id) => deleteProductAPI(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+
+  // Helper functions to expose to your UI
   const saveProduct = async (payload, id = null) => {
-    await saveProductAPI(payload, id);
-    await loadProducts(); // Refresh list automatically
+    await saveMutation.mutateAsync({ payload, id });
   };
 
   const deleteProduct = async (id) => {
-    await deleteProductAPI(id);
-    await loadProducts(); // Refresh list automatically
+    await deleteMutation.mutateAsync(id);
   };
 
-  return { products, isLoading, saveProduct, deleteProduct };
+  return { 
+    products: products || [], 
+    isLoading, 
+    saveProduct, 
+    deleteProduct 
+  };
 };

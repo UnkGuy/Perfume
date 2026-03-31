@@ -1,26 +1,16 @@
-import { useState, useEffect } from 'react';
-import { fetchProductsAPI } from '../services/productApi'; // Reusing the admin API!
+import { useQuery } from '@tanstack/react-query';
+import { fetchProductsAPI } from '../services/productApi'; 
 
-export const useStoreProducts = (showToast) => {
-  const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const useStoreProducts = () => {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['products'],           // The unique "name" for this cache
+    queryFn: fetchProductsAPI,        // The service function to call
+    staleTime: 1000 * 60 * 5,         // Keep data fresh for 5 minutes without hitting Supabase
+  });
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchProductsAPI();
-        setProducts(data || []);
-      } catch (error) {
-        console.error("Error fetching products:", error);
-        if(showToast) showToast("Error", "Could not load products. Please try again.", "error");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProducts();
-  }, [showToast]);
-
-  return { products, isLoading };
+  return { 
+    products: data || [], 
+    isLoading, 
+    isError 
+  };
 };

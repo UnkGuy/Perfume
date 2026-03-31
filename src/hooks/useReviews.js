@@ -1,41 +1,44 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchReviewsAPI, submitReviewAPI } from '../services/reviewApi';
 
 export const useReviews = (productId, fallbackRating, user) => {
-  const [reviews, setReviews] = useState([]);
-  const [averageRating, setAverageRating] = useState(fallbackRating || 5);
+  const queryClient = useQueryClient();
 
-  const loadReviews = useCallback(async () => {
-    if (!productId) return;
-    
-    try {
-      const reviewData = await fetchReviewsAPI(productId);
-      if (reviewData) {
-        setReviews(reviewData);
-        if (reviewData.length > 0) {
-          const total = reviewData.reduce((acc, curr) => acc + curr.rating, 0);
-          setAverageRating((total / reviewData.length).toFixed(1));
-        } else {
-          setAverageRating(fallbackRating || 5);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to load reviews:", error);
+  // 1. Fetch reviews for this specific product
+  const { data: reviews } = useQuery({
+    queryKey: ['reviews', productId],
+    queryFn: () => fetchReviewsAPI(productId),
+    enabled: !!productId,
+  });
+
+  const reviewList = reviews || [];
+  
+  // 2. Automatically calculate average rating
+  const averageRating = reviewList.length > 0 
+    ? (reviewList.reduce((acc, curr) => acc + curr.rating, 0) / reviewList.length).toFixed(1)
+    : (fallbackRating || 5);
+
+  // 3. Setup the mutation to post a new review
+  const submitMutation = useMutation({
+    mutationFn: ({ rating, comment }) => submitReviewAPI(productId, user.id, rating, comment),
+    onSuccess: () => {
+      // Invalidate just THIS product's reviews to refresh the list below the product
+      queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
     }
-  }, [productId, fallbackRating]);
-
-  useEffect(() => {
-    loadReviews();
-  }, [loadReviews]);
+  });
 
   const submitNewReview = async (rating, comment) => {
     if (!user) throw new Error("Must be logged in to review.");
-    await submitReviewAPI(productId, user.id, rating, comment.trim());
-    await loadReviews(); // Refresh reviews instantly
+    await submitMutation.mutateAsync({ rating, comment });
   };
 
-  const hasReviewed = user ? reviews.some(review => review.user_id === user.id) : false;
+  const hasReviewed = user ? reviewList.some(r => r.user_id === user.id) : false;
   const canReview = user && !hasReviewed;
 
-  return { reviews, averageRating, canReview, submitNewReview };
+  return { 
+    reviews: reviewList, 
+    averageRating, 
+    canReview, 
+    submitNewReview 
+  };
 };

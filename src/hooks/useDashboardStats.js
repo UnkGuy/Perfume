@@ -1,24 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { fetchDashboardStatsAPI } from '../services/statsApi';
 
 export const useDashboardStats = () => {
-  const [stats, setStats] = useState({ inquiries: 0, revenue: 0, activeUsers: 0, outOfStock: 0 });
-  const [isLoading, setIsLoading] = useState(true);
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: fetchDashboardStatsAPI,
+    staleTime: 1000 * 60 * 15, // Cache these heavy calculations for 15 minutes
+  });
 
-  useEffect(() => {
-    const loadStats = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchDashboardStatsAPI();
-        setStats(data);
-      } catch (error) {
-        console.error("Failed to fetch dashboard stats", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadStats();
-  }, []);
-
-  return { stats, isLoading };
+  return { 
+    stats: data || { inquiries: 0, revenue: 0, activeUsers: 0, outOfStock: 0 }, 
+    isLoading 
+  };
 };
