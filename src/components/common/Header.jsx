@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, User, Search, Menu, X, Heart } from 'lucide-react';
-import { useShop } from '../../contexts/ShopContext'; // <-- ADD THIS LINE
+import { useShop } from '../../contexts/ShopContext'; 
 
 const Header = ({ 
   setCurrentPage, 
@@ -11,7 +11,7 @@ const Header = ({
   searchQuery,
   setSearchQuery,
   user,           
-  userRole,       // <--- ADD THIS
+  userRole,       
   handleLogout    
 }) => {
   const { showToast } = useShop();
@@ -19,16 +19,12 @@ const Header = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false); 
   
-  // --- DEBOUNCE LOGIC ---
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
 
-  // Keep local search in sync if global search changes externally
   useEffect(() => {
     setLocalSearch(searchQuery || '');
   }, [searchQuery]);
 
-  // The actual debounce timer
-  // The actual debounce timer
   useEffect(() => {
     const timer = setTimeout(() => {
       if (setSearchQuery) {
@@ -52,7 +48,6 @@ const Header = ({
 
   const handleSearchChange = (e) => {
     setLocalSearch(e.target.value);
-    // Auto-jump to products page immediately so they see the results load
     if (e.target.value.length > 0 && setCurrentPage) {
       setCurrentPage('products'); 
     }
@@ -64,12 +59,21 @@ const Header = ({
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="flex justify-between items-center">
             
-            {/* Logo */}
-            <div className="cursor-pointer group" onClick={() => setCurrentPage('welcome')}>
-              <h1 className="text-2xl font-bold tracking-widest text-white group-hover:text-gold-400 transition-colors">
-                KL<span className="text-gold-400">SCENTS</span>
-              </h1>
-            </div>
+            <div className="cursor-pointer group flex items-center gap-3" onClick={() => setCurrentPage('welcome')}>
+  <img 
+    src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" 
+    alt="KL Scents" 
+    className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover:border-gold-400/50 transition-colors shadow-lg"
+  />
+  <div className="hidden sm:flex flex-col leading-tight">
+    <h1 className="text-xl font-bold tracking-widest text-white group-hover:text-gold-400 transition-colors">
+      KL<span className="text-gold-400">SCENTS</span>
+    </h1>
+    <span className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-medium -mt-1 group-hover:text-white transition-colors">
+      Philippines
+    </span>
+  </div>
+</div>
 
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
@@ -84,7 +88,6 @@ const Header = ({
             {/* Icons */}
             <div className="flex items-center space-x-4 md:space-x-6">
               
-              {/* --- SEARCH BAR TOGGLE --- */}
               <div className="relative flex items-center">
                 {isSearchOpen && (
                   <input 
@@ -123,34 +126,30 @@ const Header = ({
               </button>
 
               {/* SMART USER ICON */}
-{user ? (
-  <div className="relative group flex items-center gap-2">
-    {/* Logged in icon */}
-    <button 
-      onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} 
-      className="text-gray-300 hover:text-gold-400 transition-colors py-2"
-    >
-      <User size={20} />
-    </button>
-    
-    <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
-      
-      {/* --- SECRET ADMIN BUTTON --- */}
-      {userRole === 'admin' && (
-        <button 
-          onClick={() => setCurrentPage('admin')}
-          className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5"
-        >
-          Dashboard
-        </button>
-      )}
-
-      <button 
-        onClick={() => setCurrentPage('profile')}
-        className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5"
-      >
-        My Account
-      </button>
+              {user ? (
+                <div className="relative group flex items-center gap-2">
+                  <button 
+                    onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} 
+                    className="text-gray-300 hover:text-gold-400 transition-colors py-2"
+                  >
+                    <User size={20} />
+                  </button>
+                  
+                  <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                    {userRole === 'admin' && (
+                      <button 
+                        onClick={() => setCurrentPage('admin')}
+                        className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5"
+                      >
+                        Dashboard
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setCurrentPage('profile')}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5"
+                    >
+                      My Account
+                    </button>
                     <button 
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors"
@@ -166,23 +165,23 @@ const Header = ({
               )}
 
               {/* Cart Icon */}
-<button 
-  onClick={(e) => { 
-    e.preventDefault(); 
-    if (!user) {
-       setCurrentPage('login'); // Send guests to login!
-       if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
-       return;
-    }
-    if (onCartClick) onCartClick(); 
-    else setCurrentPage('cart'); 
-  }}
->
-  <ShoppingBag size={20} />
-  {cartItems && cartItems.length > 0 && (
-    <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full animate-bounce">
-      {cartItems.length}
-    </span>
+              <button 
+                onClick={(e) => { 
+                  e.preventDefault(); 
+                  if (!user) {
+                     setCurrentPage('login'); 
+                     if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
+                     return;
+                  }
+                  if (onCartClick) onCartClick(); 
+                  else setCurrentPage('cart'); 
+                }}
+              >
+                <ShoppingBag size={20} />
+                {cartItems && cartItems.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full animate-bounce">
+                    {cartItems.length}
+                  </span>
                 )}
               </button>
 
