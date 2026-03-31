@@ -18,7 +18,6 @@ export const fetchDashboardStatsAPI = async () => {
     .gte('created_at', thirtyDaysAgo.toISOString())
     .order('created_at', { ascending: true });
 
-  // 3. Group the orders by day for the chart
   const chartDataMap = {};
   recentOrders?.forEach(order => {
     const date = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -26,11 +25,37 @@ export const fetchDashboardStatsAPI = async () => {
     chartDataMap[date] += order.total_amount;
   });
 
-  // Convert map to an array for Recharts
   const chartData = Object.keys(chartDataMap).map(date => ({
     name: date,
     revenue: chartDataMap[date]
   }));
 
-  return { inquiries: inquiries || 0, revenue, activeUsers: activeUsers || 0, outOfStock: outOfStock || 0, chartData };
+  // ✨ 3. NEW: Fetch Best Sellers for the Pie Chart ✨
+  const { data: orderItems } = await supabase
+    .from('order_items')
+    .select(`quantity, products ( name )`); // Join with products table to get names!
+
+  const productSales = {};
+  if (orderItems) {
+    orderItems.forEach(item => {
+      const prodName = item.products?.name || 'Unknown Scent';
+      if (!productSales[prodName]) productSales[prodName] = 0;
+      productSales[prodName] += item.quantity;
+    });
+  }
+
+  // Convert to an array, sort by highest sold, and take the top 5
+  const bestSellers = Object.keys(productSales)
+    .map(name => ({ name, value: productSales[name] }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+
+  return { 
+    inquiries: inquiries || 0, 
+    revenue, 
+    activeUsers: activeUsers || 0, 
+    outOfStock: outOfStock || 0, 
+    chartData, 
+    bestSellers // Pass it to the frontend
+  };
 };
