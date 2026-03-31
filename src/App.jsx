@@ -68,14 +68,6 @@ switch (currentPage) {
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans">
       <Toast toasts={toasts} removeToast={removeToast} />
-      
-{/* 2. TEMPORARY DEV BUTTON*/}
-      <button 
-        onClick={() => setCurrentPage('admin')}
-        className="fixed bottom-6 left-6 z-[100] bg-red-500 text-white px-4 py-2 rounded-md font-bold shadow-lg hover:bg-red-600 transition-colors"
-      >
-        DEV: Go to Admin
-      </button>
 
       <CartDrawer 
         isOpen={isCartOpen} 

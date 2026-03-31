@@ -45,7 +45,7 @@ const PredictiveSearch = ({
 
       {/* PREDICTIVE DROPDOWN MENU */}
       {showSuggestions && searchQuery && searchSuggestions.length > 0 && (
-        <div className="absolute top-full left-0 w-full mt-2 bg-rich-black border border-gold-400/30 rounded-xl shadow-2xl overflow-hidden animate-slide-in">
+        <div className="absolute top-full left-0 w-full mt-2 bg-rich-black border border-gold-400/30 rounded-xl shadow-2xl overflow-hidden animate-slide-in z-[100]">
           {searchSuggestions.map(suggestion => (
             <div 
               key={suggestion.id}

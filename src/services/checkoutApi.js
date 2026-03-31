@@ -1,6 +1,28 @@
 import { supabase } from './supabase';
 
 export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo) => {
+  // --- ANTI-SPAM CHECK ---
+  // Fetch the user's most recent order
+  const { data: recentOrder } = await supabase
+    .from('orders')
+    .select('created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (recentOrder) {
+    const lastOrderTime = new Date(recentOrder.created_at).getTime();
+    const currentTime = new Date().getTime();
+    const timeDifference = currentTime - lastOrderTime;
+
+    // If less than 60 seconds (60000ms) have passed, block the request
+    if (timeDifference < 60000) {
+      throw new Error("Please wait a minute before placing another inquiry.");
+    }
+  }
+  // --- END ANTI-SPAM CHECK ---
+
   // 1. Create the Order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
