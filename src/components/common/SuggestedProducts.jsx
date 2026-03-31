@@ -1,6 +1,6 @@
 import React from 'react';
 import { useStoreProducts } from '../../hooks/useStoreProducts';
-import ProductCard from './ProductCard';
+import ProductCard from '../products/ProductCard';
 
 const SuggestedProducts = ({ 
   currentProductId, 

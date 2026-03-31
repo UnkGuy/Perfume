@@ -7,6 +7,7 @@ import Footer from '../components/common/Footer';
 import EmptyCart from '../components/cart/EmptyCart';
 import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
+import SuggestedProducts from '../components/common/SuggestedProducts';
 
 const CartPage = ({ 
   setCurrentPage, cartItems, removeFromCart, clearCart, 
@@ -73,21 +74,21 @@ const CartPage = ({
     );
   }
 
+  // --- NEW: AGGREGATE NOTES FOR RECOMMENDATIONS ---
+  // Combine all notes from all items in the cart into one array
+  const cartNotes = localItems.flatMap(item => item.notes || []);
+  // Grab the gender of the first item as a baseline (or default to Unisex)
+  const cartGender = localItems.length > 0 ? localItems[0].gender : 'Unisex';
+  
   // --- RENDER FULL CART ---
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
       <div className="relative z-50">
         <Header 
-          setCurrentPage={setCurrentPage} 
-          cartItems={cartItems} 
-          wishlistItems={wishlistItems}
-          onCartClick={onCartClick}
-          onWishlistClick={onWishlistClick}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          user={user}                 
-          userRole={userRole} 
-          handleLogout={handleLogout} 
+          setCurrentPage={setCurrentPage} cartItems={cartItems} wishlistItems={wishlistItems}
+          onCartClick={onCartClick} onWishlistClick={onWishlistClick}
+          searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+          user={user} userRole={userRole} handleLogout={handleLogout} 
         />
       </div>
       
@@ -97,16 +98,12 @@ const CartPage = ({
           <p className="text-gray-400">Review your items before messaging the seller</p>
         </div>
         
-        <div className="flex flex-col lg:flex-row gap-12">
+        <div className="flex flex-col lg:flex-row gap-12 mb-16">
           <div className="flex-1 space-y-6">
             {localItems.map((item, index) => (
               <CartItem 
-                key={index} 
-                item={item} 
-                index={index} 
-                handleQuantity={handleQuantity} 
-                handleRemove={handleRemove} 
-                setCurrentPage={setCurrentPage} 
+                key={index} item={item} index={index} 
+                handleQuantity={handleQuantity} handleRemove={handleRemove} setCurrentPage={setCurrentPage} 
               />
             ))}
 
@@ -116,20 +113,27 @@ const CartPage = ({
           </div>
 
           <CartSummary 
-            localItems={localItems}
-            calculateTotal={calculateTotal}
-            hasUnavailableItems={hasUnavailableItems}
-            user={user}
-            showToast={showToast}
-            setCurrentPage={setCurrentPage}
-            onCheckoutSuccess={() => {
-              setLocalItems([]);
-              if (clearCart) clearCart(); 
-            }}
+            localItems={localItems} calculateTotal={calculateTotal}
+            hasUnavailableItems={hasUnavailableItems} user={user}
+            showToast={showToast} setCurrentPage={setCurrentPage}
+            onCheckoutSuccess={() => { setLocalItems([]); if (clearCart) clearCart(); }}
           />
         </div>
+
+        {/* --- NEW: SUGGESTED PRODUCTS IN CART --- */}
+        <SuggestedProducts 
+          currentProductId={null} // Pass null so it doesn't filter out anything unnecessarily 
+          referenceNotes={cartNotes}
+          referenceGender={cartGender}
+          onSelect={(product) => setCurrentPage('products')} // Route them back to shop to view it
+          onAddToCart={addToCart} // Let them add directly from cart page!
+          wishlistItems={wishlistItems}
+          user={user}
+          setCurrentPage={setCurrentPage}
+          showToast={showToast}
+        />
+
       </div>
-      
       <Footer />
     </div>
   );
