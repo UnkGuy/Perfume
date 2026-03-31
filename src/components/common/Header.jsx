@@ -13,7 +13,7 @@ const Header = ({
   userRole,       // <--- ADD THIS
   handleLogout    
 }) => {
-
+  const { showToast } = useShop();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false); 

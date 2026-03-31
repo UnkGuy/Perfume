@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../services/supabase';
-import { fetchUserRoleAPI, logoutAPI } from '../../services/authApi'; // Use the service!
+import { fetchUserRoleAPI, logoutAPI } from '../services/authApi'; // Use the service!
 
 const AuthContext = createContext({});
 
