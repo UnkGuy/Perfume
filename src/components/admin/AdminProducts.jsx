@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag } from 'lucide-react';
-import ImageUploader from '../ImageUploader'; 
+import ImageUploader from '../common/ImageUploader'; 
 import { scentNotes } from '../../data/products';
 import { useProducts } from '../../hooks/useProducts'; // <-- NEW HOOK IMPORT
 

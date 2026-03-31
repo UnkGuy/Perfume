@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, X, Star, Loader, ChevronDown, SlidersHorizontal } from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
 
 // Use our new hook!
 import { useStoreProducts } from '../hooks/useStoreProducts';

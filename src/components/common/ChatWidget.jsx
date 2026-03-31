@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, User, ShoppingBag } from 'lucide-react';
-import { useMessageThread } from '../hooks/useMessages';
+import { useMessageThread } from "../../hooks/useMessages";
 
 const ChatWidget = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
