@@ -115,82 +115,168 @@ const AdminProducts = ({ showToast }) => {
         </div>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
-              <th className="p-4 font-medium">Product Name</th>
-              <th className="p-4 font-medium">Price</th>
-              <th className="p-4 font-medium">Stock</th>
-              <th className="p-4 font-medium">Details</th>
-              <th className="p-4 font-medium">Status</th>
-              <th className="p-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/5 text-sm text-gray-300">
-            {isLoading ? (
-              <tr><td colSpan="6" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
-            ) : filteredProducts.length === 0 ? (
-              <tr><td colSpan="6" className="p-8 text-center text-gray-500">No products found matching "{searchQuery}".</td></tr>
-            ) : (
-              filteredProducts.map(product => {
-                const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl">
+        
+        {/* ========================================== */}
+        {/* DESKTOP VIEW: STANDARD TABLE (Hidden on Mobile) */}
+        {/* ========================================== */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
+                <th className="p-4 font-medium">Product Name</th>
+                <th className="p-4 font-medium">Price</th>
+                <th className="p-4 font-medium">Stock</th>
+                <th className="p-4 font-medium">Details</th>
+                <th className="p-4 font-medium">Status</th>
+                <th className="p-4 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm text-gray-300">
+              {isLoading ? (
+                <tr><td colSpan="6" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
+              ) : filteredProducts.length === 0 ? (
+                <tr><td colSpan="6" className="p-8 text-center text-gray-500">No products found matching "{searchQuery}".</td></tr>
+              ) : (
+                filteredProducts.map(product => {
+                  const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
+                  return (
+                    <tr key={product.id} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4 flex items-center gap-3">
+                        {product.image_urls && product.image_urls.length > 0 ? (
+                          <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
+                        ) : (
+                          <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>
+                        )}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-white">{product.name}</p>
+                            {isDiscounted && <Tag size={12} className="text-green-400" title="On Sale" />}
+                          </div>
+                          <p className="text-xs text-gray-500">{product.brand} • {product.size}</p>
+                        </div>
+                      </td>
+                      
+                      <td className="p-4">
+                        {isDiscounted ? (
+                          <div className="flex flex-col">
+                            <span className="text-green-400 font-bold">₱{product.price}</span>
+                            <span className="text-xs text-gray-500 line-through">₱{product.compare_at_price}</span>
+                          </div>
+                        ) : (
+                          <span className="text-gold-400 font-medium">₱{product.price}</span>
+                        )}
+                      </td>
 
-                return (
-                  <tr key={product.id} className="hover:bg-white/5 transition-colors">
-                    <td className="p-4 flex items-center gap-3">
+                      <td className="p-4">
+                        {product.stock_count !== null && product.stock_count !== undefined ? (
+                          <span className="text-gray-300">{product.stock_count} units</span>
+                        ) : (
+                          <span className="text-gray-500 italic">Unlimited</span>
+                        )}
+                      </td>
+                      <td className="p-4">
+                        <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">{product.gender}</span>
+                      </td>
+                      <td className="p-4">
+                        {product.available ? (
+                          <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>
+                        )}
+                      </td>
+                      <td className="p-4 flex justify-end gap-2">
+                        <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit Product"><Edit2 size={16} /></button>
+                        <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete Product"><Trash2 size={16} /></button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* ========================================== */}
+        {/* MOBILE VIEW: STACKED CARDS (Hidden on Desktop) */}
+        {/* ========================================== */}
+        <div className="md:hidden flex flex-col divide-y divide-white/10">
+          {isLoading ? (
+            <div className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></div>
+          ) : filteredProducts.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">No products found matching "{searchQuery}".</div>
+          ) : (
+            filteredProducts.map(product => {
+              const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
+              
+              return (
+                <div key={product.id} className="p-4 hover:bg-white/5 transition-colors flex flex-col gap-4">
+                  
+                  {/* Top Row: Image, Name, and Action Buttons */}
+                  <div className="flex justify-between items-start gap-3">
+                    <div className="flex items-center gap-3 overflow-hidden">
                       {product.image_urls && product.image_urls.length > 0 ? (
-                        <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
+                        <img src={product.image_urls[0]} alt={product.name} className="w-12 h-12 object-cover rounded-lg bg-white/10 border border-white/5 flex-shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>
+                        <div className="w-12 h-12 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-[10px] flex-shrink-0">No Img</div>
                       )}
-                      <div>
+                      <div className="overflow-hidden">
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-white">{product.name}</p>
-                          {isDiscounted && <Tag size={12} className="text-green-400" title="On Sale" />}
+                          <h4 className="font-bold text-white text-sm truncate">{product.name}</h4>
+                          {isDiscounted && <Tag size={12} className="text-green-400 flex-shrink-0" />}
                         </div>
-                        <p className="text-xs text-gray-500">{product.brand} • {product.size}</p>
+                        <p className="text-xs text-gray-500 truncate">{product.brand} • {product.size}</p>
                       </div>
-                    </td>
+                    </div>
                     
-                    <td className="p-4">
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/10 hover:bg-gold-400 hover:text-black rounded transition-colors"><Edit2 size={14} /></button>
+                      <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/10 hover:bg-red-500 hover:text-white rounded transition-colors"><Trash2 size={14} /></button>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Stats Grid */}
+                  <div className="grid grid-cols-2 gap-3 bg-black/40 p-3 rounded-lg border border-white/5">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Price</span>
                       {isDiscounted ? (
-                        <div className="flex flex-col">
-                          <span className="text-green-400 font-bold">₱{product.price}</span>
-                          <span className="text-xs text-gray-500 line-through">₱{product.compare_at_price}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-green-400 text-sm font-bold">₱{product.price}</span>
+                          <span className="text-[10px] text-gray-600 line-through">₱{product.compare_at_price}</span>
                         </div>
                       ) : (
-                        <span className="text-gold-400 font-medium">₱{product.price}</span>
+                        <span className="text-gold-400 text-sm font-bold">₱{product.price}</span>
                       )}
-                    </td>
+                    </div>
 
-                    <td className="p-4">
-                      {product.stock_count !== null && product.stock_count !== undefined ? (
-                        <span className="text-gray-300">{product.stock_count} units</span>
-                      ) : (
-                        <span className="text-gray-500 italic">Unlimited</span>
-                      )}
-                    </td>
-                    <td className="p-4">
-                      <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">{product.gender}</span>
-                    </td>
-                    <td className="p-4">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Stock</span>
+                      <span className="text-gray-300 text-sm">
+                        {product.stock_count !== null && product.stock_count !== undefined ? `${product.stock_count} units` : 'Unlimited'}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Gender</span>
+                      <span className="text-gray-300 text-sm">{product.gender}</span>
+                    </div>
+
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Status</span>
                       {product.available ? (
-                        <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
+                        <span className="flex items-center gap-1 text-green-400 text-xs font-bold"><CheckCircle size={12}/> Available</span>
                       ) : (
-                        <span className="flex items-center gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>
+                        <span className="flex items-center gap-1 text-red-400 text-xs font-bold"><XCircle size={12}/> Unavailable</span>
                       )}
-                    </td>
-                    <td className="p-4 flex justify-end gap-2">
-                      <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit Product"><Edit2 size={16} /></button>
-                      <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete Product"><Trash2 size={16} /></button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
       {isModalOpen && (
