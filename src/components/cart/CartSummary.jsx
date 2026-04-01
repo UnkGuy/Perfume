@@ -1,13 +1,18 @@
 import React, { useState } from 'react';
-import { CheckCircle, AlertCircle, Loader2, Tag } from 'lucide-react';
+import { CheckCircle, AlertCircle, Loader2, Tag, MessageSquare } from 'lucide-react';
 import { useCheckout } from '../../hooks/useCheckout';
-import { validatePromoCodeAPI } from '../../services/promoApi'; // <-- NEW IMPORT
+import { validatePromoCodeAPI } from '../../services/promoApi'; 
 
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, showToast, setCurrentPage, onCheckoutSuccess }) => {
   const { submitCheckout, isSending } = useCheckout(showToast, setCurrentPage);
   
-  // --- STATE ---
-  const [checkoutInfo, setCheckoutInfo] = useState({ fulfillmentMethod: 'Delivery', paymentMethod: 'GCash', phoneNumber: '', location: '' });
+  // --- CHECKOUT FORM STATE ---
+  const [checkoutInfo, setCheckoutInfo] = useState({ 
+    fulfillmentMethod: 'Delivery', 
+    paymentMethod: 'GCash', 
+    phoneNumber: '', 
+    location: '' 
+  });
   
   // --- PROMO CODE STATE ---
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -40,11 +45,11 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
     setAppliedPromo(null);
   };
 
+  // --- SUBMIT LOGIC ---
   const handleCheckout = async () => {
-    // We pass the final discounted total to the checkout API!
+    // We pass the final discounted total to the checkout API
     const success = await submitCheckout(user, finalTotal, localItems, checkoutInfo, onCheckoutSuccess);
     if (success && appliedPromo) {
-      // (Optional) We could log the promo usage here later via an API call
       console.log(`Used promo: ${appliedPromo.code}`);
     }
   };
@@ -88,10 +93,63 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
           )}
         </div>
 
-        {/* ... Rest of your fulfillment & payment selects go here ... */}
-        {/* Keeping this short for brevity, just leave your existing <select> and <input> fields here exactly as they are! */}
+        {/* --- FULFILLMENT & PAYMENT DETAILS --- */}
+        <div className="space-y-4 mb-6 border-b border-white/10 pb-6">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Fulfillment Method</label>
+            <select 
+              value={checkoutInfo.fulfillmentMethod} 
+              onChange={e => setCheckoutInfo({...checkoutInfo, fulfillmentMethod: e.target.value})}
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold-400"
+            >
+              <option>Delivery</option>
+              <option>Meetup</option>
+              <option>Store Pickup</option>
+            </select>
+          </div>
 
-        <div className="space-y-4 mb-6 border-b border-white/10 pb-6 pt-2">
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Payment Preference</label>
+            <select 
+              value={checkoutInfo.paymentMethod} 
+              onChange={e => setCheckoutInfo({...checkoutInfo, paymentMethod: e.target.value})}
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold-400"
+            >
+              <option>GCash</option>
+              <option>Bank Transfer</option>
+              <option>Cash on Hand</option>
+            </select>
+          </div>
+
+          {checkoutInfo.fulfillmentMethod !== 'Store Pickup' && (
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                {checkoutInfo.fulfillmentMethod === 'Meetup' ? 'Meetup Location' : 'Delivery Address'}
+              </label>
+              <input 
+                type="text" 
+                placeholder="Enter location details..."
+                value={checkoutInfo.location}
+                onChange={e => setCheckoutInfo({...checkoutInfo, location: e.target.value})}
+                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold-400"
+              />
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Contact Number</label>
+            <input 
+              type="text" 
+              placeholder="09..."
+              value={checkoutInfo.phoneNumber}
+              onChange={e => setCheckoutInfo({...checkoutInfo, phoneNumber: e.target.value})}
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:outline-none focus:border-gold-400"
+            />
+          </div>
+        </div>
+
+        {/* --- COST BREAKDOWN --- */}
+        <div className="space-y-3 mb-6 border-b border-white/10 pb-6">
           <div className="flex justify-between text-gray-400 text-sm">
             <span>Subtotal ({localItems.length} items)</span>
             <span>₱{subtotal.toLocaleString()}</span>
@@ -111,11 +169,13 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
           </div>
         </div>
 
+        {/* --- ESTIMATED TOTAL --- */}
         <div className="flex justify-between items-end mb-8">
           <span className="text-white font-bold text-lg">Estimated Total</span>
           <span className="text-3xl font-bold text-gold-400">₱{finalTotal.toLocaleString()}</span>
         </div>
 
+        {/* --- WARNINGS & SUBMIT --- */}
         {hasUnavailableItems && (
           <div className="flex items-start gap-3 p-4 mb-6 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
             <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />
@@ -128,7 +188,11 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, sh
           disabled={hasUnavailableItems || isSending}
           className="w-full py-4 bg-gold-400 hover:bg-gold-300 text-black font-bold uppercase tracking-widest rounded transition-all shadow-lg flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSending ? <><Loader2 className="animate-spin" size={20} /> Sending Inquiry...</> : <><CheckCircle size={20} /> Request Order</>}
+          {isSending ? (
+            <><Loader2 className="animate-spin" size={20} /> Sending Inquiry...</>
+          ) : (
+            <><MessageSquare size={20} /> Request Order</>
+          )}
         </button>
       </div>
     </div>

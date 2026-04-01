@@ -25,3 +25,10 @@ export const fetchUserRoleAPI = async (userId) => {
 export const logoutAPI = async () => {
   await supabase.auth.signOut();
 };
+
+export const updatePasswordAPI = async (newPassword) => {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword
+  });
+  if (error) throw error;
+};

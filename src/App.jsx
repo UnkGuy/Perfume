@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from './services/supabase'; // <-- Needed for Auth Listener
 
 // Pages
 import WelcomePage from './pages/WelcomePage';
@@ -6,7 +7,8 @@ import LoginPage from './pages/LoginPage';
 import ProductPage from './pages/ProductPage';
 import CartPage from './pages/CartPage';
 import ProfilePage from './pages/ProfilePage';
-import AdminDashboard from './pages/AdminDashboard'; // <--- NEW IMPORT
+import AdminDashboard from './pages/AdminDashboard'; 
+import ResetPasswordPage from './pages/ResetPasswordPage'; // <-- NEW PAGE
 
 // Components
 import CartDrawer from './components/common/CartDrawer';
@@ -14,36 +16,50 @@ import WishlistDrawer from './components/common/WishlistDrawer';
 import Toast from './components/common/Toast'; 
 import ChatWidget from './components/common/ChatWidget';
 
-// 1. Import our custom hooks!
+// Hooks
 import { useAuth } from './contexts/AuthContext';
 import { useShop } from './contexts/ShopContext';
 
 function App() {
-  // --- UI STATES ---
   const [currentPage, setCurrentPage] = useState('welcome');
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false); 
   const [searchQuery, setSearchQuery] = useState(''); 
 
-  // 2. Simply grab all our logic from the invisible Context clouds!
-  const { user, userRole, handleLogout } = useAuth(); // <--- GRAB USER ROLE HERE
-  const { 
-  cartItems, addToCart, removeFromCart, clearCart, // <--- Grab it here
-  wishlistItems, toggleWishlist, 
-  toasts, showToast, removeToast 
-} = useShop();
+  const { user, userRole, handleLogout } = useAuth(); 
+  const { cartItems, addToCart, removeFromCart, clearCart, wishlistItems, toggleWishlist, toasts, showToast, removeToast } = useShop();
 
-  // Layout toggles
+  // --- 🪄 MAGIC: PASSWORD RESET LISTENER ---
+  // When a user clicks the "Reset Password" link in their email, Supabase emits this event.
+  // We catch it and automatically reroute them to our custom reset page!
+  // --- 🪄 MAGIC: PASSWORD RESET LISTENER ---
+  useEffect(() => {
+    // 1. THE TAB 2 FIX: Check the URL immediately when a new tab opens
+    const hash = window.location.hash;
+    if (hash && hash.includes('type=recovery')) {
+      setCurrentPage('reset-password');
+      // Optional: Clean up the URL so it looks pretty
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    // 2. THE TAB 1 CATCH: Listen for cross-tab auth events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setCurrentPage('reset-password');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const toggleCart = () => setIsCartOpen(!isCartOpen);
   const toggleWishlistDrawer = () => setIsWishlistOpen(!isWishlistOpen);
 
-  // --- PAGE ROUTER ---
   const renderCurrentPage = () => {
     const commonProps = { 
       setCurrentPage, cartItems, wishlistItems, 
       onCartClick: toggleCart, onWishlistClick: toggleWishlistDrawer, 
-      searchQuery, setSearchQuery, showToast, 
-      user, userRole, // <--- PASS DOWN TO COMPONENTS
+      searchQuery, setSearchQuery, showToast, user, userRole, 
       handleLogout: async () => {
         await handleLogout();
         showToast('Logged Out', 'You have been successfully logged out.');
@@ -51,15 +67,19 @@ function App() {
       }
     };
     
-switch (currentPage) {
+    switch (currentPage) {
       case 'welcome': return <WelcomePage {...commonProps} />;
       case 'products': return <ProductPage {...commonProps} addToCart={addToCart} toggleWishlist={toggleWishlist} />;
       case 'cart': return <CartPage {...commonProps} removeFromCart={removeFromCart} clearCart={clearCart} />;
       case 'login': return <LoginPage setCurrentPage={setCurrentPage} showToast={showToast} />;
       case 'profile': return <ProfilePage {...commonProps} />;
+      case 'reset-password': return <ResetPasswordPage setCurrentPage={setCurrentPage} showToast={showToast} />;
       
-      // 1. TEMPORARILY UNLOCKED THE VAULT
-      case 'admin': return <AdminDashboard {...commonProps} />; 
+      // ADMIN PROTECTION
+      case 'admin': 
+        if (userRole === 'admin') return <AdminDashboard {...commonProps} />; 
+        setCurrentPage('welcome');
+        return null;
           
       default: return <WelcomePage {...commonProps} />;
     }
@@ -75,7 +95,6 @@ switch (currentPage) {
         cartItems={cartItems} 
         removeFromCart={removeFromCart} 
         setCurrentPage={setCurrentPage} 
-        // --- ADD THESE NEW PROPS ---
         user={user}
         showToast={showToast}
       />
@@ -85,7 +104,6 @@ switch (currentPage) {
         wishlistItems={wishlistItems} toggleWishlist={toggleWishlist} addToCart={addToCart} 
       />
 
-      {/* Hide ChatWidget for admins so it doesn't get in the way of their dashboard */}
       {userRole !== 'admin' && <ChatWidget user={user} />}
 
       {renderCurrentPage()}
