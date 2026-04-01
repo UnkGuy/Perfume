@@ -8,12 +8,11 @@ const ProductCard = ({
   isInWishlist, user, setCurrentPage, showToast, isCompact = false 
 }) => {
   const imageSource = product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE;
-  
-  // DISCOUNT LOGIC
   const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
   
   return (
-    <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex ${!product.available ? 'opacity-80' : ''} ${isCompact ? 'flex-row h-32 md:h-36 items-stretch' : 'flex-col h-full'}`}>
+    // ✨ Increased compact height slightly (h-36 to h-40) to comfortably fit the new text ✨
+    <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex ${!product.available ? 'opacity-80' : ''} ${isCompact ? 'flex-row h-40 items-stretch' : 'flex-col h-full'}`}>
       
       {/* OVERLAY ACTIONS */}
       <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-x-2 group-hover:translate-x-0">
@@ -33,9 +32,9 @@ const ProductCard = ({
         </button>
       </div>
 
-      {/* DYNAMIC CARD IMAGE - Handles standard 4/5 aspect ratio OR constrained width for list view */}
+      {/* DYNAMIC CARD IMAGE */}
       <div 
-        className={`relative overflow-hidden bg-white/5 cursor-pointer flex-shrink-0 ${isCompact ? 'w-32 md:w-36 h-full' : 'w-full aspect-[4/5]'}`} 
+        className={`relative overflow-hidden bg-white/5 cursor-pointer flex-shrink-0 ${isCompact ? 'w-32 md:w-40 h-full' : 'w-full aspect-[4/5]'}`} 
         onClick={() => onSelect(product)}
       >
           <img 
@@ -45,7 +44,6 @@ const ProductCard = ({
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" 
           />
           
-          {/* BADGES */}
           <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             {product.available && !isDiscounted && <span className={`bg-gold-400 text-black font-bold rounded-sm uppercase tracking-wider shadow-lg ${isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'}`}>New</span>}
             {product.available && isDiscounted && <span className={`bg-gold-400 text-black font-bold rounded-sm uppercase tracking-wider shadow-lg ${isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'}`}>Sale</span>}
@@ -55,7 +53,7 @@ const ProductCard = ({
       </div>
 
       {/* Card Info */}
-      <div className={`flex-1 flex flex-col justify-center ${isCompact ? 'p-3' : 'p-4 md:p-5'}`}>
+      <div className={`flex-1 flex flex-col justify-center overflow-hidden ${isCompact ? 'p-3' : 'p-4 md:p-5'}`}>
         <div className="flex justify-between items-start mb-1">
             <h3 
               className={`font-bold text-white group-hover:text-gold-400 transition-colors cursor-pointer line-clamp-1 pr-2 ${isCompact ? 'text-sm md:text-base' : 'text-lg'}`} 
@@ -70,21 +68,25 @@ const ProductCard = ({
             </div>
         </div>
         
-        <p className={`text-gray-500 uppercase tracking-wide line-clamp-1 ${isCompact ? 'text-[10px] mb-2' : 'text-xs mb-3'}`}>
+        <p className={`text-gray-500 uppercase tracking-wide line-clamp-1 ${isCompact ? 'text-[10px] mb-1' : 'text-xs mb-3'}`}>
           {product.brand} • {product.size}
         </p>
         
-        {!isCompact && (
-          <div className="text-xs text-gray-400 mb-4 line-clamp-1">{product.notes?.join(" • ")}</div>
+        {/* ✨ UPGRADED: Notes and Description dynamically render based on layout ✨ */}
+        {isCompact ? (
+          <div className="hidden sm:block mb-2 flex-1 overflow-hidden">
+            <p className="text-[10px] text-gray-400 line-clamp-2 leading-relaxed mb-1">{product.description}</p>
+            <p className="text-[9px] font-bold tracking-wider text-gold-400/80 line-clamp-1 uppercase">{product.notes?.join(" • ")}</p>
+          </div>
+        ) : (
+          <div className="text-xs text-gray-400 mb-4 line-clamp-2">{product.notes?.join(" • ")}</div>
         )}
 
         {/* Action Row */}
         <div className={`mt-auto flex items-center justify-between ${isCompact ? 'pt-2' : 'pt-4 border-t border-white/10'}`}>
-          
-          {/* PRICE DISPLAY */}
           <div className="flex flex-col">
             <div className="flex items-end gap-2">
-              <span className={`font-medium text-white ${isCompact ? 'text-base' : 'text-xl'}`}>₱{product.price}</span>
+              <span className={`font-medium text-white ${isCompact ? 'text-sm md:text-base' : 'text-xl'}`}>₱{product.price}</span>
               {isDiscounted && <span className={`text-gray-500 line-through mb-0.5 ${isCompact ? 'text-[10px] hidden sm:inline' : 'text-sm'}`}>₱{product.compare_at_price}</span>}
             </div>
           </div>

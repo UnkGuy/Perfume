@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search, ChevronLeft, ChevronRight } from 'lucide-react'; 
+// ✨ Added Sparkles icon for AI ✨
+import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'; 
 import ImageUploader from '../common/ImageUploader'; 
-import { scentNotes } from '../../data/products';
 import { useProducts } from '../../hooks/useProducts'; 
 
 const AdminProducts = ({ showToast }) => {
@@ -12,7 +12,9 @@ const AdminProducts = ({ showToast }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState(''); 
   
-  // PAGINATION STATE
+  // ✨ NEW: State for Custom Fragrance Notes ✨
+  const [customNoteInput, setCustomNoteInput] = useState('');
+
   const [activePage, setActivePage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
@@ -20,7 +22,10 @@ const AdminProducts = ({ showToast }) => {
     name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
   });
 
-  // RESET PAGE WHEN SEARCHING
+  // ✨ SMART EXTRACTION: Pull unique notes from DB + anything typed locally ✨
+  const dynamicNotes = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))];
+  const allDisplayNotes = [...new Set([...dynamicNotes, ...formData.notes])].sort();
+
   useEffect(() => {
     setActivePage(1);
   }, [searchQuery]);
@@ -46,6 +51,20 @@ const AdminProducts = ({ showToast }) => {
     }));
   };
 
+  // ✨ Handle adding custom note via Enter key or Button ✨
+  const handleAddCustomNote = (e) => {
+    e.preventDefault();
+    if (!customNoteInput.trim()) return;
+    const newNoteFormatted = customNoteInput.trim();
+    // Capitalize first letter beautifully
+    const formatted = newNoteFormatted.charAt(0).toUpperCase() + newNoteFormatted.slice(1);
+    
+    if (!formData.notes.includes(formatted)) {
+      setFormData(prev => ({ ...prev, notes: [...prev.notes, formatted] }));
+    }
+    setCustomNoteInput('');
+  };
+
   const handleRemoveImage = (indexToRemove) => {
     setFormData(prev => ({ ...prev, image_urls: prev.image_urls.filter((_, index) => index !== indexToRemove) }));
   };
@@ -53,7 +72,6 @@ const AdminProducts = ({ showToast }) => {
   const handleSave = async (e) => {
     e.preventDefault();
     setIsSaving(true);
-
     const payload = {
       ...formData,
       description: formData.description.trim(),
@@ -64,7 +82,6 @@ const AdminProducts = ({ showToast }) => {
       notes: formData.notes, 
       image_urls: formData.image_urls
     };
-
     try {
       await saveProduct(payload, editingProduct ? editingProduct.id : null);
       if (showToast) showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved successfully.`);
@@ -88,19 +105,22 @@ const AdminProducts = ({ showToast }) => {
     }
   };
 
+  // Placeholder for AI feature
+  const handleAIGeneration = () => {
+    if (showToast) showToast("AI Magic", "AI Description Generation coming in V3! 🪄", "success");
+  };
+
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     p.brand.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // PAGINATION CALCULATIONS
   const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = filteredProducts.slice(
     (activePage - 1) * ITEMS_PER_PAGE,
     activePage * ITEMS_PER_PAGE
   );
 
-  // Failsafe: if we delete an item and the active page becomes empty, jump back a page
   useEffect(() => {
     if (activePage > totalPages && totalPages > 0) {
       setActivePage(totalPages);
@@ -381,9 +401,16 @@ const AdminProducts = ({ showToast }) => {
                 </div>
               </div>
 
+              {/* ✨ AI SPARKLES BUTTON ADDED HERE ✨ */}
               <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
-                  Product Description <span className="text-gray-600">{formData.description.length}/800</span>
+                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between items-end">
+                  <span>Product Description <span className="text-gray-600 font-normal normal-case">({formData.description.length}/800)</span></span>
+                  <button 
+                    type="button" onClick={handleAIGeneration}
+                    className="flex items-center gap-1.5 text-gold-400 hover:text-white transition-colors"
+                  >
+                    <Sparkles size={14} /> <span className="normal-case">Generate with AI</span>
+                  </button>
                 </label>
                 <textarea 
                   required 
@@ -395,10 +422,30 @@ const AdminProducts = ({ showToast }) => {
                 />
               </div>
 
+              {/* ✨ DYNAMIC NOTES & CUSTOM NOTE INPUT ✨ */}
               <div>
                 <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Fragrance Notes</label>
+                
+                {/* Custom Note Adder */}
+                <div className="flex gap-2 mb-3">
+                  <input 
+                    type="text" 
+                    placeholder="Type a new note (e.g. White Musk)..."
+                    value={customNoteInput}
+                    onChange={(e) => setCustomNoteInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomNote(e); }}
+                    className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-400 outline-none"
+                  />
+                  <button 
+                    type="button" onClick={handleAddCustomNote}
+                    className="px-4 py-2 bg-white/10 hover:bg-gold-400 text-gold-400 hover:text-black font-bold rounded-lg transition-colors text-sm"
+                  >
+                    Add
+                  </button>
+                </div>
+
                 <div className="flex flex-wrap gap-2 p-4 bg-black/30 border border-white/5 rounded-lg max-h-48 overflow-y-auto custom-scrollbar">
-                  {scentNotes && scentNotes.map(note => {
+                  {allDisplayNotes.map(note => {
                     const isSelected = formData.notes.includes(note);
                     return (
                       <button
@@ -413,6 +460,7 @@ const AdminProducts = ({ showToast }) => {
                       </button>
                     );
                   })}
+                  {allDisplayNotes.length === 0 && <p className="text-gray-500 text-xs italic">No notes found. Add one above!</p>}
                 </div>
               </div>
 
