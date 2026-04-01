@@ -19,6 +19,12 @@ const ProductPage = ({
   
   const { products, isLoading } = useStoreProducts(showToast);
 
+  // ✨ SMART EXTRACTION MAGIC ✨
+  // Automatically pull unique brands, sizes, and notes from the database, filter out empty ones, and sort them alphabetically!
+  const dynamicBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
+  const dynamicSizes = [...new Set(products.map(p => p.size).filter(Boolean))].sort();
+  const dynamicNotes = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort();
+
   const [activePage, setActivePage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null); 
   const [quickViewProduct, setQuickViewProduct] = useState(null); 
@@ -38,7 +44,6 @@ const ProductPage = ({
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
-  // RESET TO PAGE 1 WHEN FILTERS CHANGE
   useEffect(() => {
     setActivePage(1);
   }, [searchQuery, priceRange, sortOption, ratingFilter, selectedNotes, selectedSizes, selectedBrands, selectedGender, showOutOfStock]);
@@ -113,7 +118,6 @@ const ProductPage = ({
     activePage * ITEMS_PER_PAGE
   );
 
-  // FIXED GRID CLASSES: Protects the desktop listing layout while preserving mobile list views.
   const gridClasses = viewMode === 'compact'
     ? "grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-0"
     : "grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6 relative z-0";
@@ -160,12 +164,17 @@ const ProductPage = ({
                   MIN_LIMIT={MIN_LIMIT} MAX_LIMIT={MAX_LIMIT}
                   showOutOfStock={showOutOfStock}
                   setShowOutOfStock={setShowOutOfStock}
+                  // ✨ PASS THE DYNAMIC ARRAYS DOWN ✨
+                  availableBrands={dynamicBrands}
+                  availableSizes={dynamicSizes}
+                  availableNotes={dynamicNotes}
                 />
               </div>
             </aside>
           )}
 
           <main className={`flex-1 ${selectedProduct ? 'w-full' : ''}`}>
+            {/* ... Rest of your existing main block code is perfectly fine ... */}
             {isLoading ? (
               <div className={gridClasses}>
                 {[...Array(8)].map((_, index) => (

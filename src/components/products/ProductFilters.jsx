@@ -1,7 +1,6 @@
 import React from 'react';
 import { Filter, Star, Droplets, Ruler, User, PackageX } from 'lucide-react'; 
-import { scentNotes, bottleSizes } from '../../data/products'; 
-
+// ✨ DELETED the static imports from '../../data/products' ✨
 
 const ProductFilters = ({ 
   ratingFilter, setRatingFilter, 
@@ -13,11 +12,14 @@ const ProductFilters = ({
   clearAllFilters,
   hasActiveFilters,
   MIN_LIMIT, MAX_LIMIT,
-  showOutOfStock,      // ✨ ADD THIS
-  setShowOutOfStock    // ✨ ADD THIS
+  showOutOfStock,     
+  setShowOutOfStock,
+  availableBrands = [], // ✨ NEW PROPS ✨
+  availableSizes = [],  // ✨ NEW PROPS ✨
+  availableNotes = []   // ✨ NEW PROPS ✨
 }) => {
 
-  const brands = ['Chanel', 'Dior', 'Tom Ford', 'Versace'];
+  // Genders rarely change, so it's safe to leave these static
   const genders = ['Women', 'Men', 'Unisex'];
 
   const toggleFilter = (item, state, setState) => {
@@ -27,7 +29,6 @@ const ProductFilters = ({
 
   return (
     <aside className="w-full lg:w-72 flex-shrink-0 space-y-6 animate-slide-in">
-      {/* ✨ REMOVED 'sticky top-24 max-h-[85vh] overflow-y-auto' ✨ */}
       <div className="bg-white/5 border border-white/5 rounded-2xl p-6 backdrop-blur-sm">
         
         {/* Header */}
@@ -118,55 +119,63 @@ const ProductFilters = ({
         </div>
 
         {/* Notes */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3 text-white font-medium">
-            <Droplets size={16} className="text-gold-400" />
-            <h4>Fragrance Notes</h4>
+        {availableNotes.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3 text-white font-medium">
+              <Droplets size={16} className="text-gold-400" />
+              <h4>Fragrance Notes</h4>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {/* ✨ MAP OVER DYNAMIC NOTES ✨ */}
+              {availableNotes.map(note => (
+                <div key={note} className="flex items-center gap-2">
+                  <input type="checkbox" id={note} checked={selectedNotes.includes(note)} onChange={() => toggleFilter(note, selectedNotes, setSelectedNotes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
+                  <label htmlFor={note} className="text-sm cursor-pointer hover:text-gold-400">{note}</label>
+                </div>
+              ))}
+            </div>
           </div>
-          {/* Changed this to a normal div so it expands fully */}
-          <div className="grid grid-cols-1 gap-2">
-            {scentNotes.map(note => (
-              <div key={note} className="flex items-center gap-2">
-                <input type="checkbox" id={note} checked={selectedNotes.includes(note)} onChange={() => toggleFilter(note, selectedNotes, setSelectedNotes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
-                <label htmlFor={note} className="text-sm cursor-pointer hover:text-gold-400">{note}</label>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
         {/* Size */}
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3 text-white font-medium">
-            <Ruler size={16} className="text-gold-400" />
-            <h4>Size</h4>
+        {availableSizes.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3 text-white font-medium">
+              <Ruler size={16} className="text-gold-400" />
+              <h4>Size</h4>
+            </div>
+            <div className="space-y-2">
+              {/* ✨ MAP OVER DYNAMIC SIZES ✨ */}
+              {availableSizes.map(size => (
+                <div key={size} className="flex items-center gap-2">
+                  <input type="checkbox" id={size} checked={selectedSizes.includes(size)} onChange={() => toggleFilter(size, selectedSizes, setSelectedSizes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
+                  <label htmlFor={size} className="text-sm cursor-pointer hover:text-gold-400">{size}</label>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="space-y-2">
-            {bottleSizes.map(size => (
-              <div key={size} className="flex items-center gap-2">
-                <input type="checkbox" id={size} checked={selectedSizes.includes(size)} onChange={() => toggleFilter(size, selectedSizes, setSelectedSizes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
-                <label htmlFor={size} className="text-sm cursor-pointer hover:text-gold-400">{size}</label>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
 
          {/* Brand */}
-         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3 text-white font-medium">
-            <Star size={16} className="text-gold-400" />
-            <h4>Brand</h4>
+         {availableBrands.length > 0 && (
+           <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3 text-white font-medium">
+              <Star size={16} className="text-gold-400" />
+              <h4>Brand</h4>
+            </div>
+            <div className="space-y-2">
+              {/* ✨ MAP OVER DYNAMIC BRANDS ✨ */}
+              {availableBrands.map(brand => (
+                <div key={brand} className="flex items-center gap-2">
+                  <input type="checkbox" id={brand} checked={selectedBrands.includes(brand)} onChange={() => toggleFilter(brand, selectedBrands, setSelectedBrands)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
+                  <label htmlFor={brand} className="text-sm cursor-pointer hover:text-gold-400">{brand}</label>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="space-y-2">
-            {brands.map(brand => (
-              <div key={brand} className="flex items-center gap-2">
-                <input type="checkbox" id={brand} checked={selectedBrands.includes(brand)} onChange={() => toggleFilter(brand, selectedBrands, setSelectedBrands)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
-                <label htmlFor={brand} className="text-sm cursor-pointer hover:text-gold-400">{brand}</label>
-              </div>
-            ))}
-          </div>
-        </div>
+         )}
         
-        {/* ✨ NEW: Availability Toggle ✨ */}
+        {/* Availability Toggle */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-3 text-white font-medium">
             <PackageX size={16} className="text-gold-400" />
