@@ -28,3 +28,15 @@ export const toggleUserBanAPI = async (userId, isBanned) => {
     if (insertError) throw insertError;
   }
 };
+
+// Add these to the bottom of userApi.js
+export const fetchUserProfileAPI = async (userId) => {
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateUserProfileAPI = async (userId, updates) => {
+  const { error } = await supabase.from('profiles').update(updates).eq('id', userId);
+  if (error) throw error;
+};

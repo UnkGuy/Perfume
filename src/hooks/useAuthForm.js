@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { loginAPI, registerAPI, resetPasswordAPI, fetchUserRoleAPI } from '../services/authApi';
+import { loginAPI, registerAPI, resetPasswordAPI, fetchUserRoleAPI, signInWithOAuthAPI } from '../services/authApi';
 
 export const useAuthForm = (showToast, setCurrentPage) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -13,7 +13,12 @@ export const useAuthForm = (showToast, setCurrentPage) => {
       return false;
     }
 
-    // ✨ NEW: Enforce 8 characters ONLY on registration ✨
+    // ✨ NEW: Enforce Username on Registration ✨
+    if (view === 'register' && !formData.username?.trim()) {
+      setError('Please provide a username.');
+      return false;
+    }
+
     if (view === 'register' && formData.password.length < 8) {
       setError('Password must be at least 8 characters long.');
       return false;
@@ -28,9 +33,10 @@ export const useAuthForm = (showToast, setCurrentPage) => {
 
     try {
       if (view === 'register') {
-        await registerAPI(formData.email, formData.password);
-        if (showToast) showToast('Success', 'Account created! You are now logged in.');
-        setCurrentPage('products');
+        // Pass the username to the API!
+        await registerAPI(formData.email, formData.password, formData.username);
+        if (showToast) showToast('Success', 'Account created! Please check your email to verify.');
+        setView('login'); // Send them back to login after registering
         
       } else if (view === 'login') {
         const data = await loginAPI(formData.email, formData.password);
@@ -46,7 +52,6 @@ export const useAuthForm = (showToast, setCurrentPage) => {
       }
       return true;
     } catch (err) {
-      // ✨ Supabase will automatically throw "User already registered" here! ✨
       setError(err.message);
       return false;
     } finally {
@@ -54,5 +59,17 @@ export const useAuthForm = (showToast, setCurrentPage) => {
     }
   };
 
-  return { submitAuth, isLoading, error, setError };
+  const handleOAuthSignIn = async (provider) => {
+    setError('');
+    try {
+      await signInWithOAuthAPI(provider);
+      // Browser will redirect automatically
+    } catch (err) {
+      setError(err.message || `Failed to sign in with ${provider}.`);
+    }
+  };
+
+  // Return the new function
+  return { submitAuth, handleOAuthSignIn, isLoading, error, setError };
 };
+

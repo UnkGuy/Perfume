@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import { supabase } from '../services/supabase';
-import { fetchUserRoleAPI, logoutAPI } from '../services/authApi'; // Use the service!
+// ✨ REMOVE direct supabase import ✨
+import { fetchUserRoleAPI, logoutAPI, getSessionAPI, onAuthStateChangeAPI } from '../services/authApi'; 
 
 const AuthContext = createContext({});
 
@@ -16,14 +16,15 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     };
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // ✨ Use the API wrappers! ✨
+    getSessionAPI().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) fetchRole(currentUser.id);
       else setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = onAuthStateChangeAPI((_event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       if (currentUser) fetchRole(currentUser.id);
