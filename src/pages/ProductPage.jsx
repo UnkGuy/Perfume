@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, X, Star, Loader, ChevronDown, SlidersHorizontal, LayoutGrid, List } from 'lucide-react';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
@@ -78,6 +78,7 @@ const ProductPage = ({
     setRatingFilter(0); setPriceRange({min:0, max:20000}); setSearchQuery('');
     setSelectedNotes([]); setSelectedSizes([]); setSelectedBrands([]); setSelectedGender([]);
     setShowOutOfStock(false); // ✨ Reset this too! ✨
+    setActivePage(1);
   };
 
   const getProcessedProducts = () => {
@@ -107,10 +108,22 @@ const ProductPage = ({
   const processedProducts = getProcessedProducts();
   const hasActiveFilters = ratingFilter > 0 || priceRange.min > 0 || searchQuery || selectedNotes.length > 0 || selectedSizes.length > 0 || selectedBrands.length > 0;
 
-  // ✨ NEW: DYNAMIC GRID CLASSES BASED ON VIEW MODE ✨
+
+  const ITEMS_PER_PAGE = 16; 
+  const totalPages = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);
+  const startIndex = (activePage - 1) * ITEMS_PER_PAGE;
+  const currentProducts = processedProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  {/* Filter products logic*/}
+  useEffect(() => {
+    if (activePage > totalPages && totalPages > 0) {
+      setActivePage(1);
+    }
+  }, [processedProducts.length, activePage, totalPages]);
+
   const gridClasses = viewMode === 'compact'
-    ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 relative z-0"
-    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 relative z-0";
+    ? "grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-0" 
+    : "grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-2 md:gap-6 relative z-0";
 
   return (
     <div className="min-h-screen bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
@@ -122,7 +135,7 @@ const ProductPage = ({
         />
       </div>
 
-      <div className="container mx-auto px-6 py-24 max-w-[1600px]">
+      <div className="container mx-auto px-3 md:px-6 py-24 max-w-[1600px]">
         {!selectedProduct && (
           <PredictiveSearch products={products} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSelectProduct={setSelectedProduct} />
         )}
@@ -239,8 +252,8 @@ const ProductPage = ({
 
                 {/* ✨ DYNAMIC GRID ✨ */}
                 <div className={gridClasses}>
-                  {processedProducts.length > 0 ? (
-                    processedProducts.map(product => (
+                  {currentProducts.length > 0 ? (
+                    currentProducts.map(product => (
                       <ProductCard 
                         key={product.id} 
                         product={product} 
@@ -263,17 +276,48 @@ const ProductPage = ({
                   )}
                 </div>
 
-                <div className="flex justify-center items-center gap-2 mt-16">
-                  <button disabled={activePage === 1} onClick={() => setActivePage(p => p - 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30">
-                    <ChevronLeft size={20} />
-                  </button>
-                  {[1, 2, 3].map(num => (
-                    <button key={num} onClick={() => setActivePage(num)} className={`w-10 h-10 rounded font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{num}</button>
-                  ))}
-                  <button onClick={() => setActivePage(p => p + 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400">
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
+                {/* ✨ DYNAMIC PAGINATION ✨ */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-16 pb-12">
+                    <button 
+                      disabled={activePage === 1} 
+                      onClick={() => {
+                        setActivePage(p => p - 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }} 
+                      className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-gray-400 transition-colors"
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    
+                    {[...Array(totalPages)].map((_, i) => {
+                      const num = i + 1;
+                      return (
+                        <button 
+                          key={num} 
+                          onClick={() => {
+                            setActivePage(num);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }} 
+                          className={`w-10 h-10 rounded font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                        >
+                          {num}
+                        </button>
+                      );
+                    })}
+
+                    <button 
+                      disabled={activePage === totalPages} 
+                      onClick={() => {
+                        setActivePage(p => p + 1);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }} 
+                      className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-gray-400 transition-colors"
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </main>
