@@ -7,55 +7,35 @@ import { useProfile } from '../hooks/useProfile';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const ProfilePage = ({ ...props }) => {
+// ✨ FIX: Explicitly destructure the props so `user`, `showToast`, etc. are defined! ✨
+const ProfilePage = ({ 
+  setCurrentPage, user, handleLogout, addToCart, showToast,
+  cartItems, wishlistItems, onCartClick, onWishlistClick, searchQuery, setSearchQuery
+}) => {
   const { orderHistory, isLoading: ordersLoading } = useUserOrders(user?.id);
   const [activeTab, setActiveTab] = useState('history');
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
 
-  // ✨ USE THE HOOK ✨
   const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile } = useProfile(user, activeTab, showToast);
   
   useEffect(() => {
     if (!user) setCurrentPage('login');
   }, [user, setCurrentPage]);
 
-  // Load User Profile Data
-  useEffect(() => {
-    if (user && activeTab === 'settings') {
-      const loadProfile = async () => {
-        setIsProfileLoading(true);
-        try {
-          const data = await fetchUserProfileAPI(user.id);
-          if (data) {
-            setProfileData({
-              username: data.username || '',
-              address: data.address || '',
-              phone_number: data.phone_number || ''
-            });
-          }
-        } catch (err) {
-          console.error("Failed to load profile", err);
-        } finally {
-          setIsProfileLoading(false);
-        }
-      };
-      loadProfile();
-    }
-  }, [user, activeTab]);
-
   const handleReorder = (order) => {
     order.order_items.forEach(item => {
       if (item.products) addToCart(item.products); 
     });
     if (showToast) showToast('Cart Updated', `Items from Order #${order.id} added to your cart!`);
-    onCartClick(); 
+    if (onCartClick) onCartClick(); 
+    else setCurrentPage('cart');
   };
 
-const handleSaveSettings = async (e) => {
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
     const success = await saveProfile(passwords);
     if (success) {
-      setPasswords({ newPassword: '', confirmPassword: '' }); // Clear inputs on success
+      setPasswords({ newPassword: '', confirmPassword: '' }); 
     }
   };
 
@@ -77,7 +57,7 @@ const handleSaveSettings = async (e) => {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-3xl font-bold uppercase">
-              {profileData.username ? profileData.username.charAt(0) : user.email.charAt(0)}
+              {profileData.username ? profileData.username.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white mb-1">
@@ -213,9 +193,7 @@ const handleSaveSettings = async (e) => {
   );
 };
 
-// Extracted UI Component makes the main page much cleaner!
 const OrderHistoryCard = ({ order, onReorder }) => (
-  // ... keep this exactly as you have it ...
   <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
     <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
       <div>

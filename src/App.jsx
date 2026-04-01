@@ -29,12 +29,7 @@ function App() {
   const { user, userRole, handleLogout } = useAuth(); 
   const { cartItems, addToCart, removeFromCart, clearCart, wishlistItems, toggleWishlist, toasts, showToast, removeToast } = useShop();
 
-  // --- 🪄 MAGIC: PASSWORD RESET LISTENER ---
-  // When a user clicks the "Reset Password" link in their email, Supabase emits this event.
-  // We catch it and automatically reroute them to our custom reset page!
-  // --- 🪄 MAGIC: PASSWORD RESET LISTENER ---
   useEffect(() => {
-    // 1. THE TAB 2 FIX: Check the URL immediately when a new tab opens
     const hash = window.location.hash;
     if (hash && hash.includes('type=recovery')) {
       setCurrentPage('reset-password');
@@ -42,7 +37,6 @@ function App() {
       window.history.replaceState(null, '', window.location.pathname);
     }
 
-    // 2. THE TAB 1 CATCH: Listen for cross-tab auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setCurrentPage('reset-password');
