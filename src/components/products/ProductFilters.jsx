@@ -19,8 +19,6 @@ const ProductFilters = ({
 }) => {
 
   const genders = ['Women', 'Men', 'Unisex'];
-
-  // ✨ NEW: Local states for in-filter searching ✨
   const [brandSearch, setBrandSearch] = useState('');
   const [noteSearch, setNoteSearch] = useState('');
 
@@ -29,9 +27,11 @@ const ProductFilters = ({
     else setState([...state, item]);
   };
 
-  // Filter the available lists based on the mini-search inputs
   const displayedBrands = availableBrands.filter(b => b.toLowerCase().includes(brandSearch.toLowerCase()));
   const displayedNotes = availableNotes.filter(n => n.toLowerCase().includes(noteSearch.toLowerCase()));
+
+  // ✨ FIX: Separated the ugly Tailwind string into clean, readable CSS classes so the compiler doesn't break! ✨
+  const sliderThumbClasses = "absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-30 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold-400 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer";
 
   return (
     <aside className="w-full lg:w-72 flex-shrink-0 space-y-6 animate-slide-in">
@@ -50,7 +50,7 @@ const ProductFilters = ({
           )}
         </div>
 
-        {/* Rating Filter (Unchanged) */}
+        {/* Rating Filter */}
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-3 text-white font-medium">
             <Star size={16} className="text-gold-400" />
@@ -75,7 +75,7 @@ const ProductFilters = ({
           </div>
         </div>
 
-        {/* Price Range Slider (Unchanged) */}
+        {/* Price Range Slider */}
         <div className="mb-8">
           <h4 className="font-medium text-white mb-4">Price Range</h4>
           
@@ -93,12 +93,12 @@ const ProductFilters = ({
           
           <div className="relative h-1 w-full bg-gray-700 rounded-full mb-4 mt-4">
             <div className="absolute h-full bg-gold-400 rounded-full z-10" style={{ left: `${getPercent(priceRange.min)}%`, width: `${getPercent(priceRange.max) - getPercent(priceRange.min)}%` }}></div>
-            <input type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.min} onChange={(e) => handleSliderChange(e, 'min')} className="absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-20 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer" />
-            <input type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.max} onChange={(e) => handleSliderChange(e, 'max')} className="absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-30 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer" />
+            <input type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.min} onChange={(e) => handleSliderChange(e, 'min')} className={sliderThumbClasses} style={{ zIndex: priceRange.min > MAX_LIMIT - 1000 ? '40' : '20' }} />
+            <input type="range" min={MIN_LIMIT} max={MAX_LIMIT} value={priceRange.max} onChange={(e) => handleSliderChange(e, 'max')} className={sliderThumbClasses} />
           </div>
         </div>
 
-        {/* Gender (Unchanged) */}
+        {/* Gender */}
         <div className="mb-6">
            <div className="flex items-center gap-2 mb-3 text-white font-medium">
             <User size={16} className="text-gold-400" />
@@ -114,7 +114,7 @@ const ProductFilters = ({
           </div>
         </div>
 
-        {/* ✨ UPGRADED: Notes with Search & Scroll ✨ */}
+        {/* Notes */}
         {availableNotes.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center justify-between mb-3">
@@ -128,10 +128,7 @@ const ProductFilters = ({
               <div className="relative mb-3">
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input 
-                  type="text" 
-                  placeholder="Search notes..." 
-                  value={noteSearch}
-                  onChange={(e) => setNoteSearch(e.target.value)}
+                  type="text" placeholder="Search notes..." value={noteSearch} onChange={(e) => setNoteSearch(e.target.value)}
                   className="w-full bg-black/40 border border-white/10 rounded px-2 py-1.5 pl-8 text-xs text-white focus:border-gold-400 outline-none"
                 />
               </div>
@@ -149,7 +146,7 @@ const ProductFilters = ({
           </div>
         )}
 
-         {/* ✨ UPGRADED: Brand with Search & Scroll ✨ */}
+         {/* Brand */}
          {availableBrands.length > 0 && (
            <div className="mb-6">
             <div className="flex items-center gap-2 mb-3 text-white font-medium">
@@ -161,10 +158,7 @@ const ProductFilters = ({
               <div className="relative mb-3">
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input 
-                  type="text" 
-                  placeholder="Search brands..." 
-                  value={brandSearch}
-                  onChange={(e) => setBrandSearch(e.target.value)}
+                  type="text" placeholder="Search brands..." value={brandSearch} onChange={(e) => setBrandSearch(e.target.value)}
                   className="w-full bg-black/40 border border-white/10 rounded px-2 py-1.5 pl-8 text-xs text-white focus:border-gold-400 outline-none"
                 />
               </div>
@@ -182,7 +176,7 @@ const ProductFilters = ({
           </div>
          )}
         
-        {/* Size (Unchanged) */}
+        {/* Size */}
         {availableSizes.length > 0 && (
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3 text-white font-medium">
@@ -207,16 +201,8 @@ const ProductFilters = ({
             <h4>Availability</h4>
           </div>
           <div className="flex items-center gap-2">
-            <input 
-              type="checkbox" 
-              id="outOfStock" 
-              checked={showOutOfStock} 
-              onChange={(e) => setShowOutOfStock(e.target.checked)} 
-              className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" 
-            />
-            <label htmlFor="outOfStock" className="text-sm cursor-pointer hover:text-gold-400">
-              Include Out of Stock
-            </label>
+            <input type="checkbox" id="outOfStock" checked={showOutOfStock} onChange={(e) => setShowOutOfStock(e.target.checked)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
+            <label htmlFor="outOfStock" className="text-sm cursor-pointer hover:text-gold-400">Include Out of Stock</label>
           </div>
         </div>
         

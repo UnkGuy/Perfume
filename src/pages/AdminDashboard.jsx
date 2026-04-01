@@ -1,15 +1,14 @@
 import React, { useState } from 'react';
-// 1. Added Menu and X icons
-import { LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X } from 'lucide-react'; 
+import { LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X, Tag } from 'lucide-react'; // ✨ ADDED Tag ICON ✨
 
 import AdminOverview from '../components/admin/AdminOverview';
 import AdminOrders from '../components/admin/AdminOrders';
 import AdminProducts from '../components/admin/AdminProducts';
 import AdminMessages from '../components/admin/AdminMessages'; 
+import AdminPromos from '../components/admin/AdminPromos'; // ✨ NEW IMPORT ✨
 
 const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => { 
   const [activeTab, setActiveTab] = useState('overview');
-  // 2. Added state for mobile drawer
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const adminLogout = () => {
@@ -17,7 +16,6 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
     setCurrentPage('welcome');
   };
 
-  // Helper function to close menu when clicking a tab on mobile
   const handleTabClick = (tab) => {
     setActiveTab(tab);
     setIsMobileMenuOpen(false);
@@ -26,7 +24,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white font-sans flex">
       
-      {/* 3. MOBILE OVERLAY: Darkens background when drawer is open */}
+      {/* MOBILE OVERLAY */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
@@ -34,7 +32,7 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
         />
       )}
 
-      {/* 4. RESPONSIVE SIDEBAR: Slides in/out on mobile, fixed on desktop */}
+      {/* RESPONSIVE SIDEBAR */}
       <aside 
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-rich-black border-r border-white/10 flex flex-col h-full transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
@@ -44,7 +42,6 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
           <h1 className="text-xl font-bold tracking-widest text-white cursor-pointer" onClick={() => setCurrentPage('welcome')}>
             KL<span className="text-gold-400">SCENTS</span> <span className="text-xs text-gray-500 block mt-1">ADMIN PORTAL</span>
           </h1>
-          {/* Close button for mobile inside sidebar */}
           <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
             <X size={20} />
           </button>
@@ -66,6 +63,11 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
           <button onClick={() => handleTabClick('products')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'products' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
             <Package size={18} /> Inventory
           </button>
+
+          {/* ✨ NEW: PROMOS NAV BUTTON ✨ */}
+          <button onClick={() => handleTabClick('promos')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'promos' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+            <Tag size={18} /> Promo Codes
+          </button>
         </nav>
 
         <div className="p-4 border-t border-white/10">
@@ -79,10 +81,10 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
         </div>
       </aside>
 
-      {/* 5. MAIN CONTENT WRAPPER */}
+      {/* MAIN CONTENT WRAPPER */}
       <div className="flex-1 flex flex-col md:ml-64 min-h-screen w-full">
         
-        {/* MOBILE TOP NAVIGATION BAR (Visible only on small screens) */}
+        {/* MOBILE TOP NAVIGATION BAR */}
         <div className="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-rich-black sticky top-0 z-30">
           <button onClick={() => setIsMobileMenuOpen(true)} className="text-gold-400 hover:text-white transition-colors">
             <Menu size={24} />
@@ -90,11 +92,10 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
           <h1 className="text-lg font-bold tracking-widest text-white">
             KL<span className="text-gold-400">SCENTS</span>
           </h1>
-          <div className="w-6"></div> {/* Invisible spacer to keep logo centered */}
+          <div className="w-6"></div>
         </div>
 
         {/* ACTUAL CONTENT */}
-        {/* Changed p-8 to p-4 md:p-8 so it's not too squished on mobile */}
         <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
           <header className="mb-6 md:mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-white capitalize">{activeTab === 'overview' ? 'Dashboard Overview' : activeTab}</h2>
@@ -105,6 +106,8 @@ const AdminDashboard = ({ setCurrentPage, handleLogout, user, showToast }) => {
             {activeTab === 'orders' && <AdminOrders showToast={showToast} setActiveTab={setActiveTab} />}
             {activeTab === 'messages' && <AdminMessages showToast={showToast} />} 
             {activeTab === 'products' && <AdminProducts showToast={showToast} />}
+            {/* ✨ NEW: RENDER PROMO COMPONENT ✨ */}
+            {activeTab === 'promos' && <AdminPromos showToast={showToast} />}
           </div>
         </main>
       </div>
