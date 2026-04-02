@@ -15,18 +15,14 @@ import ProductSkeleton from '../components/products/ProductSkeleton';
 import { useStoreProducts } from '../hooks/useStoreProducts';
 import { useShop } from '../contexts/ShopContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useUI } from '../contexts/UIContext'; // <-- NEW IMPORT
 
-const ProductPage = ({ 
-  setCurrentPage, 
-  searchQuery, 
-  setSearchQuery, 
-  onCartClick, 
-  onWishlistClick 
-}) => {
-  
+// ✨ Removed ALL props! ✨
+const ProductPage = () => {
   // Consuming Contexts Directly! No more prop drilling from App.jsx
   const { user } = useAuth();
   const { addToCart, wishlistItems, toggleWishlist, showToast } = useShop();
+  const { setCurrentPage, searchQuery, setSearchQuery } = useUI(); // Pulling routing from Context
   const { products, isLoading } = useStoreProducts();
 
   // Dynamic Extraction
@@ -95,7 +91,6 @@ const ProductPage = ({
     setShowOutOfStock(false); 
   };
 
-  // ✨ MEMOIZED FILTERING: Extremely efficient, only runs when dependencies change ✨
   const processedProducts = useMemo(() => {
     let filtered = products.filter(product => {
       if (!showOutOfStock && !product.available) return false; 
@@ -133,14 +128,7 @@ const ProductPage = ({
   return (
     <div className="min-h-screen bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
       <div className="relative z-50">
-        {/* Header uses internal Context now, so we just pass routing stuff */}
-        <Header 
-          setCurrentPage={setCurrentPage} 
-          onCartClick={onCartClick} 
-          onWishlistClick={onWishlistClick} 
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery} 
-        />
+        <Header />
       </div>
 
       <div className="container mx-auto px-4 md:px-6 py-24 max-w-[1600px]">
@@ -285,29 +273,15 @@ const ProductPage = ({
 
                 {totalPages > 1 && (
                   <div className="flex justify-center items-center gap-2 mt-16 pb-12">
-                    <button 
-                      disabled={activePage === 1} 
-                      onClick={() => { setActivePage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"
-                    >
+                    <button disabled={activePage === 1} onClick={() => { setActivePage(p => p - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
                       <ChevronLeft size={20} />
                     </button>
-                    
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
-                      <button 
-                        key={num} 
-                        onClick={() => { setActivePage(num); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                        className={`w-10 h-10 rounded font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                      >
+                      <button key={num} onClick={() => { setActivePage(num); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className={`w-10 h-10 rounded font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                         {num}
                       </button>
                     ))}
-                    
-                    <button 
-                      disabled={activePage === totalPages} 
-                      onClick={() => { setActivePage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} 
-                      className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"
-                    >
+                    <button disabled={activePage === totalPages} onClick={() => { setActivePage(p => p + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
                       <ChevronRight size={20} />
                     </button>
                   </div>

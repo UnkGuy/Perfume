@@ -2,23 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, User, Search, Menu, X, Heart } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext'; 
 import { useAuth } from '../../contexts/AuthContext';
+import { useUI } from '../../contexts/UIContext'; // <-- NEW
 
-const Header = ({ 
-  setCurrentPage, 
-  onCartClick, 
-  onWishlistClick,
-  searchQuery,
-  setSearchQuery
-}) => {
-  // Contexts consumed directly inside the component!
+const Header = () => {
   const { user, userRole, handleLogout } = useAuth();
   const { cartItems, wishlistItems, showToast } = useShop();
+  // Pull all UI controls directly!
+  const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery } = useUI();
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false); 
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
 
+  // ... (Keep existing useEffects for scrolling and search debounce) ...
   useEffect(() => {
     setLocalSearch(searchQuery || '');
   }, [searchQuery]);
@@ -45,7 +42,7 @@ const Header = ({
 
   const handleSearchChange = (e) => {
     setLocalSearch(e.target.value);
-    if (e.target.value.length > 0 && setCurrentPage) {
+    if (e.target.value.length > 0) {
       setCurrentPage('products'); 
     }
   };
@@ -62,6 +59,7 @@ const Header = ({
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="flex justify-between items-center">
             
+            {/* Logo */}
             <div className="cursor-pointer group flex items-center gap-3" onClick={() => setCurrentPage('welcome')}>
               <img 
                 src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" 
@@ -92,12 +90,9 @@ const Header = ({
               <div className="relative flex items-center">
                 {isSearchOpen && (
                   <input 
-                    type="text"
-                    value={localSearch}
-                    onChange={handleSearchChange} 
+                    type="text" value={localSearch} onChange={handleSearchChange} 
                     onKeyDown={(e) => { if (e.key === 'Enter') setCurrentPage('products'); }}
-                    autoFocus
-                    placeholder="Search scents..."
+                    autoFocus placeholder="Search scents..."
                     className="absolute right-8 w-48 bg-black/50 border border-gold-400/50 rounded-full py-1.5 px-4 text-sm text-white focus:outline-none animate-slide-in"
                   />
                 )}
@@ -106,7 +101,8 @@ const Header = ({
                 </button>
               </div>
 
-              <button className="relative text-gray-300 hover:text-gold-400 transition-colors group" onClick={onWishlistClick}>
+              {/* Updated Wishlist Click */}
+              <button className="relative text-gray-300 hover:text-gold-400 transition-colors group" onClick={() => setIsWishlistOpen(true)}>
                 <Heart size={20} />
                 {wishlistItems && wishlistItems.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
@@ -115,6 +111,7 @@ const Header = ({
                 )}
               </button>
 
+              {/* ... (Keep User icon logic) ... */}
               {user ? (
                 <div className="relative group flex items-center gap-2">
                   <button onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} className="text-gray-300 hover:text-gold-400 transition-colors py-2">
@@ -140,6 +137,7 @@ const Header = ({
                 </button>
               )}
 
+              {/* Updated Cart Click */}
               <button 
                 onClick={(e) => { 
                   e.preventDefault(); 
@@ -148,8 +146,7 @@ const Header = ({
                      if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
                      return;
                   }
-                  if (onCartClick) onCartClick(); 
-                  else setCurrentPage('cart'); 
+                  setIsCartOpen(true); 
                 }}
               >
                 <ShoppingBag size={20} />

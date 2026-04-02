@@ -2,23 +2,15 @@ import React from 'react';
 import { ShoppingBag, ArrowRight } from 'lucide-react';
 import Header from '../common/Header';
 import Footer from '../common/Footer';
+import { useUI } from '../../contexts/UIContext'; // <-- NEW IMPORT
 
-const EmptyCart = ({ 
-  setCurrentPage, 
-  onCartClick, 
-  onWishlistClick, 
-  searchQuery, 
-  setSearchQuery 
-}) => {
+// ✨ NO PROPS ✨
+const EmptyCart = () => {
+  const { setCurrentPage } = useUI();
+
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
-      <Header 
-        setCurrentPage={setCurrentPage} 
-        onCartClick={onCartClick}
-        onWishlistClick={onWishlistClick}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-      />
+      <Header />
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-gray-600 mb-6 border border-white/10">
           <ShoppingBag size={40} />

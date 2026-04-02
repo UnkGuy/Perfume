@@ -12,26 +12,17 @@ import SuggestedProducts from '../components/common/SuggestedProducts';
 // Hooks & Contexts
 import { useShop } from '../contexts/ShopContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useUI } from '../contexts/UIContext'; // <-- NEW IMPORT
 
-const CartPage = ({ 
-  setCurrentPage, 
-  onCartClick, 
-  onWishlistClick, 
-  searchQuery, 
-  setSearchQuery 
-}) => {
-  
-  // ✨ Pulling directly from Context! No more prop drilling. ✨
+// ✨ NO PROPS ✨
+const CartPage = () => {
   const { user } = useAuth();
   const { cartItems, addToCart, removeFromCart, clearCart, wishlistItems, showToast } = useShop();
+  const { setCurrentPage } = useUI(); // Pull routing from Context
 
-  // Safety fallback to prevent .map() crashes
   const safeCartItems = cartItems || [];
-
-  // --- STATE ---
   const [localItems, setLocalItems] = useState([]);
 
-  // --- INITIALIZATION ---
   useEffect(() => {
     const processedItems = safeCartItems.map(item => ({
       ...item,
@@ -41,7 +32,6 @@ const CartPage = ({
     setLocalItems(processedItems);
   }, [cartItems]);
 
-  // --- LOGIC HELPERS ---
   const handleQuantity = (index, delta) => {
     const newItems = [...localItems];
     if (newItems[index].quantity + delta >= 1) {
@@ -67,35 +57,17 @@ const CartPage = ({
   };
 
   const hasUnavailableItems = localItems.some(item => !item.available);
-
-  // --- AGGREGATE NOTES FOR RECOMMENDATIONS ---
   const cartNotes = localItems.flatMap(item => item.notes || []);
   const cartGender = localItems.length > 0 ? localItems[0].gender : 'Unisex';
   
-  // --- RENDER EMPTY STATE ---
   if (localItems.length === 0) {
-    return (
-      <EmptyCart 
-        setCurrentPage={setCurrentPage} 
-        onCartClick={onCartClick}
-        onWishlistClick={onWishlistClick}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-      />
-    );
+    return <EmptyCart />; // EmptyCart takes no props now!
   }
 
-  // --- RENDER FULL CART ---
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
       <div className="relative z-50">
-        <Header 
-          setCurrentPage={setCurrentPage} 
-          onCartClick={onCartClick}
-          onWishlistClick={onWishlistClick}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
+        <Header /> 
       </div>
       
       <div className="flex-1 container mx-auto px-6 py-32 max-w-[1600px]">
@@ -136,7 +108,6 @@ const CartPage = ({
           />
         </div>
 
-        {/* --- SUGGESTED PRODUCTS --- */}
         <SuggestedProducts 
           currentProductId={null} 
           referenceNotes={cartNotes}
@@ -148,9 +119,7 @@ const CartPage = ({
           setCurrentPage={setCurrentPage}
           showToast={showToast}
         />
-        
       </div>
-      
       <Footer />
     </div>
   );

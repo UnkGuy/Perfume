@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { Gem, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { useResetPassword } from '../hooks/useResetPassword'; // <-- NEW HOOK IMPORT
+import { useResetPassword } from '../hooks/useResetPassword'; 
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
 
-const ResetPasswordPage = ({ setCurrentPage, showToast }) => {
+// ✨ NO PROPS ✨
+const ResetPasswordPage = () => {
+  const { showToast } = useShop();
+  const { setCurrentPage } = useUI();
+
   const [formData, setFormData] = useState({ password: '', confirmPassword: '' });
-  
-  // Pull all our logic from the hook!
   const { submitNewPassword, isLoading, error, setError, success } = useResetPassword(showToast, setCurrentPage);
 
   const handleInputChange = (e) => {
@@ -43,10 +47,7 @@ const ResetPasswordPage = ({ setCurrentPage, showToast }) => {
           <div className="flex flex-col items-center gap-4 p-4 text-center">
             <CheckCircle size={48} className="text-green-400" />
             <p className="text-lg font-semibold text-white">Password Updated!</p>
-            <button 
-              onClick={() => setCurrentPage('login')}
-              className="w-full py-3 mt-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded-lg transition-all"
-            >
+            <button onClick={() => setCurrentPage('login')} className="w-full py-3 mt-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded-lg transition-all">
               Proceed to Login
             </button>
           </div>
@@ -54,20 +55,12 @@ const ResetPasswordPage = ({ setCurrentPage, showToast }) => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1.5">New Password</label>
-              <input 
-                type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors"
-              />
+              <input type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors" />
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm New Password</label>
-              <input 
-                type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors"
-              />
+              <input type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors" />
             </div>
-
             <button type="submit" disabled={isLoading} className="w-full py-3 mt-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded-lg transition-all shadow-lg disabled:opacity-70 flex justify-center items-center gap-2">
               {isLoading ? <><Loader2 className="animate-spin" size={18} /> Updating...</> : 'Update Password'}
             </button>

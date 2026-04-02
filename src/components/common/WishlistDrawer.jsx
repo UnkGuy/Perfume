@@ -1,26 +1,25 @@
 import React from 'react';
 import { X, Trash2, Heart, ShoppingCart } from 'lucide-react';
-import { useShop } from '../../contexts/ShopContext'; // <-- NEW IMPORT
+import { useShop } from '../../contexts/ShopContext'; 
+import { useUI } from '../../contexts/UIContext'; // <-- NEW
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const WishlistDrawer = ({ isOpen, onClose }) => {
-  // ✨ Pulling directly from Context instead of relying on props! ✨
+// NO PROPS REQUIRED!
+const WishlistDrawer = () => {
   const { wishlistItems, toggleWishlist, addToCart } = useShop();
+  const { isWishlistOpen, setIsWishlistOpen } = useUI(); // Extracted from Context
 
-  // Safety fallback just in case context hasn't loaded yet
   const items = wishlistItems || [];
 
   return (
     <>
       <div 
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={onClose}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity duration-300 ${isWishlistOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsWishlistOpen(false)}
       />
 
-      <div 
-        className={`fixed inset-y-0 right-0 w-full max-w-md bg-rich-black border-l border-gold-400/30 shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
-      >
+      <div className={`fixed inset-y-0 right-0 w-full max-w-md bg-rich-black border-l border-gold-400/30 shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out ${isWishlistOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full">
           
           <div className="flex items-center justify-between p-6 border-b border-white/10">
@@ -28,7 +27,7 @@ const WishlistDrawer = ({ isOpen, onClose }) => {
               <Heart className="text-red-500 fill-red-500" /> 
               Wishlist <span className="text-sm font-normal text-gray-400">({items.length})</span>
             </h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <button onClick={() => setIsWishlistOpen(false)} className="text-gray-400 hover:text-white transition-colors">
               <X size={24} />
             </button>
           </div>
@@ -38,7 +37,7 @@ const WishlistDrawer = ({ isOpen, onClose }) => {
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                 <Heart size={48} className="text-gray-700" />
                 <p className="text-gray-500">Your wishlist is empty.</p>
-                <button onClick={onClose} className="text-gold-400 hover:underline">Explore Collection</button>
+                <button onClick={() => setIsWishlistOpen(false)} className="text-gold-400 hover:underline">Explore Collection</button>
               </div>
             ) : (
               items.map((item, index) => {

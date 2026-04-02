@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
 import { Gem, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuthForm } from '../hooks/useAuthForm'; 
-import { supabase } from '../services/supabase'; // <-- Need this for Google/FB redirects!
+import { supabase } from '../services/supabase'; 
 
-const LoginPage = ({ setCurrentPage, showToast }) => {
+// ✨ NEW Context Imports ✨
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
+
+// ✨ NO PROPS ✨
+const LoginPage = () => {
+  const { showToast } = useShop();
+  const { setCurrentPage } = useUI();
+
   const [view, setView] = useState('login'); 
   const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '' });
   
-  // Pull logic from your custom hook
   const { submitAuth, isLoading, error, setError } = useAuthForm(showToast, setCurrentPage);
 
   const handleInputChange = (e) => {
@@ -20,6 +27,15 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
     await submitAuth(view, formData, setView);
   };
 
+  const handleOAuthSignIn = async (provider) => {
+    setError('');
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider });
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message || `Failed to sign in with ${provider}.`);
+    }
+  };
 
   const renderHeader = () => {
     switch(view) {
@@ -68,18 +84,14 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
           )}
 
           {view === 'register' && (
-  <div>
-    <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-    <input 
-      type="text" 
-      name="username" 
-      placeholder="e.g. PerfumeLover99" 
-      value={formData.username} 
-      onChange={handleInputChange} 
-      className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} 
-    />
-  </div>
-)}
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+              <input 
+                type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} 
+                className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} 
+              />
+            </div>
+          )}
 
           {view === 'login' && (
             <div className="flex justify-end text-sm">
@@ -92,7 +104,6 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
           </button>
         </form>
 
-        {/* --- NEW: OAUTH BUTTONS INTEGRATION --- */}
         {view !== 'forgot' && (
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
@@ -111,12 +122,7 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
             </button>
           ) : (
             <>
-              {/* Google Sign-In */}
-              <button
-                onClick={() => handleOAuthSignIn('google')}
-                disabled={isLoading}
-                className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
-              >
+              <button onClick={() => handleOAuthSignIn('google')} disabled={isLoading} className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50">
                 <svg className="w-5 h-5" viewBox="0 0 48 48">
                   <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path>
                   <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path>
@@ -126,12 +132,7 @@ const LoginPage = ({ setCurrentPage, showToast }) => {
                 Sign in with Google
               </button>
 
-              {/* Facebook Sign-In */}
-              <button
-                onClick={() => handleOAuthSignIn('facebook')}
-                disabled={isLoading}
-                className="w-full py-3 bg-[#1877F2] hover:bg-[#166bda] border border-transparent text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50"
-              >
+              <button onClick={() => handleOAuthSignIn('facebook')} disabled={isLoading} className="w-full py-3 bg-[#1877F2] hover:bg-[#166bda] border border-transparent text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50">
                 <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
                   <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.005A9.963 9.963 0 0022 12z" />
                 </svg>

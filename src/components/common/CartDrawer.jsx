@@ -2,12 +2,15 @@ import React from 'react';
 import { X, Trash2, ShoppingBag, ArrowRight, AlertCircle } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { useUI } from '../../contexts/UIContext'; // <-- NEW
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const CartDrawer = ({ isOpen, onClose, setCurrentPage }) => {
+// NO PROPS REQUIRED!
+const CartDrawer = () => {
   const { user } = useAuth();
   const { cartItems, removeFromCart, showToast } = useShop();
+  const { isCartOpen, setIsCartOpen, setCurrentPage } = useUI(); // Extracted from Context
 
   const total = cartItems.reduce((sum, item) => sum + item.price, 0);
   const hasUnavailableItems = cartItems.some(item => !item.available);
@@ -15,11 +18,11 @@ const CartDrawer = ({ isOpen, onClose, setCurrentPage }) => {
   return (
     <>
       <div 
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-        onClick={onClose}
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity duration-300 ${isCartOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={() => setIsCartOpen(false)}
       />
 
-      <div className={`fixed inset-y-0 right-0 w-full max-w-md bg-rich-black border-l border-gold-400/30 shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      <div className={`fixed inset-y-0 right-0 w-full max-w-md bg-rich-black border-l border-gold-400/30 shadow-2xl z-[70] transform transition-transform duration-300 ease-in-out ${isCartOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full">
           
           <div className="flex items-center justify-between p-6 border-b border-white/10">
@@ -27,7 +30,7 @@ const CartDrawer = ({ isOpen, onClose, setCurrentPage }) => {
               <ShoppingBag className="text-gold-400" /> 
               Your Cart <span className="text-sm font-normal text-gray-400">({cartItems.length})</span>
             </h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+            <button onClick={() => setIsCartOpen(false)} className="text-gray-400 hover:text-white transition-colors">
               <X size={24} />
             </button>
           </div>
@@ -37,7 +40,7 @@ const CartDrawer = ({ isOpen, onClose, setCurrentPage }) => {
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                 <ShoppingBag size={48} className="text-gray-700" />
                 <p className="text-gray-500">Your cart is empty.</p>
-                <button onClick={() => { onClose(); setCurrentPage('products'); }} className="text-gold-400 hover:underline">Start Shopping</button>
+                <button onClick={() => { setIsCartOpen(false); setCurrentPage('products'); }} className="text-gold-400 hover:underline">Start Shopping</button>
               </div>
             ) : (
               cartItems.map((item, index) => {
@@ -92,10 +95,10 @@ const CartDrawer = ({ isOpen, onClose, setCurrentPage }) => {
                   if (!user) {
                     if (showToast) showToast("Login Required", "Please sign in to proceed.", "error");
                     setCurrentPage('login');
-                    onClose();
+                    setIsCartOpen(false);
                     return;
                   }
-                  onClose();
+                  setIsCartOpen(false);
                   setCurrentPage('cart');
                 }}
                 className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all 
