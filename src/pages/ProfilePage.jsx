@@ -22,7 +22,7 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('history');
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
 
-  const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile } = useProfile(user, activeTab, showToast);
+  const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile } = useProfile(activeTab);
   
   useEffect(() => {
     if (!user) setCurrentPage('login');

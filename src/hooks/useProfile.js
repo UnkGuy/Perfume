@@ -2,7 +2,14 @@ import { useState, useEffect } from 'react';
 import { fetchUserProfileAPI, updateUserProfileAPI } from '../services/userApi';
 import { updatePasswordAPI } from '../services/authApi';
 
-export const useProfile = (user, activeTab, showToast) => {
+// ✨ NEW: Import contexts ✨
+import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
+
+export const useProfile = (activeTab) => {
+  const { user } = useAuth();
+  const { showToast } = useShop();
+
   const [profileData, setProfileData] = useState({ username: '', address: '', phone_number: '' });
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);

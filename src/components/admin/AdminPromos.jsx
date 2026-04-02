@@ -1,14 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Loader2, Tag, Calendar } from 'lucide-react';
-import { fetchAllPromosAPI, createPromoAPI, deletePromoAPI } from '../../services/promoApi';
 import { useShop } from '../../contexts/ShopContext';
+import { usePromos } from '../../hooks/usePromos'; // ✨ Import the new hook ✨
 
-// ✨ Removed { showToast } from here! ✨
 const AdminPromos = () => {
-  const { showToast } = useShop(); // It successfully grabs it from context here
-  const [promos, setPromos] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdding, setIsAdding] = useState(false);
+  const { showToast } = useShop(); 
+  // ✨ Everything is handled by the hook now! ✨
+  const { promos, isLoading, isAdding, createPromo, deletePromo } = usePromos(showToast);
 
   // Form State
   const [code, setCode] = useState('');
@@ -16,50 +14,29 @@ const AdminPromos = () => {
   const [expiry, setExpiry] = useState('');
   const [limit, setLimit] = useState('');
 
-  const loadPromos = async () => {
-    setIsLoading(true);
-    try {
-      const data = await fetchAllPromosAPI();
-      setPromos(data || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadPromos();
-  }, []);
-
   const handleCreate = async (e) => {
     e.preventDefault();
-    setIsAdding(true);
     try {
-      await createPromoAPI({
+      await createPromo({
         code: code.toUpperCase().trim(),
         discount_percentage: parseInt(discount),
         expiry_date: expiry ? new Date(expiry).toISOString() : null,
         usage_limit: limit ? parseInt(limit) : null
       });
-      if (showToast) showToast("Success", "Promo code created!");
+      // Clear form only on success
       setCode(''); setDiscount(''); setExpiry(''); setLimit('');
-      loadPromos();
     } catch (err) {
-      if (showToast) showToast("Error", "Could not create code. Ensure it is unique.", "error");
-    } finally {
-      setIsAdding(false);
+      // Errors are already handled by the hook's onError and Toast!
+      console.error(err);
     }
   };
 
   const handleDelete = async (id, codeString) => {
     if (window.confirm(`Delete promo code ${codeString}?`)) {
       try {
-        await deletePromoAPI(id);
-        if (showToast) showToast("Deleted", "Promo code removed.");
-        loadPromos();
+        await deletePromo(id, codeString);
       } catch (err) {
-        if (showToast) showToast("Error", "Failed to delete.", "error");
+        console.error(err);
       }
     }
   };
@@ -73,7 +50,9 @@ const AdminPromos = () => {
 
       {/* CREATE FORM */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-        <h4 className="text-sm font-bold uppercase tracking-widest text-gold-400 mb-4 flex items-center gap-2"><Plus size={16}/> Create New Code</h4>
+        <h4 className="text-sm font-bold uppercase tracking-widest text-gold-400 mb-4 flex items-center gap-2">
+          <Plus size={16}/> Create New Code
+        </h4>
         <form onSubmit={handleCreate} className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[150px]">
             <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Code Name</label>
@@ -91,7 +70,7 @@ const AdminPromos = () => {
             <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Usage Limit (Opt)</label>
             <input type="number" min="1" value={limit} onChange={e => setLimit(e.target.value)} placeholder="e.g. 50" className="w-full bg-black/50 border border-white/10 rounded-lg p-2 text-white outline-none focus:border-gold-400" />
           </div>
-          <button type="submit" disabled={isAdding} className="bg-gold-400 hover:bg-gold-300 text-black font-bold px-6 py-2 rounded-lg transition-colors h-[42px]">
+          <button type="submit" disabled={isAdding} className="bg-gold-400 hover:bg-gold-300 text-black font-bold px-6 py-2 rounded-lg transition-colors h-[42px] min-w-[120px] flex justify-center items-center">
             {isAdding ? <Loader2 size={18} className="animate-spin" /> : 'Generate'}
           </button>
         </form>

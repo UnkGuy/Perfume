@@ -6,7 +6,9 @@ import { useShop } from '../../contexts/ShopContext';
 
 // Cleaned up the unused props!
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onCheckoutSuccess }) => {
-  const { showToast } = useShop();
+  // Add clearCart to your destructured imports from useShop
+  const { showToast, clearCart } = useShop();
+
   const { submitCheckout, isSending } = useCheckout();
   
   const [checkoutInfo, setCheckoutInfo] = useState({ 
@@ -44,11 +46,19 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
     setAppliedPromo(null);
   };
 
+    
   const handleCheckout = async () => {
-    // ✨ Pass the promo code safely into the hook ✨
     const promoCode = appliedPromo ? appliedPromo.code : null;
-    await submitCheckout(finalTotal, localItems, checkoutInfo, promoCode, onCheckoutSuccess);
+    
+    // We pass a callback function to onCheckoutSuccess
+    const handleSuccess = async () => {
+      await clearCart(); // ✨ Wipe the DB and UI cart
+      if (onCheckoutSuccess) onCheckoutSuccess();
+    };
+
+    await submitCheckout(finalTotal, localItems, checkoutInfo, promoCode, handleSuccess);
   };
+  
 
   return (
     <div className="w-full lg:w-[400px] flex-shrink-0 animate-slide-in">

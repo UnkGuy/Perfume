@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search, Che
 import ImageUploader from '../common/ImageUploader'; 
 import { useProducts } from '../../hooks/useAdminProducts'; 
 import { useShop } from '../../contexts/ShopContext';
+import { logAdminActionAPI } from '../../services/logApi'; // Adjust path if needed
 
 const AdminProducts = ({ }) => {
   const { showToast } = useShop();
@@ -85,9 +86,10 @@ const AdminProducts = ({ }) => {
       image_urls: formData.image_urls
     };
     try {
-      await saveProduct(payload, editingProduct ? editingProduct.id : null);
-      if (showToast) showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved successfully.`);
-      setIsModalOpen(false);
+    await saveProduct(payload, editingProduct ? editingProduct.id : null);
+    
+    if (showToast) showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved successfully.`);
+    setIsModalOpen(false);
     } catch (err) {
       console.error(err);
       if (showToast) showToast('Error', err.message || 'Check browser console.', 'error');

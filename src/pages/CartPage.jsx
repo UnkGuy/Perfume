@@ -14,8 +14,8 @@ import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
 const CartPage = () => {
-  // Only pulling exactly what we need to manipulate the cart items!
-  const { cartItems, removeFromCart, clearCart } = useShop();
+  // ✨ 1. Grab updateQuantity from useShop ✨
+  const { cartItems, removeFromCart, clearCart, updateQuantity } = useShop();
   const { setCurrentPage } = useUI(); 
 
   const safeCartItems = cartItems || [];
@@ -24,7 +24,7 @@ const CartPage = () => {
   useEffect(() => {
     const processedItems = safeCartItems.map(item => ({
       ...item,
-      quantity: 1,
+      quantity: item.quantity, // Pulls the correct quantity from DB/Context
       isRemoving: false
     }));
     setLocalItems(processedItems);
@@ -34,7 +34,10 @@ const CartPage = () => {
     const newItems = [...localItems];
     if (newItems[index].quantity + delta >= 1) {
       newItems[index].quantity += delta;
-      setLocalItems(newItems);
+      setLocalItems(newItems); // Optimistic UI update
+      
+      // ✨ 2. Tell the database about the change! ✨
+      updateQuantity(index, delta); 
     }
   };
 

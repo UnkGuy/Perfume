@@ -21,6 +21,7 @@ export const useUserBan = (targetUserId) => {
       queryClient.invalidateQueries({ queryKey: ['userBan', targetUserId] });
       if (showToast) showToast('Success', newBanStatus ? 'User blocked.' : 'User unblocked.');
       
+      // ✨ Look! It's already here and perfect! ✨
       const actionType = newBanStatus ? 'Blocked User' : 'Unblocked User';
       logAdminActionAPI(adminUser?.email, actionType, `User ID: ${targetUserId}`);
     },

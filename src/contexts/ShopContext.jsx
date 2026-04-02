@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { useAuth } from './AuthContext';
 import { fetchUserWishlistAPI, updateWishlistAPI } from '../services/wishlistApi';
+import { fetchUserCartAPI, syncCartItemAPI, removeFromCartAPI, clearCartAPI } from '../services/cartApi';
 
 const ShopContext = createContext({});
 
@@ -14,17 +15,21 @@ export const ShopProvider = ({ children }) => {
   // --- DATABASE SYNC ---
   useEffect(() => {
     if (user) {
-      const loadWishlist = async () => {
+      const loadUserData = async () => {
         try {
-          const items = await fetchUserWishlistAPI(user.id);
-          setWishlistItems(items);
+          const wishItems = await fetchUserWishlistAPI(user.id);
+          setWishlistItems(wishItems);
+          
+          const dbCart = await fetchUserCartAPI(user.id);
+          setCartItems(dbCart);
         } catch (error) {
-          console.error("Failed to load wishlist", error);
+          console.error("Failed to load user data", error);
         }
       };
-      loadWishlist();
+      loadUserData();
     } else {
       setWishlistItems([]); 
+      setCartItems([]); // Clears cart UI on logout!
     }
   }, [user]);
 
@@ -38,17 +43,76 @@ export const ShopProvider = ({ children }) => {
   const removeToast = (id) => setToasts(prev => prev.filter(toast => toast.id !== id));
 
   // --- CART LOGIC ---
-  const addToCart = (product) => {
-    setCartItems(prev => [...prev, product]);
+  const addToCart = async (product, quantity = 1) => {
+    let finalQuantity = quantity;
+
+    // Optimistic UI Update
+    setCartItems(prev => {
+      const existing = prev.find(item => item.id === product.id);
+      if (existing) {
+        finalQuantity = existing.quantity + quantity;
+        return prev.map(item => item.id === product.id ? { ...item, quantity: finalQuantity } : item);
+      }
+      return [...prev, { ...product, quantity }];
+    });
+    
     showToast("Added to Cart", `${product.name} is now in your bag.`);
+
+    // Database Sync
+    if (user) {
+      try {
+        await syncCartItemAPI(user.id, product.id, finalQuantity);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
   };
 
-  const removeFromCart = (index) => {
+  const updateQuantity = async (index, delta) => {
+    const item = cartItems[index];
+    const newQuantity = item.quantity + delta;
+    if (newQuantity < 1) return;
+
+    // Optimistic UI Update
+    setCartItems(prev => prev.map((p, i) => i === index ? { ...p, quantity: newQuantity } : p));
+
+    // Database Sync
+    if (user) {
+      try {
+        await syncCartItemAPI(user.id, item.id, newQuantity);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
+  };
+
+  const removeFromCart = async (index) => {
+    const itemToRemove = cartItems[index];
+    
+    // Optimistic UI Update
     setCartItems(prev => prev.filter((_, i) => i !== index));
     showToast("Removed", "Item removed from cart.", "error");
+
+    // Database Sync
+    if (user && itemToRemove) {
+      try {
+        await removeFromCartAPI(user.id, itemToRemove.id);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
   };
 
-  const clearCart = () => setCartItems([]);
+  const clearCart = async () => {
+    setCartItems([]);
+    if (user) {
+      try {
+        await clearCartAPI(user.id);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
+  };
 
   // --- WISHLIST LOGIC ---
   const toggleWishlist = async (product) => {
@@ -72,7 +136,7 @@ export const ShopProvider = ({ children }) => {
 
   return (
     <ShopContext.Provider value={{ 
-      cartItems, addToCart, removeFromCart, clearCart, 
+      cartItems, addToCart, removeFromCart, updateQuantity, clearCart, 
       wishlistItems, toggleWishlist, 
       toasts, showToast, removeToast 
     }}>
