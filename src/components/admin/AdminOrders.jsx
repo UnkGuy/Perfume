@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Loader2, Eye, EyeOff, MessageCircle, Search } from 'lucide-react'; 
 import { useOrders } from '../../hooks/useOrders'; 
+import { useShop } from '../../contexts/ShopContext';
 
 const AdminOrders = ({ showToast, setActiveTab }) => {
+  const { showToast } = useShop();
   const { orders, isLoading, changeOrderStatus } = useOrders(showToast);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');

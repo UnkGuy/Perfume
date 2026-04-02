@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrendingUp, Users, ShoppingBag, AlertCircle, Loader2 } from 'lucide-react';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
+import { useShop } from '../../contexts/ShopContext';
 
 // ✨ NEW RECHARTS IMPORTS ✨
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
@@ -9,6 +10,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsToolti
 const PIE_COLORS = ['#d4af37', '#b59325', '#917518', '#6b550b', '#423403'];
 
 const AdminOverview = () => {
+  const { showToast } = useShop();
   const { stats, isLoading } = useDashboardStats();
 
   if (isLoading) {

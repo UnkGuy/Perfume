@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Loader2, Tag, Calendar } from 'lucide-react';
 import { fetchAllPromosAPI, createPromoAPI, deletePromoAPI } from '../../services/promoApi';
+import { useShop } from '../../contexts/ShopContext';
 
 const AdminPromos = ({ showToast }) => {
+  const { showToast } = useShop();
   const [promos, setPromos] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);

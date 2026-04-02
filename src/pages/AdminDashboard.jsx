@@ -88,10 +88,10 @@ const AdminDashboard = () => {
 
           <div className="min-h-[500px]">
             {activeTab === 'overview' && <AdminOverview />}
-            {activeTab === 'orders' && <AdminOrders showToast={showToast} setActiveTab={setActiveTab} />}
-            {activeTab === 'messages' && <AdminMessages showToast={showToast} />} 
-            {activeTab === 'products' && <AdminProducts showToast={showToast} />}
-            {activeTab === 'promos' && <AdminPromos showToast={showToast} />}
+            {activeTab === 'orders' && <AdminOrders setActiveTab={setActiveTab} />}
+            {activeTab === 'messages' && <AdminMessages />} 
+            {activeTab === 'products' && <AdminProducts />}
+            {activeTab === 'promos' && <AdminPromos />}
           </div>
         </main>
       </div>

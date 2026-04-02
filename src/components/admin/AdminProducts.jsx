@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'; 
 import ImageUploader from '../common/ImageUploader'; 
 import { useProducts } from '../../hooks/useAdminProducts'; 
+import { useShop } from '../../contexts/ShopContext';
 
 const AdminProducts = ({ showToast }) => {
+  const { showToast } = useShop();
   const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
   
   const [isModalOpen, setIsModalOpen] = useState(false);

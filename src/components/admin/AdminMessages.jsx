@@ -2,8 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, Send, ShoppingBag, Loader2, Ban, CheckCircle, Search, ArrowLeft, MessageSquare } from 'lucide-react';
 import { useActiveChats, useMessageThread } from '../../hooks/useMessages';
 import { useUserBan } from '../../hooks/useUserBan'; 
+import { useShop } from '../../contexts/ShopContext';
 
-const AdminMessages = ({ showToast }) => {
+const AdminOrders = ({ setActiveTab }) => {
+  const { showToast } = useShop();
   const [selectedUser, setSelectedUser] = useState(null);
   const [reply, setReply] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
