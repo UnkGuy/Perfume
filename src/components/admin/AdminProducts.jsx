@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 // ✨ Added Sparkles icon for AI ✨
 import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'; 
 import ImageUploader from '../common/ImageUploader'; 
-import { useProducts } from '../../hooks/useProducts'; 
+import { useProducts } from '../../hooks/useAdminProducts'; 
 
 const AdminProducts = ({ showToast }) => {
   const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
