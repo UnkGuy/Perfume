@@ -1,14 +1,14 @@
 import React from 'react';
 import { X, Trash2, ShoppingBag, ArrowRight, AlertCircle } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
+import { useAuth } from '../../contexts/AuthContext';
 
-// Use the Supabase fallback image
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-// Add user and showToast here!
-const CartDrawer = ({ 
-  isOpen, onClose, cartItems, removeFromCart, setCurrentPage, 
-  user, showToast // <--- ADD THESE TWO
-}) => {
+const CartDrawer = ({ isOpen, onClose, setCurrentPage }) => {
+  const { user } = useAuth();
+  const { cartItems, removeFromCart, showToast } = useShop();
+
   const total = cartItems.reduce((sum, item) => sum + item.price, 0);
   const hasUnavailableItems = cartItems.some(item => !item.available);
 
@@ -90,21 +90,21 @@ const CartDrawer = ({
                 disabled={hasUnavailableItems}
                 onClick={() => {
                   if (!user) {
-      if (showToast) showToast("Login Required", "Please sign in to proceed.", "error");
-      setCurrentPage('login');
-      onClose();
-      return;
-    }
-    onClose();
-    setCurrentPage('cart');
-  }}
-  className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all 
-    ${hasUnavailableItems 
-      ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
-      : 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:shadow-[0_0_25px_rgba(212,175,55,0.5)]'}`}
->
-  Review Inquiry <ArrowRight size={18} />
-</button>
+                    if (showToast) showToast("Login Required", "Please sign in to proceed.", "error");
+                    setCurrentPage('login');
+                    onClose();
+                    return;
+                  }
+                  onClose();
+                  setCurrentPage('cart');
+                }}
+                className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all 
+                  ${hasUnavailableItems 
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed' 
+                    : 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-[0_0_15px_rgba(212,175,55,0.3)] hover:shadow-[0_0_25px_rgba(212,175,55,0.5)]'}`}
+              >
+                Review Inquiry <ArrowRight size={18} />
+              </button>
             </div>
           )}
         </div>

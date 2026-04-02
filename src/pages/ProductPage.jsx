@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, Star, Loader, ChevronDown, SlidersHorizontal, LayoutGrid, List } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, LayoutGrid, List, ChevronDown, SlidersHorizontal } from 'lucide-react';
+
+// Components
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
-
-import { useStoreProducts } from '../hooks/useStoreProducts';
-
 import ProductCard from '../components/products/ProductCard';
 import ProductFilters from '../components/products/ProductFilters';
 import ProductDetails from '../components/products/ProductDetails';
@@ -12,15 +11,25 @@ import QuickViewModal from '../components/products/QuickViewModal';
 import PredictiveSearch from '../components/products/PredictiveSearch';
 import ProductSkeleton from '../components/products/ProductSkeleton';
 
+// Hooks & Contexts
+import { useStoreProducts } from '../hooks/useStoreProducts';
+import { useShop } from '../contexts/ShopContext';
+import { useAuth } from '../contexts/AuthContext';
+
 const ProductPage = ({ 
-  setCurrentPage, cartItems, addToCart, toggleWishlist, wishlistItems, showToast,
-  searchQuery, setSearchQuery, onCartClick, onWishlistClick, user, userRole, handleLogout 
+  setCurrentPage, 
+  searchQuery, 
+  setSearchQuery, 
+  onCartClick, 
+  onWishlistClick 
 }) => {
   
-  const { products, isLoading } = useStoreProducts(showToast);
+  // Consuming Contexts Directly! No more prop drilling from App.jsx
+  const { user } = useAuth();
+  const { addToCart, wishlistItems, toggleWishlist, showToast } = useShop();
+  const { products, isLoading } = useStoreProducts();
 
-  // ✨ SMART EXTRACTION MAGIC ✨
-  // Automatically pull unique brands, sizes, and notes from the database, filter out empty ones, and sort them alphabetically!
+  // Dynamic Extraction
   const dynamicBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
   const dynamicSizes = [...new Set(products.map(p => p.size).filter(Boolean))].sort();
   const dynamicNotes = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort();
@@ -32,7 +41,6 @@ const ProductPage = ({
   const [priceRange, setPriceRange] = useState({ min: 0, max: 20000 });
   const [sortOption, setSortOption] = useState('date');
   const [ratingFilter, setRatingFilter] = useState(0);
-  
   const [viewMode, setViewMode] = useState('large'); 
   
   const [selectedNotes, setSelectedNotes] = useState([]);
@@ -87,7 +95,8 @@ const ProductPage = ({
     setShowOutOfStock(false); 
   };
 
-  const getProcessedProducts = () => {
+  // ✨ MEMOIZED FILTERING: Extremely efficient, only runs when dependencies change ✨
+  const processedProducts = useMemo(() => {
     let filtered = products.filter(product => {
       if (!showOutOfStock && !product.available) return false; 
       if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase()) && !product.brand.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -106,9 +115,8 @@ const ProductPage = ({
       if (sortOption === 'rating-desc') return b.rating - a.rating;
       return 0; 
     });
-  };
+  }, [products, showOutOfStock, searchQuery, ratingFilter, priceRange, selectedNotes, selectedSizes, selectedBrands, selectedGender, sortOption]);
 
-  const processedProducts = getProcessedProducts();
   const hasActiveFilters = ratingFilter > 0 || priceRange.min > 0 || searchQuery || selectedNotes.length > 0 || selectedSizes.length > 0 || selectedBrands.length > 0;
 
   const ITEMS_PER_PAGE = 16;
@@ -125,10 +133,13 @@ const ProductPage = ({
   return (
     <div className="min-h-screen bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
       <div className="relative z-50">
+        {/* Header uses internal Context now, so we just pass routing stuff */}
         <Header 
-          setCurrentPage={setCurrentPage} cartItems={cartItems} wishlistItems={wishlistItems}
-          onCartClick={onCartClick} onWishlistClick={onWishlistClick} searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery} user={user} userRole={userRole} handleLogout={handleLogout} 
+          setCurrentPage={setCurrentPage} 
+          onCartClick={onCartClick} 
+          onWishlistClick={onWishlistClick} 
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery} 
         />
       </div>
 
@@ -164,7 +175,6 @@ const ProductPage = ({
                   MIN_LIMIT={MIN_LIMIT} MAX_LIMIT={MAX_LIMIT}
                   showOutOfStock={showOutOfStock}
                   setShowOutOfStock={setShowOutOfStock}
-                  // ✨ PASS THE DYNAMIC ARRAYS DOWN ✨
                   availableBrands={dynamicBrands}
                   availableSizes={dynamicSizes}
                   availableNotes={dynamicNotes}
@@ -174,7 +184,6 @@ const ProductPage = ({
           )}
 
           <main className={`flex-1 ${selectedProduct ? 'w-full' : ''}`}>
-            {/* ... Rest of your existing main block code is perfectly fine ... */}
             {isLoading ? (
               <div className={gridClasses}>
                 {[...Array(8)].map((_, index) => (

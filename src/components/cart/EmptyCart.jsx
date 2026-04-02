@@ -3,24 +3,21 @@ import { ShoppingBag, ArrowRight } from 'lucide-react';
 import Header from '../common/Header';
 import Footer from '../common/Footer';
 
-// Receives ALL props to prevent Header from crashing when cart is empty
 const EmptyCart = ({ 
-  setCurrentPage, cartItems, wishlistItems, onCartClick, onWishlistClick, 
-  searchQuery, setSearchQuery, user, userRole, handleLogout 
+  setCurrentPage, 
+  onCartClick, 
+  onWishlistClick, 
+  searchQuery, 
+  setSearchQuery 
 }) => {
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
       <Header 
         setCurrentPage={setCurrentPage} 
-        cartItems={cartItems} 
-        wishlistItems={wishlistItems}
         onCartClick={onCartClick}
         onWishlistClick={onWishlistClick}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        user={user}                 
-        userRole={userRole} 
-        handleLogout={handleLogout} 
       />
       <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center text-gray-600 mb-6 border border-white/10">

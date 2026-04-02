@@ -9,24 +9,31 @@ import CartItem from '../components/cart/CartItem';
 import CartSummary from '../components/cart/CartSummary';
 import SuggestedProducts from '../components/common/SuggestedProducts';
 
-// Hook
+// Hooks & Contexts
 import { useShop } from '../contexts/ShopContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const CartPage = ({ 
-  setCurrentPage, cartItems, removeFromCart, clearCart, 
-  wishlistItems, onCartClick, onWishlistClick, 
-  searchQuery, setSearchQuery, 
-  user, userRole, handleLogout, showToast
+  setCurrentPage, 
+  onCartClick, 
+  onWishlistClick, 
+  searchQuery, 
+  setSearchQuery 
 }) => {
   
-  const { addToCart } = useShop();
+  // ✨ Pulling directly from Context! No more prop drilling. ✨
+  const { user } = useAuth();
+  const { cartItems, addToCart, removeFromCart, clearCart, wishlistItems, showToast } = useShop();
+
+  // Safety fallback to prevent .map() crashes
+  const safeCartItems = cartItems || [];
 
   // --- STATE ---
   const [localItems, setLocalItems] = useState([]);
 
   // --- INITIALIZATION ---
   useEffect(() => {
-    const processedItems = cartItems.map(item => ({
+    const processedItems = safeCartItems.map(item => ({
       ...item,
       quantity: 1,
       isRemoving: false
@@ -70,15 +77,10 @@ const CartPage = ({
     return (
       <EmptyCart 
         setCurrentPage={setCurrentPage} 
-        cartItems={cartItems} 
-        wishlistItems={wishlistItems}
         onCartClick={onCartClick}
         onWishlistClick={onWishlistClick}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        user={user}
-        userRole={userRole}
-        handleLogout={handleLogout}
       />
     );
   }
@@ -89,15 +91,10 @@ const CartPage = ({
       <div className="relative z-50">
         <Header 
           setCurrentPage={setCurrentPage} 
-          cartItems={cartItems} 
-          wishlistItems={wishlistItems}
           onCartClick={onCartClick}
           onWishlistClick={onWishlistClick}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
-          user={user}                 
-          userRole={userRole} 
-          handleLogout={handleLogout} 
         />
       </div>
       
