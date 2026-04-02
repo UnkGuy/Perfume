@@ -2,12 +2,10 @@ import React from 'react';
 import { useStoreProducts } from '../../hooks/useStoreProducts';
 import ProductCard from '../products/ProductCard';
 
-const SuggestedProducts = ({ 
-  currentProductId, 
-  referenceNotes = [], 
-  referenceGender, 
-  onSelect, onAddToCart, onQuickView, onToggleWishlist, wishlistItems, user, setCurrentPage, showToast 
-}) => {
+const SuggestedProducts = ({ currentProductId, referenceNotes = [], referenceGender, onSelect, onQuickView }) => {
+  const { user } = useAuth();
+  const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
+  const { setCurrentPage } = useUI();
   const { products, isLoading } = useStoreProducts();
 
   if (isLoading || !products || products.length === 0) return null;

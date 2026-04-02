@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { updatePasswordAPI } from '../services/authApi';
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
 
-export const useResetPassword = (showToast, setCurrentPage) => {
+export const useResetPassword = () => {
+  const { showToast } = useShop();
+  const { setCurrentPage } = useUI();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);

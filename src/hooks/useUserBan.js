@@ -2,10 +2,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchUserBanStatusAPI, toggleUserBanAPI } from '../services/userApi';
 import { logAdminActionAPI } from '../services/logApi';
 import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
 
-export const useUserBan = (targetUserId, showToast) => {
+export const useUserBan = (targetUserId) => {
   const queryClient = useQueryClient();
   const { user: adminUser } = useAuth();
+  const { showToast } = useShop();
 
   const { data: isBanned, isLoading } = useQuery({
     queryKey: ['userBan', targetUserId],
@@ -19,7 +21,6 @@ export const useUserBan = (targetUserId, showToast) => {
       queryClient.invalidateQueries({ queryKey: ['userBan', targetUserId] });
       if (showToast) showToast('Success', newBanStatus ? 'User blocked.' : 'User unblocked.');
       
-      // Log the Ban/Unban
       const actionType = newBanStatus ? 'Blocked User' : 'Unblocked User';
       logAdminActionAPI(adminUser?.email, actionType, `User ID: ${targetUserId}`);
     },

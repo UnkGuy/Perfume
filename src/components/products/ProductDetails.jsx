@@ -6,11 +6,12 @@ import { useReviews } from '../../hooks/useReviews';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-// NOTE: We added `onSelect` and `wishlistItems` to the props here so the suggestion cards work perfectly!
-const ProductDetails = ({ 
-  product, onBack, onAddToCart, onToggleWishlist, isInWishlist, 
-  showToast, user, setCurrentPage, onSelect, wishlistItems 
-}) => {
+const ProductDetails = ({ product, onBack, onSelect }) => {
+  const { user } = useAuth();
+  const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
+  const { setCurrentPage } = useUI();
+  
+  const isInWishlist = wishlistItems.some(item => item.id === product.id);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 

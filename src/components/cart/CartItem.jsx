@@ -1,9 +1,13 @@
 import React from 'react';
 import { Trash2, Check, Plus, Minus, AlertCircle } from 'lucide-react';
+import { useUI } from '../../contexts/UIContext'; // <-- ADD THIS
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const CartItem = ({ item, index, handleQuantity, handleRemove, setCurrentPage }) => {
+
+const CartItem = ({ item, index, handleQuantity, handleRemove }) => {
+  const { setCurrentPage } = useUI(); // Grab it here instead!
+  // ... rest of component
   const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;  
 
   return (

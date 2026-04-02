@@ -1,17 +1,23 @@
 import React from 'react';
 import { Star, X, Heart } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useShop } from '../../contexts/ShopContext';
+import { useUI } from '../../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const QuickViewModal = ({ 
-  product, onClose, onAddToCart, onToggleWishlist, isInWishlist,
-  user, setCurrentPage, showToast 
-}) => {
+const QuickViewModal = ({ product, onClose }) => {
+  const { user } = useAuth();
+  const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
+  const { setCurrentPage } = useUI();
+
   if (!product) return null;
 
+  const isInWishlist = wishlistItems?.some(item => item.id === product.id);
   const imageSource = product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE;
 
   return (
+    // ... (Keep existing JSX exactly the same, but notice it now uses the context functions instead of props!)
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className="bg-rich-black border border-gold-400/30 rounded-2xl max-w-3xl w-full relative shadow-2xl overflow-hidden flex flex-col md:flex-row" onClick={e => e.stopPropagation()}>
         
@@ -20,12 +26,7 @@ const QuickViewModal = ({
         </button>
 
         <div className="w-full md:w-1/2 h-64 md:h-auto bg-white/5 relative">
-          <img 
-            src={imageSource} 
-            alt={product.name} 
-            loading="lazy"
-            className="w-full h-full object-cover" 
-          />
+          <img src={imageSource} alt={product.name} loading="lazy" className="w-full h-full object-cover" />
         </div>
 
         <div className="w-full md:w-1/2 p-8 flex flex-col">
@@ -48,12 +49,9 @@ const QuickViewModal = ({
 
           <p className="text-2xl font-light text-white mb-6">₱{product.price}</p>
 
-          {/* ✨ NEW: PRODUCT DESCRIPTION SNIPPET ✨ */}
           {product.description && (
             <div className="mb-4">
-              <p className="text-sm text-gray-300 leading-relaxed line-clamp-3">
-                {product.description}
-              </p>
+              <p className="text-sm text-gray-300 leading-relaxed line-clamp-3">{product.description}</p>
             </div>
           )}
 
@@ -66,24 +64,21 @@ const QuickViewModal = ({
             <button 
               disabled={!product.available}
               onClick={() => { 
-                // GUEST CHECK
                 if (!user) {
                   if (showToast) showToast("Login Required", "Please sign in to add to cart.", "error");
                   setCurrentPage('login');
                   onClose();
                   return;
                 }
-                onAddToCart(product); 
+                addToCart(product); 
                 onClose(); 
               }}
-              className={`flex-1 py-3 font-bold rounded transition-colors
-                ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}
-              `}
+              className={`flex-1 py-3 font-bold rounded transition-colors ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
             >
               {product.available ? 'Add to Cart' : 'Out of Stock'}
             </button>
             <button 
-              onClick={() => onToggleWishlist(product)}
+              onClick={() => toggleWishlist(product)}
               className={`p-3 rounded border transition-colors ${isInWishlist ? 'border-red-500 bg-red-500/10 text-red-500' : 'border-white/10 hover:border-white/30 text-white'}`}
             >
               <Heart size={20} className={isInWishlist ? "fill-red-500" : ""} />

@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import { loginAPI, registerAPI, resetPasswordAPI, fetchUserRoleAPI, signInWithOAuthAPI } from '../services/authApi';
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
 
-export const useAuthForm = (showToast, setCurrentPage) => {
+export const useAuthForm = () => {
+  const { showToast } = useShop();
+  const { setCurrentPage } = useUI();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -13,7 +18,6 @@ export const useAuthForm = (showToast, setCurrentPage) => {
       return false;
     }
 
-    // ✨ NEW: Enforce Username on Registration ✨
     if (view === 'register' && !formData.username?.trim()) {
       setError('Please provide a username.');
       return false;
@@ -33,10 +37,9 @@ export const useAuthForm = (showToast, setCurrentPage) => {
 
     try {
       if (view === 'register') {
-        // Pass the username to the API!
         await registerAPI(formData.email, formData.password, formData.username);
         if (showToast) showToast('Success', 'Account created! Please check your email to verify.');
-        setView('login'); // Send them back to login after registering
+        setView('login'); 
         
       } else if (view === 'login') {
         const data = await loginAPI(formData.email, formData.password);
@@ -69,7 +72,5 @@ export const useAuthForm = (showToast, setCurrentPage) => {
     }
   };
 
-  // Return the new function
   return { submitAuth, handleOAuthSignIn, isLoading, error, setError };
 };
-

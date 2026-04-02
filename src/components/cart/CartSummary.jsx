@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import { CheckCircle, AlertCircle, Loader2, Tag, MessageSquare } from 'lucide-react';
-import { useCheckout } from '../../hooks/useCheckout';
-import { validatePromoCodeAPI } from '../../services/promoApi'; 
+import { useAuth } from '../../contexts/AuthContext';
+import { useShop } from '../../contexts/ShopContext';
+import { useUI } from '../../contexts/UIContext';
 
-const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, user, showToast, setCurrentPage, onCheckoutSuccess }) => {
-  const { submitCheckout, isSending } = useCheckout(showToast, setCurrentPage);
+// Remove `user`, `showToast`, and `setCurrentPage` from props!
+const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onCheckoutSuccess }) => {
+  const { user } = useAuth();
+  const { showToast } = useShop();
+  const { setCurrentPage } = useUI();
+  // ... rest of component
+  const { submitCheckout, isSending } = useCheckout();
   
   // --- CHECKOUT FORM STATE ---
   const [checkoutInfo, setCheckoutInfo] = useState({ 
