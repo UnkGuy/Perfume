@@ -4,7 +4,8 @@ import { useActiveChats, useMessageThread } from '../../hooks/useMessages';
 import { useUserBan } from '../../hooks/useUserBan'; 
 import { useShop } from '../../contexts/ShopContext';
 
-const AdminOrders = ({ setActiveTab }) => {
+// ✨ FIXED: Renamed from AdminOrders to AdminMessages ✨
+const AdminMessages = () => {
   const { showToast } = useShop();
   const [selectedUser, setSelectedUser] = useState(null);
   const [reply, setReply] = useState('');
@@ -13,7 +14,7 @@ const AdminOrders = ({ setActiveTab }) => {
 
   const { activeChats, isLoading: chatsLoading } = useActiveChats();
   const { messages, sendMessage } = useMessageThread(selectedUser, 'admin');
-  const { isBanned, toggleBan } = useUserBan(selectedUser, showToast); 
+  const { isBanned, toggleBan } = useUserBan(selectedUser); // Note: useUserBan now gets showToast from Context!
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,7 +25,7 @@ const AdminOrders = ({ setActiveTab }) => {
     const { success } = await sendMessage(reply);
     if (success) {
       setReply('');
-    } else if (showToast) {
+    } else {
       showToast('Error', 'Failed to send message', 'error');
     }
   };

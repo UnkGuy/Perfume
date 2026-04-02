@@ -5,7 +5,7 @@ import ImageUploader from '../common/ImageUploader';
 import { useProducts } from '../../hooks/useAdminProducts'; 
 import { useShop } from '../../contexts/ShopContext';
 
-const AdminProducts = ({ showToast }) => {
+const AdminProducts = ({ }) => {
   const { showToast } = useShop();
   const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
   
