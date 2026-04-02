@@ -16,10 +16,11 @@ import { useStoreProducts } from '../hooks/useStoreProducts';
 import { useUI } from '../contexts/UIContext'; 
 
 const ProductPage = () => {
-  // We only need UI context and the products! No auth or shop needed here anymore.
+  // Only UI and Data fetching needed here!
   const { setCurrentPage, searchQuery, setSearchQuery } = useUI(); 
   const { products, isLoading } = useStoreProducts();
 
+  // Dynamic Extraction
   const dynamicBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
   const dynamicSizes = [...new Set(products.map(p => p.size).filter(Boolean))].sort();
   const dynamicNotes = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort();

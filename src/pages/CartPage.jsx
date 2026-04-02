@@ -14,6 +14,7 @@ import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
 const CartPage = () => {
+  // Only pulling exactly what we need to manipulate the cart items!
   const { cartItems, removeFromCart, clearCart } = useShop();
   const { setCurrentPage } = useUI(); 
 
