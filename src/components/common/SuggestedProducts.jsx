@@ -2,10 +2,8 @@ import React from 'react';
 import { useStoreProducts } from '../../hooks/useStoreProducts';
 import ProductCard from '../products/ProductCard';
 
+// ✨ Removed ALL the unused props! ✨
 const SuggestedProducts = ({ currentProductId, referenceNotes = [], referenceGender, onSelect, onQuickView }) => {
-  const { user } = useAuth();
-  const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
-  const { setCurrentPage } = useUI();
   const { products, isLoading } = useStoreProducts();
 
   if (isLoading || !products || products.length === 0) return null;
@@ -21,7 +19,6 @@ const SuggestedProducts = ({ currentProductId, referenceNotes = [], referenceGen
     }
   });
 
-  // ✨ TAKING 4 SUGGESTIONS FOR THE NEW GRID ✨
   const suggestions = availableProducts
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 4); 
@@ -31,14 +28,13 @@ const SuggestedProducts = ({ currentProductId, referenceNotes = [], referenceGen
   return (
     <div className="mt-16 border-t border-white/10 pt-12 animate-fade-in">
       <h3 className="text-2xl font-bold text-white mb-8">You Might Also Like</h3>
-      {/* ✨ SET TO MATCH THE 4-COLUMN GAP-8 LAYOUT ✨ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
         {suggestions.map(product => (
           <ProductCard 
-            key={product.id} product={product} onSelect={onSelect} onAddToCart={onAddToCart}
-            onQuickView={onQuickView} onToggleWishlist={onToggleWishlist}
-            isInWishlist={wishlistItems?.some(item => item.id === product.id)}
-            user={user} setCurrentPage={setCurrentPage} showToast={showToast}
+            key={product.id} 
+            product={product} 
+            onSelect={onSelect} 
+            onQuickView={onQuickView} 
           />
         ))}
       </div>

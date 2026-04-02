@@ -13,19 +13,13 @@ import ProductSkeleton from '../components/products/ProductSkeleton';
 
 // Hooks & Contexts
 import { useStoreProducts } from '../hooks/useStoreProducts';
-import { useShop } from '../contexts/ShopContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useUI } from '../contexts/UIContext'; // <-- NEW IMPORT
+import { useUI } from '../contexts/UIContext'; 
 
-// ✨ Removed ALL props! ✨
 const ProductPage = () => {
-  // Consuming Contexts Directly! No more prop drilling from App.jsx
-  const { user } = useAuth();
-  const { addToCart, wishlistItems, toggleWishlist, showToast } = useShop();
-  const { setCurrentPage, searchQuery, setSearchQuery } = useUI(); // Pulling routing from Context
+  // We only need UI context and the products! No auth or shop needed here anymore.
+  const { setCurrentPage, searchQuery, setSearchQuery } = useUI(); 
   const { products, isLoading } = useStoreProducts();
 
-  // Dynamic Extraction
   const dynamicBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
   const dynamicSizes = [...new Set(products.map(p => p.size).filter(Boolean))].sort();
   const dynamicNotes = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort();
@@ -182,17 +176,8 @@ const ProductPage = () => {
               <ProductDetails 
                 product={selectedProduct} 
                 onBack={() => setSelectedProduct(null)}
-                onAddToCart={(product) => {
-                  addToCart(product);
-                  setSelectedProduct(null);
-                }}
-                onToggleWishlist={toggleWishlist}
-                isInWishlist={wishlistItems.some(item => item.id === selectedProduct.id)}
-                showToast={showToast}
-                user={user}
-                setCurrentPage={setCurrentPage}
                 onSelect={setSelectedProduct} 
-                wishlistItems={wishlistItems}
+                onQuickView={setQuickViewProduct}
               />
             ) : (
               <>
@@ -253,13 +238,7 @@ const ProductPage = () => {
                         key={product.id} 
                         product={product} 
                         onSelect={setSelectedProduct} 
-                        onAddToCart={addToCart}
                         onQuickView={setQuickViewProduct} 
-                        onToggleWishlist={toggleWishlist}
-                        isInWishlist={wishlistItems?.some(item => item.id === product.id)}
-                        user={user} 
-                        setCurrentPage={setCurrentPage} 
-                        showToast={showToast}
                         isCompact={viewMode === 'compact'} 
                       />
                     ))
@@ -293,9 +272,8 @@ const ProductPage = () => {
       </div>
 
       <QuickViewModal 
-        product={quickViewProduct} onClose={() => setQuickViewProduct(null)} onAddToCart={addToCart}
-        onToggleWishlist={toggleWishlist} isInWishlist={wishlistItems?.some(item => item.id === quickViewProduct?.id)}
-        user={user} setCurrentPage={setCurrentPage} showToast={showToast}
+        product={quickViewProduct} 
+        onClose={() => setQuickViewProduct(null)} 
       />
       <Footer />
     </div>

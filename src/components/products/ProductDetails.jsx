@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Star, ArrowLeft, Heart, Check, AlertCircle, Edit3, User as UserIcon } from 'lucide-react';
 import ReviewModal from './ReviewModal';
-import SuggestedProducts from '../common/SuggestedProducts'; // <-- NEW IMPORT
+import SuggestedProducts from '../common/SuggestedProducts';
 import { useReviews } from '../../hooks/useReviews'; 
+import { useAuth } from '../../contexts/AuthContext';
+import { useShop } from '../../contexts/ShopContext';
+import { useUI } from '../../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-const ProductDetails = ({ product, onBack, onSelect }) => {
+// ✨ Removed all the redundant props! ✨
+const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
   const { user } = useAuth();
   const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
   const { setCurrentPage } = useUI();
@@ -21,10 +25,9 @@ const ProductDetails = ({ product, onBack, onSelect }) => {
   const isDiscounted = product?.compare_at_price && product.compare_at_price > product.price;
   const percentOff = isDiscounted ? Math.round((1 - (product.price / product.compare_at_price)) * 100) : 0;
 
-  // Smooth scroll to top when a user clicks a "Suggested Product"
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setActiveImageIndex(0); // Reset image gallery to the first image
+    setActiveImageIndex(0); 
   }, [product]);
 
   if (!product) return null;
@@ -53,7 +56,7 @@ const ProductDetails = ({ product, onBack, onSelect }) => {
               <span className="absolute top-4 left-4 bg-gold-400 text-black text-xs font-bold px-3 py-1.5 rounded uppercase tracking-wider shadow-lg">Sale</span>
             )}
             <button 
-              onClick={() => onToggleWishlist(product)}
+              onClick={() => toggleWishlist(product)}
               className="absolute top-4 right-4 p-3 bg-black/40 backdrop-blur-md rounded-full text-white border border-white/10 hover:border-red-500 hover:text-red-500 transition-colors z-20"
             >
               <Heart size={20} className={isInWishlist ? "fill-red-500 text-red-500" : ""} />
@@ -107,7 +110,6 @@ const ProductDetails = ({ product, onBack, onSelect }) => {
             )}
           </div>
 
-          {/* DYNAMIC PRICE DISPLAY */}
           <div className="mb-8">
             <div className="flex items-center gap-4">
               <p className="text-3xl font-light text-white">₱{product.price}</p>
@@ -156,7 +158,7 @@ const ProductDetails = ({ product, onBack, onSelect }) => {
                 setCurrentPage('login');
                 return;
               }
-              onAddToCart(product);
+              addToCart(product);
             }}
             className={`w-full py-4 font-bold rounded flex items-center justify-center gap-2 transition-all shadow-lg text-lg ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black shadow-gold-400/20 hover:shadow-gold-400/40' : 'bg-gray-800 text-gray-500 cursor-not-allowed opacity-80'}`}
           >
@@ -165,7 +167,6 @@ const ProductDetails = ({ product, onBack, onSelect }) => {
         </div>
       </div>
       
-      {/* REVIEWS SECTION */}
       <div id="reviews-section" className="pt-12 border-t border-white/10">
         <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
           Customer Reviews <span className="text-sm font-normal text-gray-500 bg-white/5 px-3 py-1 rounded-full">{reviews.length}</span>
@@ -202,18 +203,13 @@ const ProductDetails = ({ product, onBack, onSelect }) => {
         )}
       </div>
 
-      {/* ✨ SUGGESTED PRODUCTS SECTION ✨ */}
+      {/* ✨ CLEANED UP SUGGESTED PRODUCTS ✨ */}
       <SuggestedProducts 
         currentProductId={product.id}
         referenceNotes={product.notes}
         referenceGender={product.gender}
         onSelect={onSelect} 
-        onAddToCart={onAddToCart}
-        onToggleWishlist={onToggleWishlist}
-        wishlistItems={wishlistItems || []} 
-        user={user}
-        setCurrentPage={setCurrentPage}
-        showToast={showToast}
+        onQuickView={onQuickView}
       />
       
     </div>

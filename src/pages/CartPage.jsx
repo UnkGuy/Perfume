@@ -11,14 +11,11 @@ import SuggestedProducts from '../components/common/SuggestedProducts';
 
 // Hooks & Contexts
 import { useShop } from '../contexts/ShopContext';
-import { useAuth } from '../contexts/AuthContext';
-import { useUI } from '../contexts/UIContext'; // <-- NEW IMPORT
+import { useUI } from '../contexts/UIContext';
 
-// ✨ NO PROPS ✨
 const CartPage = () => {
-  const { user } = useAuth();
-  const { cartItems, addToCart, removeFromCart, clearCart, wishlistItems, showToast } = useShop();
-  const { setCurrentPage } = useUI(); // Pull routing from Context
+  const { cartItems, removeFromCart, clearCart } = useShop();
+  const { setCurrentPage } = useUI(); 
 
   const safeCartItems = cartItems || [];
   const [localItems, setLocalItems] = useState([]);
@@ -61,7 +58,7 @@ const CartPage = () => {
   const cartGender = localItems.length > 0 ? localItems[0].gender : 'Unisex';
   
   if (localItems.length === 0) {
-    return <EmptyCart />; // EmptyCart takes no props now!
+    return <EmptyCart />; 
   }
 
   return (
@@ -85,7 +82,6 @@ const CartPage = () => {
                 index={index} 
                 handleQuantity={handleQuantity} 
                 handleRemove={handleRemove} 
-                setCurrentPage={setCurrentPage} 
               />
             ))}
 
@@ -98,9 +94,6 @@ const CartPage = () => {
             localItems={localItems}
             calculateTotal={calculateTotal}
             hasUnavailableItems={hasUnavailableItems}
-            user={user}
-            showToast={showToast}
-            setCurrentPage={setCurrentPage}
             onCheckoutSuccess={() => {
               setLocalItems([]);
               if (clearCart) clearCart(); 
@@ -112,12 +105,7 @@ const CartPage = () => {
           currentProductId={null} 
           referenceNotes={cartNotes}
           referenceGender={cartGender}
-          onSelect={(product) => setCurrentPage('products')} 
-          onAddToCart={addToCart} 
-          wishlistItems={wishlistItems}
-          user={user}
-          setCurrentPage={setCurrentPage}
-          showToast={showToast}
+          onSelect={() => setCurrentPage('products')} 
         />
       </div>
       <Footer />
