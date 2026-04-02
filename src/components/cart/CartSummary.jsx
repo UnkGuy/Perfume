@@ -1,16 +1,14 @@
-import { useAuth } from '../../contexts/AuthContext';
+import React, { useState } from 'react';
+import { CheckCircle, AlertCircle, Loader2, Tag, MessageSquare } from 'lucide-react';
+import { useCheckout } from '../../hooks/useCheckout';
+import { validatePromoCodeAPI } from '../../services/promoApi'; 
 import { useShop } from '../../contexts/ShopContext';
-import { useUI } from '../../contexts/UIContext';
 
-// Remove `user`, `showToast`, and `setCurrentPage` from props!
+// Cleaned up the unused props!
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onCheckoutSuccess }) => {
-  const { user } = useAuth();
   const { showToast } = useShop();
-  const { setCurrentPage } = useUI();
-  // ... rest of component
   const { submitCheckout, isSending } = useCheckout();
   
-  // --- CHECKOUT FORM STATE ---
   const [checkoutInfo, setCheckoutInfo] = useState({ 
     fulfillmentMethod: 'Delivery', 
     paymentMethod: 'GCash', 
@@ -18,17 +16,14 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
     location: '' 
   });
   
-  // --- PROMO CODE STATE ---
   const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState(null); // Will hold { code, discount_percentage }
+  const [appliedPromo, setAppliedPromo] = useState(null); 
   const [promoLoading, setPromoLoading] = useState(false);
 
-  // --- MATH ---
   const subtotal = calculateTotal();
   const discountAmount = appliedPromo ? subtotal * (appliedPromo.discount_percentage / 100) : 0;
   const finalTotal = subtotal - discountAmount;
 
-  // --- PROMO LOGIC ---
   const handleApplyPromo = async () => {
     if (!promoCodeInput.trim()) return;
     setPromoLoading(true);
@@ -36,9 +31,9 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
       const promoData = await validatePromoCodeAPI(promoCodeInput);
       setAppliedPromo(promoData);
       setPromoCodeInput('');
-      if (showToast) showToast('Promo Applied!', `You got ${promoData.discount_percentage}% off.`);
+      showToast('Promo Applied!', `You got ${promoData.discount_percentage}% off.`);
     } catch (err) {
-      if (showToast) showToast('Error', err.message, 'error');
+      showToast('Error', err.message, 'error');
       setAppliedPromo(null);
     } finally {
       setPromoLoading(false);
@@ -49,13 +44,10 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
     setAppliedPromo(null);
   };
 
-  // --- SUBMIT LOGIC ---
   const handleCheckout = async () => {
-    // We pass the final discounted total to the checkout API
-    const success = await submitCheckout(user, finalTotal, localItems, checkoutInfo, onCheckoutSuccess);
-    if (success && appliedPromo) {
-      console.log(`Used promo: ${appliedPromo.code}`);
-    }
+    // ✨ Pass the promo code safely into the hook ✨
+    const promoCode = appliedPromo ? appliedPromo.code : null;
+    await submitCheckout(finalTotal, localItems, checkoutInfo, promoCode, onCheckoutSuccess);
   };
 
   return (
@@ -63,7 +55,6 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 sticky top-32 shadow-2xl backdrop-blur-sm">
         <h2 className="text-xl font-bold text-white mb-6 uppercase tracking-widest border-b border-white/10 pb-4">Order Summary</h2>
 
-        {/* --- PROMO CODE INPUT --- */}
         <div className="mb-6 border-b border-white/10 pb-6">
           <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
             <Tag size={14} className="text-gold-400" /> Have a Promo Code?
@@ -97,7 +88,6 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
           )}
         </div>
 
-        {/* --- FULFILLMENT & PAYMENT DETAILS --- */}
         <div className="space-y-4 mb-6 border-b border-white/10 pb-6">
           <div>
             <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Fulfillment Method</label>
@@ -152,14 +142,12 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
           </div>
         </div>
 
-        {/* --- COST BREAKDOWN --- */}
         <div className="space-y-3 mb-6 border-b border-white/10 pb-6">
           <div className="flex justify-between text-gray-400 text-sm">
             <span>Subtotal ({localItems.length} items)</span>
             <span>₱{subtotal.toLocaleString()}</span>
           </div>
           
-          {/* Show Discount Row if applied */}
           {appliedPromo && (
             <div className="flex justify-between text-gold-400 text-sm font-bold">
               <span>Discount ({appliedPromo.discount_percentage}%)</span>
@@ -173,13 +161,11 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
           </div>
         </div>
 
-        {/* --- ESTIMATED TOTAL --- */}
         <div className="flex justify-between items-end mb-8">
           <span className="text-white font-bold text-lg">Estimated Total</span>
           <span className="text-3xl font-bold text-gold-400">₱{finalTotal.toLocaleString()}</span>
         </div>
 
-        {/* --- WARNINGS & SUBMIT --- */}
         {hasUnavailableItems && (
           <div className="flex items-start gap-3 p-4 mb-6 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
             <AlertCircle size={18} className="flex-shrink-0 mt-0.5" />

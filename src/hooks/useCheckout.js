@@ -1,20 +1,21 @@
 import { useState } from 'react';
 import { processCheckoutAPI } from '../services/checkoutApi';
 import { fetchUserBanStatusAPI } from '../services/userApi';
+import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
-import { useAuth } from '../contexts/AuthContext';
 
 export const useCheckout = () => {
+  const { user } = useAuth();
   const { showToast } = useShop();
   const { setCurrentPage } = useUI();
-  const { user } = useAuth();
   
   const [isSending, setIsSending] = useState(false);
 
-  const submitCheckout = async (total, localItems, checkoutInfo, onSuccess) => {
+  // ✨ Added promoCode parameter ✨
+  const submitCheckout = async (total, localItems, checkoutInfo, promoCode, onSuccess) => {
     if (!user) {
-      if(showToast) showToast("Login Required", "Please sign in to message the seller.", "error");
+      if(showToast) showToast("Login Required", "Please sign in to place an inquiry.", "error");
       setCurrentPage('login');
       return false;
     }
@@ -32,13 +33,14 @@ export const useCheckout = () => {
 
     setIsSending(true);
     try {
-      await processCheckoutAPI(user.id, total, localItems, checkoutInfo);
+      // ✨ Pass promoCode to API ✨
+      await processCheckoutAPI(user.id, total, localItems, checkoutInfo, promoCode);
       if(showToast) showToast("Inquiry Sent!", "Check your chat widget for details.");
       if(onSuccess) onSuccess();
       return true;
     } catch (err) {
       console.error(err);
-      if(showToast) showToast("Error", err.message || "Could not process order.", "error");
+      if(showToast) showToast("Checkout Error", err.message || "Could not process order.", "error");
       return false;
     } finally {
       setIsSending(false);
