@@ -13,49 +13,58 @@ export const useAuthForm = () => {
   const submitAuth = async (view, formData, setView) => {
     setError('');
 
-    if (!formData.email || (view !== 'forgot' && !formData.password)) {
+    // Edge case: Empty spaces bypass empty string checks
+    const email = formData.email?.trim();
+    const password = formData.password;
+    const username = formData.username?.trim();
+
+    if (!email || (view !== 'forgot' && !password)) {
       setError('Please fill in all required fields.');
       return false;
     }
 
-    if (view === 'register' && !formData.username?.trim()) {
-      setError('Please provide a username.');
-      return false;
-    }
-
-    if (view === 'register' && formData.password.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return false;
-    }
-
-    if (view === 'register' && formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match.');
-      return false;
+    if (view === 'register') {
+      if (!username) {
+        setError('Please provide a username.');
+        return false;
+      }
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        return false;
+      }
+      if (password !== formData.confirmPassword) {
+        setError('Passwords do not match.');
+        return false;
+      }
     }
 
     setIsLoading(true);
 
     try {
       if (view === 'register') {
-        await registerAPI(formData.email, formData.password, formData.username);
+        await registerAPI(email, password, username);
         if (showToast) showToast('Success', 'Account created! Please check your email to verify.');
         setView('login'); 
         
       } else if (view === 'login') {
-        const data = await loginAPI(formData.email, formData.password);
-        const role = await fetchUserRoleAPI(data.user.id);
+        const data = await loginAPI(email, password);
+        const role = await fetchUserRoleAPI(data.user?.id);
         
         if (showToast) showToast('Welcome Back', 'Successfully logged in.');
         setCurrentPage(role === 'admin' ? 'admin' : 'products');
         
       } else if (view === 'forgot') {
-        await resetPasswordAPI(formData.email);
+        await resetPasswordAPI(email);
         if (showToast) showToast('Email Sent', 'Check your inbox for the reset link.');
         setView('login');
       }
       return true;
     } catch (err) {
-      setError(err.message);
+      // Edge case: User-friendly error messaging
+      const message = err.message.includes('Invalid login') 
+        ? 'Invalid email or password.' 
+        : err.message;
+      setError(message);
       return false;
     } finally {
       setIsLoading(false);
@@ -64,11 +73,13 @@ export const useAuthForm = () => {
 
   const handleOAuthSignIn = async (provider) => {
     setError('');
+    setIsLoading(true); // Prevent multi-clicks
     try {
       await signInWithOAuthAPI(provider);
-      // Browser will redirect automatically
+      // Browser will redirect automatically, no need to set isLoading to false
     } catch (err) {
       setError(err.message || `Failed to sign in with ${provider}.`);
+      setIsLoading(false);
     }
   };
 

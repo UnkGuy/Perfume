@@ -1,63 +1,83 @@
 import { supabase } from './supabase';
 
 export const loginAPI = async (email, password) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ 
+    email: email.trim().toLowerCase(), 
+    password 
+  });
   if (error) throw error;
   return data;
 };
 
-// Update this function!
 export const registerAPI = async (email, password, username) => {
+  const cleanEmail = email.trim().toLowerCase();
+  
   // 1. Create the Auth user
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabase.auth.signUp({ 
+    email: cleanEmail, 
+    password 
+  });
   if (error) throw error;
 
-  // 2. Immediately create their Profile and Assign Role
-  if (data.user) {
-    await supabase.from('profiles').upsert({
+  // 2. Safely attempt to create Profile and Assign Role
+  // Note: If you have strict RLS, this might fail until the user verifies their email.
+  // Best practice is to use a Postgres Trigger on auth.users to create profiles automatically.
+  if (data?.user?.id) {
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: data.user.id,
-      email: email,
-      username: username
+      email: cleanEmail,
+      username: username.trim()
     });
     
-    await supabase.from('user_roles').upsert({
-      user_id: data.user.id,
-      role: 'customer'
-    });
+    if (!profileError) {
+      await supabase.from('user_roles').upsert({
+        user_id: data.user.id,
+        role: 'customer'
+      });
+    } else {
+        console.warn("Profile creation deferred until email verification.");
+    }
   }
 
   return data;
 };
-// ... rest of the file stays the same
 
 export const resetPasswordAPI = async (email) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email);
-  if (error) throw error;
-};
-
-export const fetchUserRoleAPI = async (userId) => {
-  const { data } = await supabase.from('user_roles').select('role').eq('user_id', userId).single();
-  return data ? data.role : 'customer';
-};
-
-export const logoutAPI = async () => {
-  await supabase.auth.signOut();
-};
-
-export const updatePasswordAPI = async (newPassword) => {
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword
+  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    redirectTo: `${window.location.origin}/reset-password`, // Ensure this route exists
   });
   if (error) throw error;
 };
 
-// NEW: OAuth Wrapper
-export const signInWithOAuthAPI = async (provider) => {
-  const { error } = await supabase.auth.signInWithOAuth({ provider });
+export const fetchUserRoleAPI = async (userId) => {
+  if (!userId) return 'customer';
+  const { data, error } = await supabase.from('user_roles').select('role').eq('user_id', userId).single();
+  if (error || !data) return 'customer';
+  return data.role;
+};
+
+export const logoutAPI = async () => {
+  const { error } = await supabase.auth.signOut();
   if (error) throw error;
 };
 
-// NEW: Context Wrappers
+export const updatePasswordAPI = async (newPassword) => {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+};
+
+// ✨ FIXED: OAuth Wrapper now includes redirectTo
+export const signInWithOAuthAPI = async (provider) => {
+  const { data, error } = await supabase.auth.signInWithOAuth({ 
+    provider,
+    options: {
+      redirectTo: `${window.location.origin}/`, 
+    }
+  });
+  if (error) throw error;
+  return data;
+};
+
 export const getSessionAPI = async () => {
   return await supabase.auth.getSession();
 };

@@ -1,21 +1,16 @@
 import React, { useState } from 'react';
 import { Gem, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { useAuthForm } from '../hooks/useAuthForm'; 
-import { supabase } from '../services/supabase'; 
-
-// ✨ NEW Context Imports ✨
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
-// ✨ NO PROPS ✨
 const LoginPage = () => {
-  const { showToast } = useShop();
   const { setCurrentPage } = useUI();
-
   const [view, setView] = useState('login'); 
   const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '' });
   
-  const { submitAuth, isLoading, error, setError } = useAuthForm(showToast, setCurrentPage);
+  // ✨ Extract handleOAuthSignIn from hook, NOT locally
+  const { submitAuth, handleOAuthSignIn, isLoading, error, setError } = useAuthForm();
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -25,16 +20,6 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     await submitAuth(view, formData, setView);
-  };
-
-  const handleOAuthSignIn = async (provider) => {
-    setError('');
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider });
-      if (error) throw error;
-    } catch (err) {
-      setError(err.message || `Failed to sign in with ${provider}.`);
-    }
   };
 
   const renderHeader = () => {
@@ -84,13 +69,16 @@ const LoginPage = () => {
           )}
 
           {view === 'register' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-              <input 
-                type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} 
-                className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} 
-              />
-            </div>
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
+                <input type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                <input type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+              </div>
+            </>
           )}
 
           {view === 'login' && (

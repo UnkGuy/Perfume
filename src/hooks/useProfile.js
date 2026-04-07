@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchUserProfileAPI, updateUserProfileAPI } from '../services/userApi';
-import { updatePasswordAPI } from '../services/authApi';
-
-// ✨ NEW: Import contexts ✨
+import { resetPasswordAPI } from '../services/authApi'; // ✨ Changed import
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
 
@@ -40,15 +38,23 @@ export const useProfile = (activeTab) => {
   const saveProfile = async (passwords) => {
     setIsSaving(true);
     try {
+      // 1. Update basic profile info
       await updateUserProfileAPI(user.id, profileData);
 
+      // 2. Handle Password Change Request via Email Link
       if (passwords.newPassword) {
-        if (passwords.newPassword.length < 8) throw new Error("New password must be at least 8 characters.");
-        if (passwords.newPassword !== passwords.confirmPassword) throw new Error("Passwords do not match.");
-        await updatePasswordAPI(passwords.newPassword);
+         // We ignore the newPassword string entirely and force an email confirmation flow
+         await resetPasswordAPI(user.email);
+         if (showToast) {
+             showToast(
+                 "Profile Updated", 
+                 "Your details were saved. A confirmation email has been sent to change your password."
+             );
+         }
+      } else {
+         if (showToast) showToast("Success", "Profile updated successfully.");
       }
-
-      if (showToast) showToast("Success", "Profile updated successfully.");
+      
       return true;
     } catch (err) {
       if (showToast) showToast("Error", err.message, "error");
