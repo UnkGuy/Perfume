@@ -67,13 +67,26 @@ export const updatePasswordAPI = async (newPassword) => {
 };
 
 // ✨ FIXED: OAuth Wrapper now includes redirectTo
+// ✨ OPTIMIZED: Bulletproof redirect path
 export const signInWithOAuthAPI = async (provider) => {
+  // Ensure we get the clean base URL whether they are on localhost or Vercel
+  const getURL = () => {
+    let url =
+      import.meta.env.VITE_SITE_URL ?? // Useful if you set a hardcoded env var later
+      window.location.origin;
+
+    // Make sure it includes a trailing slash for consistent matching in Supabase
+    url = url.endsWith('/') ? url : `${url}/`;
+    return url;
+  };
+
   const { data, error } = await supabase.auth.signInWithOAuth({ 
     provider,
     options: {
-      redirectTo: `${window.location.origin}/`, 
+      redirectTo: getURL(), 
     }
   });
+  
   if (error) throw error;
   return data;
 };
