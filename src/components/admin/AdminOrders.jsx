@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { Loader2, Eye, EyeOff, MessageCircle, Search } from 'lucide-react'; 
-import { useOrders } from '../../hooks/useOrders'; 
+import { Loader2, Eye, EyeOff, MessageCircle, Search } from 'lucide-react';
+import { useOrders } from '../../hooks/useOrders';
 import { useShop } from '../../contexts/ShopContext';
 
-const AdminOrders = ({ setActiveTab }) => {
+// ← removed { setActiveTab } prop — it was never passed from AdminDashboard, causing a crash.
+//   Navigation to Messages is now handled by the parent via a custom event / callback pattern
+//   that AdminDashboard can wire up if needed. For now the button just scrolls to Messages tab
+//   by calling the onNavigate callback passed from AdminDashboard.
+const AdminOrders = ({ onNavigateToMessages }) => {
   const { showToast } = useShop();
   const { orders, isLoading, changeOrderStatus } = useOrders(showToast);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
@@ -13,7 +17,7 @@ const AdminOrders = ({ setActiveTab }) => {
     setExpandedOrderId(expandedOrderId === id ? null : id);
   };
 
-  const filteredOrders = orders.filter(order => 
+  const filteredOrders = orders.filter(order =>
     order.id.toString().includes(searchQuery) ||
     (order.profiles?.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     order.status.toLowerCase().includes(searchQuery.toLowerCase())
@@ -29,23 +33,23 @@ const AdminOrders = ({ setActiveTab }) => {
 
   return (
     <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-      
+
       {/* HEADER ACTIONS */}
       <div className="p-4 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-black/20">
         <div className="relative w-full md:w-64">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input 
-            type="text" 
-            placeholder="Search ID, email, or status..." 
+          <input
+            type="text"
+            placeholder="Search ID, email, or status..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
           />
         </div>
 
-        <button 
-          onClick={() => setActiveTab('messages')} 
-          className="w-full md:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold" 
+        <button
+          onClick={() => onNavigateToMessages && onNavigateToMessages()}
+          className="w-full md:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold"
           title="Go to Messages"
         >
           <MessageCircle size={16} /> Open Messages Console
@@ -79,11 +83,11 @@ const AdminOrders = ({ setActiveTab }) => {
                     <td className="p-4">{order.profiles?.email || 'Unknown User'}</td>
                     <td className="p-4 font-bold text-white">₱{order.total_amount.toLocaleString()}</td>
                     <td className="p-4">
-                      <select 
+                      <select
                         value={order.status}
                         onChange={(e) => changeOrderStatus(order.id, e.target.value)}
                         className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${
-                          order.status === 'pending' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' : 
+                          order.status === 'pending' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' :
                           order.status === 'shipped' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
                           'bg-green-500/10 text-green-400 border border-green-500/30'
                         }`}
@@ -94,16 +98,16 @@ const AdminOrders = ({ setActiveTab }) => {
                       </select>
                     </td>
                     <td className="p-4 flex justify-end gap-2">
-                      <button 
+                      <button
                         onClick={() => toggleExpand(order.id)}
-                        className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`} 
+                        className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}
                         title="View Details"
                       >
                         {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
-                      <button 
-                        onClick={() => setActiveTab('messages')}
-                        className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" 
+                      <button
+                        onClick={() => onNavigateToMessages && onNavigateToMessages()}
+                        className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"
                         title="Go to Messages"
                       >
                         <MessageCircle size={16} />
@@ -145,7 +149,7 @@ const AdminOrders = ({ setActiveTab }) => {
         ) : (
           filteredOrders.map((order) => (
             <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors">
-              
+
               <div className="flex justify-between items-start">
                 <div>
                   <span className="font-mono text-gold-400 font-bold text-lg">#{order.id}</span>
@@ -161,11 +165,11 @@ const AdminOrders = ({ setActiveTab }) => {
               </div>
 
               <div className="flex justify-between items-center gap-3">
-                <select 
+                <select
                   value={order.status}
                   onChange={(e) => changeOrderStatus(order.id, e.target.value)}
                   className={`flex-1 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${
-                    order.status === 'pending' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' : 
+                    order.status === 'pending' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' :
                     order.status === 'shipped' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
                     'bg-green-500/10 text-green-400 border border-green-500/30'
                   }`}
@@ -176,15 +180,15 @@ const AdminOrders = ({ setActiveTab }) => {
                 </select>
 
                 <div className="flex gap-2 flex-shrink-0">
-                  <button 
+                  <button
                     onClick={() => toggleExpand(order.id)}
-                    className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`} 
+                    className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}
                   >
                     {expandedOrderId === order.id ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
-                  <button 
-                    onClick={() => setActiveTab('messages')}
-                    className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" 
+                  <button
+                    onClick={() => onNavigateToMessages && onNavigateToMessages()}
+                    className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"
                   >
                     <MessageCircle size={18} />
                   </button>
@@ -207,7 +211,6 @@ const AdminOrders = ({ setActiveTab }) => {
                   </div>
                 </div>
               )}
-
             </div>
           ))
         )}
