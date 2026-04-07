@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Clock, RefreshCw, LogOut, ArrowLeft, Settings, User, MapPin, Phone, Lock, Loader2 } from 'lucide-react';
+import { Package, Clock, RefreshCw, LogOut, ArrowLeft, Settings, User, MapPin, Phone, Lock, Loader2, Edit2 } from 'lucide-react';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import { useUserOrders } from '../hooks/useUserOrders'; 
 import { useProfile } from '../hooks/useProfile';
+import { usePSGC } from '../hooks/usePSGC'; // ✨ NEW: Import PSGC Hook
 
-// ✨ NEW Context Imports ✨
+// Context Imports
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-// ✨ NO PROPS ✨
 const ProfilePage = () => {
   const { user, handleLogout } = useAuth();
   const { addToCart, showToast } = useShop();
@@ -22,18 +22,31 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('history');
   const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
 
-  const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile } = useProfile(activeTab);
+  // ✨ Added 'errors' destructuring from our previous hook update
+  const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors } = useProfile(activeTab);
   
+  // ✨ PSGC Hook & States
+  const { regions, provinces, cities, barangays, getProvinces, getCities, getBarangays, isFetchingLocation } = usePSGC();
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [addressCodes, setAddressCodes] = useState({ region: '', province: '', city: '', barangay: '' });
+
   useEffect(() => {
     if (!user) setCurrentPage('login');
   }, [user, setCurrentPage]);
+
+  // If there's no saved address, default to edit mode
+  useEffect(() => {
+    if (!isProfileLoading && (!profileData.address || !profileData.address.region)) {
+      setIsEditingAddress(true);
+    }
+  }, [isProfileLoading, profileData.address]);
 
   const handleReorder = (order) => {
     order.order_items.forEach(item => {
       if (item.products) addToCart(item.products); 
     });
     if (showToast) showToast('Cart Updated', `Items from Order #${order.id} added to your cart!`);
-    setIsCartOpen(true); // Open drawer via context!
+    setIsCartOpen(true); 
   };
 
   const handleSaveSettings = async (e) => {
@@ -41,19 +54,50 @@ const ProfilePage = () => {
     const success = await saveProfile(passwords);
     if (success) {
       setPasswords({ newPassword: '', confirmPassword: '' }); 
+      setIsEditingAddress(false); // Close edit mode on save
     }
+  };
+
+  // ✨ PSGC Dropdown Handlers ✨
+  const handleRegionChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setAddressCodes({ region: code, province: '', city: '', barangay: '' });
+    setProfileData({ ...profileData, address: { region: name, province: '', city: '', barangay: '', street: '', landmark: '' }});
+    getProvinces(code);
+  };
+
+  const handleProvinceChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setAddressCodes(prev => ({ ...prev, province: code, city: '', barangay: '' }));
+    setProfileData(prev => ({ ...profileData, address: { ...prev.address, province: name, city: '', barangay: '' }}));
+    getCities(code);
+  };
+
+  const handleCityChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setAddressCodes(prev => ({ ...prev, city: code, barangay: '' }));
+    setProfileData(prev => ({ ...profileData, address: { ...prev.address, city: name, barangay: '' }}));
+    getBarangays(code);
+  };
+
+  const handleBarangayChange = (e) => {
+    const code = e.target.value;
+    const name = e.target.options[e.target.selectedIndex].text;
+    setAddressCodes(prev => ({ ...prev, barangay: code }));
+    setProfileData(prev => ({ ...profileData, address: { ...prev.address, barangay: name }}));
   };
 
   if (!user) return null;
 
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans flex flex-col">
-      <div className="relative z-50">
-        {/* ✨ Clean Header! ✨ */}
-        <Header />
-      </div>
+      <div className="relative z-50"><Header /></div>
 
       <div className="flex-1 container mx-auto px-6 py-24 max-w-4xl animate-fade-in">
+        {/* User Header Card */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-3xl font-bold uppercase">
@@ -69,6 +113,7 @@ const ProfilePage = () => {
           </button>
         </div>
 
+        {/* Tabs */}
         <div className="flex gap-4 border-b border-white/10 mb-8">
           <button onClick={() => setActiveTab('history')} className={`pb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'history' ? 'border-gold-400 text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
             <Clock size={16} /> Order History
@@ -78,6 +123,7 @@ const ProfilePage = () => {
           </button>
         </div>
 
+        {/* Order History Tab */}
         {activeTab === 'history' && (
           <div className="animate-fade-in">
             {ordersLoading ? (
@@ -101,12 +147,15 @@ const ProfilePage = () => {
           </div>
         )}
 
+        {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-8 animate-fade-in">
             {isProfileLoading ? (
               <div className="flex justify-center items-center py-12"><Loader2 className="animate-spin text-gold-400" size={32} /></div>
             ) : (
               <form onSubmit={handleSaveSettings} className="space-y-8">
+                
+                {/* Personal Details */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Personal Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -115,16 +164,89 @@ const ProfilePage = () => {
                       <input type="text" value={profileData.username} onChange={(e) => setProfileData({...profileData, username: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Phone size={14} className="text-gold-400"/> Phone Number</label>
-                      <input type="text" value={profileData.phone_number} onChange={(e) => setProfileData({...profileData, phone_number: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="+63" />
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Phone size={14} className="text-gold-400"/> Phone Number (Optional)</label>
+                      <input type="tel" value={profileData.phone_number} onChange={(e) => setProfileData({...profileData, phone_number: e.target.value})} className={`w-full bg-black/40 border rounded-lg p-3 text-white focus:outline-none transition-colors ${errors?.phone_number ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-gold-400'}`} placeholder="09123456789 or +639..." />
+                      {errors?.phone_number && <p className="text-red-400 text-xs mt-1.5">{errors.phone_number}</p>}
                     </div>
+
+                    {/* ✨ The PSGC Address Block ✨ */}
                     <div className="md:col-span-2">
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><MapPin size={14} className="text-gold-400"/> Default Delivery Address</label>
-                      <textarea value={profileData.address} onChange={(e) => setProfileData({...profileData, address: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors resize-none h-24" placeholder="House/Unit No., Street, Barangay, City..." />
+                      <div className="flex justify-between items-end mb-2">
+                        <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2"><MapPin size={14} className="text-gold-400"/> Default Delivery Address</label>
+                        {!isEditingAddress && (
+                           <button type="button" onClick={() => setIsEditingAddress(true)} className="text-xs text-gold-400 hover:text-gold-300 flex items-center gap-1 font-bold"><Edit2 size={12}/> Edit Address</button>
+                        )}
+                      </div>
+
+                      {/* Display Mode */}
+                      {!isEditingAddress ? (
+                        <div className="w-full bg-black/40 border border-white/10 rounded-lg p-4 text-white">
+                          <p className="font-medium">{profileData.address.street}</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            {[profileData.address.barangay, profileData.address.city, profileData.address.province, profileData.address.region].filter(Boolean).join(', ')}
+                          </p>
+                          {profileData.address.landmark && (
+                            <p className="text-xs text-gold-400 mt-2">Landmark: {profileData.address.landmark}</p>
+                          )}
+                        </div>
+                      ) : (
+                        /* Edit Mode (Dropdowns) */
+                        <div className="bg-black/40 border border-white/10 p-5 rounded-xl space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Region</label>
+                              <select value={addressCodes.region} onChange={handleRegionChange} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none">
+                                <option value="">Select Region</option>
+                                {regions.map(r => <option key={r.code} value={r.code}>{r.name}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1">Province</label>
+                              <select value={addressCodes.province} onChange={handleProvinceChange} disabled={!addressCodes.region || (provinces.length === 0 && cities.length > 0)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none disabled:opacity-50">
+                                <option value="">{provinces.length === 0 && cities.length > 0 ? 'Metro Manila / NCR' : 'Select Province'}</option>
+                                {provinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1 flex justify-between">City / Municipality {isFetchingLocation && <Loader2 size={12} className="animate-spin text-gold-400"/>}</label>
+                              <select value={addressCodes.city} onChange={handleCityChange} disabled={!addressCodes.region || cities.length === 0} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none disabled:opacity-50">
+                                <option value="">Select City</option>
+                                {cities.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-500 mb-1 flex justify-between">Barangay {isFetchingLocation && <Loader2 size={12} className="animate-spin text-gold-400"/>}</label>
+                              <select value={addressCodes.barangay} onChange={handleBarangayChange} disabled={!addressCodes.city || barangays.length === 0} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none disabled:opacity-50">
+                                <option value="">Select Barangay</option>
+                                {barangays.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Street / House No. / Subdivision</label>
+                            <input type="text" value={profileData.address.street || ''} onChange={(e) => setProfileData(prev => ({...prev, address: {...prev.address, street: e.target.value}}))} placeholder="e.g. Blk 1 Lot 2, Mabini St." className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none" />
+                          </div>
+
+                          <div>
+                            <label className="block text-xs text-gray-500 mb-1">Nearest Landmark (Optional)</label>
+                            <input type="text" value={profileData.address.landmark || ''} onChange={(e) => setProfileData(prev => ({...prev, address: {...prev.address, landmark: e.target.value}}))} placeholder="e.g. Beside the blue gate" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none" />
+                          </div>
+                          
+                          {/* Allow user to cancel editing if they already have an address saved */}
+                          {profileData.address?.region && (
+                            <button type="button" onClick={() => setIsEditingAddress(false)} className="text-xs text-gray-400 hover:text-white mt-2">Cancel Address Edit</button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
 
+                {/* Security Section */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
                   <p className="text-sm text-gray-500 mb-4">Leave these fields blank if you do not want to change your password.</p>
@@ -141,7 +263,7 @@ const ProfilePage = () => {
                 </div>
 
                 <div className="flex justify-end pt-6 border-t border-white/10">
-                  <button type="submit" disabled={isSaving} className="flex items-center gap-2 px-8 py-3 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold uppercase tracking-widest rounded transition-all shadow-lg disabled:opacity-70">
+                  <button type="submit" disabled={isSaving || isFetchingLocation} className="flex items-center gap-2 px-8 py-3 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold uppercase tracking-widest rounded transition-all shadow-lg disabled:opacity-70">
                     {isSaving ? <><Loader2 className="animate-spin" size={18} /> Saving...</> : 'Save Changes'}
                   </button>
                 </div>
@@ -155,6 +277,7 @@ const ProfilePage = () => {
   );
 };
 
+// Extracted OrderHistoryCard
 const OrderHistoryCard = ({ order, onReorder }) => (
   <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
     <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
