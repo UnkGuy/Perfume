@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X, Tag } from 'lucide-react'; 
+import { LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X, Tag } from 'lucide-react';
 
 import AdminOverview from '../components/admin/AdminOverview';
 import AdminOrders from '../components/admin/AdminOrders';
 import AdminProducts from '../components/admin/AdminProducts';
-import AdminMessages from '../components/admin/AdminMessages'; 
-import AdminPromos from '../components/admin/AdminPromos'; 
+import AdminMessages from '../components/admin/AdminMessages';
+import AdminPromos from '../components/admin/AdminPromos';
 
-// ✨ NEW Context Imports ✨
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
-// ✨ NO PROPS ✨
-const AdminDashboard = () => { 
+const AdminDashboard = () => {
   const { user, handleLogout } = useAuth();
   const { showToast } = useShop();
   const { setCurrentPage } = useUI();
@@ -46,21 +44,21 @@ const AdminDashboard = () => {
         </div>
 
         <nav className="flex-1 p-4 space-y-2">
-          <button onClick={() => handleTabClick('overview')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'overview' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            <LayoutDashboard size={18} /> Overview
-          </button>
-          <button onClick={() => handleTabClick('orders')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'orders' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            <ShoppingCart size={18} /> Order Inquiries
-          </button>
-          <button onClick={() => handleTabClick('messages')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'messages' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            <MessageSquare size={18} /> Messages
-          </button>
-          <button onClick={() => handleTabClick('products')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'products' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            <Package size={18} /> Inventory
-          </button>
-          <button onClick={() => handleTabClick('promos')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === 'promos' ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-            <Tag size={18} /> Promo Codes
-          </button>
+          {[
+            { id: 'overview',  icon: <LayoutDashboard size={18} />, label: 'Overview' },
+            { id: 'orders',    icon: <ShoppingCart size={18} />,    label: 'Order Inquiries' },
+            { id: 'messages',  icon: <MessageSquare size={18} />,   label: 'Messages' },
+            { id: 'products',  icon: <Package size={18} />,         label: 'Inventory' },
+            { id: 'promos',    icon: <Tag size={18} />,             label: 'Promo Codes' },
+          ].map(({ id, icon, label }) => (
+            <button
+              key={id}
+              onClick={() => handleTabClick(id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === id ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+            >
+              {icon} {label}
+            </button>
+          ))}
         </nav>
 
         <div className="p-4 border-t border-white/10">
@@ -87,11 +85,12 @@ const AdminDashboard = () => {
           </header>
 
           <div className="min-h-[500px]">
-            {activeTab === 'overview' && <AdminOverview />}
-            {activeTab === 'orders' && <AdminOrders />}
-            {activeTab === 'messages' && <AdminMessages />} 
-            {activeTab === 'products' && <AdminProducts />}
-            {activeTab === 'promos' && <AdminPromos />}
+            {activeTab === 'overview'  && <AdminOverview />}
+            {/* ← pass onNavigateToMessages so the "Open Messages Console" button works */}
+            {activeTab === 'orders'    && <AdminOrders onNavigateToMessages={() => handleTabClick('messages')} />}
+            {activeTab === 'messages'  && <AdminMessages />}
+            {activeTab === 'products'  && <AdminProducts />}
+            {activeTab === 'promos'    && <AdminPromos />}
           </div>
         </main>
       </div>
