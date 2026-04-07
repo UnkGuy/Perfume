@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertCircle, Loader2, Tag, MessageSquare } from 'lucide-react';
 import { useCheckout } from '../../hooks/useCheckout';
 import { validatePromoCodeAPI } from '../../services/promoApi'; 
+import { fetchUserProfileAPI } from '../../services/userApi'; // ✨ Fetch profile data
 import { useShop } from '../../contexts/ShopContext';
+import { useAuth } from '../../contexts/AuthContext'; // ✨ Need to know who is logged in
 
-// Cleaned up the unused props!
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onCheckoutSuccess }) => {
-  // Add clearCart to your destructured imports from useShop
   const { showToast, clearCart } = useShop();
-
+  const { user } = useAuth(); 
   const { submitCheckout, isSending } = useCheckout();
   
   const [checkoutInfo, setCheckoutInfo] = useState({ 
@@ -21,6 +21,52 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState(null); 
   const [promoLoading, setPromoLoading] = useState(false);
+
+  // ✨ NEW: Fetch default address and phone number on load ✨
+  useEffect(() => {
+    const loadUserDefaults = async () => {
+      if (!user) return;
+      
+      try {
+        const data = await fetchUserProfileAPI(user.id);
+        if (data) {
+          let formattedLocation = '';
+          
+          // Safely parse the JSON address we built in the profile hook
+          if (data.address) {
+            try {
+              const parsedAddress = JSON.parse(data.address);
+              // Combine the pieces into a readable string
+              formattedLocation = [
+                parsedAddress.street, 
+                parsedAddress.barangay, 
+                parsedAddress.city, 
+                parsedAddress.province
+              ].filter(Boolean).join(', ');
+              
+              // Append landmark if it exists
+              if (parsedAddress.landmark) {
+                formattedLocation += ` (Landmark: ${parsedAddress.landmark})`;
+              }
+            } catch (e) {
+              // Fallback just in case it's an old, unformatted string
+              formattedLocation = data.address;
+            }
+          }
+
+          setCheckoutInfo(prev => ({
+            ...prev,
+            phoneNumber: data.phone_number || prev.phoneNumber,
+            location: formattedLocation || prev.location
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load user defaults for cart:", err);
+      }
+    };
+
+    loadUserDefaults();
+  }, [user]);
 
   const subtotal = calculateTotal();
   const discountAmount = appliedPromo ? subtotal * (appliedPromo.discount_percentage / 100) : 0;
@@ -46,20 +92,17 @@ const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onChecko
     setAppliedPromo(null);
   };
 
-    
   const handleCheckout = async () => {
     const promoCode = appliedPromo ? appliedPromo.code : null;
     
-    // We pass a callback function to onCheckoutSuccess
     const handleSuccess = async () => {
-      await clearCart(); // ✨ Wipe the DB and UI cart
+      await clearCart(); 
       if (onCheckoutSuccess) onCheckoutSuccess();
     };
 
     await submitCheckout(finalTotal, localItems, checkoutInfo, promoCode, handleSuccess);
   };
   
-
   return (
     <div className="w-full lg:w-[400px] flex-shrink-0 animate-slide-in">
       <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 sticky top-32 shadow-2xl backdrop-blur-sm">
