@@ -1,67 +1,78 @@
 import React, { useState, useEffect } from 'react';
-// ✨ Added Sparkles icon for AI ✨
-import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react'; 
-import ImageUploader from '../common/ImageUploader'; 
-import { useProducts } from '../../hooks/useAdminProducts'; 
+import { Plus, Edit2, Trash2, Loader2, X, CheckCircle, XCircle, Tag, Search, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import ImageUploader from '../common/ImageUploader';
+import { useProducts } from '../../hooks/useAdminProducts';
 import { useShop } from '../../contexts/ShopContext';
-import { logAdminActionAPI } from '../../services/logApi'; // Adjust path if needed
+// ← removed logAdminActionAPI import — it's already called inside useAdminProducts hook,
+//   importing it here was dead code and would have caused double-logging if accidentally used.
 
-const AdminProducts = ({ }) => {
+// Character limits — adjust these constants to change limits across the whole form at once
+const LIMITS = {
+  name:        100,
+  brand:        50,
+  size:         20,
+  description: 800,
+};
+
+// Helper: returns red border class when value is at/near the limit
+const nearLimit = (val = '', max) => val.length >= max * 0.9;
+
+const AdminProducts = () => {
   const { showToast } = useShop();
   const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(''); 
-  
-  // ✨ NEW: State for Custom Fragrance Notes ✨
+  const [searchQuery, setSearchQuery] = useState('');
   const [customNoteInput, setCustomNoteInput] = useState('');
-
   const [activePage, setActivePage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
   const [formData, setFormData] = useState({
-    name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
+    name: '', brand: '', description: '', price: '', compare_at_price: '',
+    size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true
   });
 
-  // ✨ SMART EXTRACTION: Pull unique notes from DB + anything typed locally ✨
   const dynamicNotes = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))];
   const allDisplayNotes = [...new Set([...dynamicNotes, ...formData.notes])].sort();
 
-  useEffect(() => {
-    setActivePage(1);
-  }, [searchQuery]);
+  useEffect(() => { setActivePage(1); }, [searchQuery]);
 
   const handleOpenModal = (product = null) => {
     if (product) {
       setEditingProduct(product);
       setFormData({
-        name: product.name, brand: product.brand, description: product.description || '', price: product.price, compare_at_price: product.compare_at_price || '', size: product.size, gender: product.gender || 'Unisex', stock_count: product.stock_count || '', notes: product.notes || [], image_urls: product.image_urls || [], available: product.available !== false
+        name: product.name,
+        brand: product.brand,
+        description: product.description || '',
+        price: product.price,
+        compare_at_price: product.compare_at_price || '',
+        size: product.size,
+        gender: product.gender || 'Unisex',
+        stock_count: product.stock_count || '',
+        notes: product.notes || [],
+        image_urls: product.image_urls || [],
+        available: product.available !== false
       });
     } else {
       setEditingProduct(null);
-      setFormData({ 
-        name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true 
-      });
+      setFormData({ name: '', brand: '', description: '', price: '', compare_at_price: '', size: '50ml', gender: 'Unisex', stock_count: '', notes: [], image_urls: [], available: true });
     }
     setIsModalOpen(true);
   };
 
   const handleNoteToggle = (note) => {
     setFormData(prev => ({
-      ...prev, notes: prev.notes.includes(note) ? prev.notes.filter(n => n !== note) : [...prev.notes, note]
+      ...prev,
+      notes: prev.notes.includes(note) ? prev.notes.filter(n => n !== note) : [...prev.notes, note]
     }));
   };
 
-  // ✨ Handle adding custom note via Enter key or Button ✨
   const handleAddCustomNote = (e) => {
     e.preventDefault();
     if (!customNoteInput.trim()) return;
-    const newNoteFormatted = customNoteInput.trim();
-    // Capitalize first letter beautifully
-    const formatted = newNoteFormatted.charAt(0).toUpperCase() + newNoteFormatted.slice(1);
-    
+    const formatted = customNoteInput.trim().charAt(0).toUpperCase() + customNoteInput.trim().slice(1);
     if (!formData.notes.includes(formatted)) {
       setFormData(prev => ({ ...prev, notes: [...prev.notes, formatted] }));
     }
@@ -69,11 +80,26 @@ const AdminProducts = ({ }) => {
   };
 
   const handleRemoveImage = (indexToRemove) => {
-    setFormData(prev => ({ ...prev, image_urls: prev.image_urls.filter((_, index) => index !== indexToRemove) }));
+    setFormData(prev => ({ ...prev, image_urls: prev.image_urls.filter((_, i) => i !== indexToRemove) }));
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
+
+    // Front-end validation for character limits
+    if (formData.name.length > LIMITS.name) {
+      showToast('Error', `Perfume name must be ${LIMITS.name} characters or fewer.`, 'error');
+      return;
+    }
+    if (formData.brand.length > LIMITS.brand) {
+      showToast('Error', `Brand must be ${LIMITS.brand} characters or fewer.`, 'error');
+      return;
+    }
+    if (formData.size.length > LIMITS.size) {
+      showToast('Error', `Size must be ${LIMITS.size} characters or fewer.`, 'error');
+      return;
+    }
+
     setIsSaving(true);
     const payload = {
       ...formData,
@@ -82,14 +108,13 @@ const AdminProducts = ({ }) => {
       compare_at_price: formData.compare_at_price ? parseFloat(formData.compare_at_price) : null,
       stock_count: formData.stock_count ? parseInt(formData.stock_count) : null,
       available: formData.available,
-      notes: formData.notes, 
+      notes: formData.notes,
       image_urls: formData.image_urls
     };
     try {
-    await saveProduct(payload, editingProduct ? editingProduct.id : null);
-    
-    if (showToast) showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved successfully.`);
-    setIsModalOpen(false);
+      await saveProduct(payload, editingProduct ? editingProduct.id : null);
+      if (showToast) showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved successfully.`);
+      setIsModalOpen(false);
     } catch (err) {
       console.error(err);
       if (showToast) showToast('Error', err.message || 'Check browser console.', 'error');
@@ -109,13 +134,12 @@ const AdminProducts = ({ }) => {
     }
   };
 
-  // Placeholder for AI feature
   const handleAIGeneration = () => {
     if (showToast) showToast("AI Magic", "AI Description Generation coming in V3! 🪄", "success");
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredProducts = products.filter(p =>
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.brand.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -126,10 +150,21 @@ const AdminProducts = ({ }) => {
   );
 
   useEffect(() => {
-    if (activePage > totalPages && totalPages > 0) {
-      setActivePage(totalPages);
-    }
+    if (activePage > totalPages && totalPages > 0) setActivePage(totalPages);
   }, [filteredProducts.length, activePage, totalPages]);
+
+  // Reusable input counter badge
+  const Counter = ({ value = '', max }) => (
+    <span className={`text-xs ${nearLimit(value, max) ? 'text-red-400' : 'text-gray-600'}`}>
+      {value.length}/{max}
+    </span>
+  );
+
+  // Common input border class
+  const inputBorder = (value, max) =>
+    nearLimit(value, max)
+      ? 'border-red-500/60 focus:border-red-500'
+      : 'border-white/10 focus:border-gold-400';
 
   return (
     <div className="animate-fade-in">
@@ -137,24 +172,23 @@ const AdminProducts = ({ }) => {
         <div>
           <h3 className="text-2xl font-bold text-white">Inventory Management</h3>
           <p className="text-gray-400 text-sm mt-1">
-            Add, edit, or set discounts for your catalog. 
+            Add, edit, or set discounts for your catalog.
             <span className="ml-2 text-gold-400">({filteredProducts.length} total)</span>
           </p>
         </div>
-        
+
         <div className="flex items-center gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:w-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input 
-              type="text" 
-              placeholder="Search perfumes..." 
+            <input
+              type="text"
+              placeholder="Search perfumes..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
             />
           </div>
-
-          <button 
+          <button
             onClick={() => handleOpenModal()}
             className="flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-black px-4 py-2 rounded-lg font-bold transition-colors shadow-lg flex-shrink-0"
           >
@@ -164,7 +198,7 @@ const AdminProducts = ({ }) => {
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl flex flex-col">
-        
+
         {/* DESKTOP VIEW */}
         <div className="hidden md:block overflow-x-auto flex-1">
           <table className="w-full text-left border-collapse whitespace-nowrap">
@@ -202,7 +236,6 @@ const AdminProducts = ({ }) => {
                           <p className="text-xs text-gray-500">{product.brand} • {product.size}</p>
                         </div>
                       </td>
-                      
                       <td className="p-4">
                         {isDiscounted ? (
                           <div className="flex flex-col">
@@ -213,9 +246,8 @@ const AdminProducts = ({ }) => {
                           <span className="text-gold-400 font-medium">₱{product.price}</span>
                         )}
                       </td>
-
                       <td className="p-4">
-                        {product.stock_count !== null && product.stock_count !== undefined ? (
+                        {product.stock_count != null ? (
                           <span className="text-gray-300">{product.stock_count} units</span>
                         ) : (
                           <span className="text-gray-500 italic">Unlimited</span>
@@ -252,10 +284,8 @@ const AdminProducts = ({ }) => {
           ) : (
             paginatedProducts.map(product => {
               const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
-              
               return (
                 <div key={product.id} className="p-4 hover:bg-white/5 transition-colors flex flex-col gap-4">
-                  
                   <div className="flex justify-between items-start gap-3">
                     <div className="flex items-center gap-3 overflow-hidden">
                       {product.image_urls && product.image_urls.length > 0 ? (
@@ -271,13 +301,11 @@ const AdminProducts = ({ }) => {
                         <p className="text-xs text-gray-500 truncate">{product.brand} • {product.size}</p>
                       </div>
                     </div>
-                    
                     <div className="flex gap-2 flex-shrink-0">
                       <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/10 hover:bg-gold-400 hover:text-black rounded transition-colors"><Edit2 size={14} /></button>
                       <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/10 hover:bg-red-500 hover:text-white rounded transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 gap-3 bg-black/40 p-3 rounded-lg border border-white/5">
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Price</span>
@@ -290,19 +318,14 @@ const AdminProducts = ({ }) => {
                         <span className="text-gold-400 text-sm font-bold">₱{product.price}</span>
                       )}
                     </div>
-
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Stock</span>
-                      <span className="text-gray-300 text-sm">
-                        {product.stock_count !== null && product.stock_count !== undefined ? `${product.stock_count} units` : 'Unlimited'}
-                      </span>
+                      <span className="text-gray-300 text-sm">{product.stock_count != null ? `${product.stock_count} units` : 'Unlimited'}</span>
                     </div>
-
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Gender</span>
                       <span className="text-gray-300 text-sm">{product.gender}</span>
                     </div>
-
                     <div className="flex flex-col">
                       <span className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-0.5">Status</span>
                       {product.available ? (
@@ -312,48 +335,33 @@ const AdminProducts = ({ }) => {
                       )}
                     </div>
                   </div>
-
                 </div>
               );
             })
           )}
         </div>
 
-        {/* PAGINATION CONTROLS */}
+        {/* PAGINATION */}
         {!isLoading && totalPages > 1 && (
           <div className="flex justify-center items-center gap-2 p-4 border-t border-white/10 bg-black/20">
-            <button 
-              disabled={activePage === 1} 
-              onClick={() => setActivePage(p => p - 1)} 
-              className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-gray-400 transition-colors"
-            >
+            <button disabled={activePage === 1} onClick={() => setActivePage(p => p - 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
               <ChevronLeft size={18} />
             </button>
-            
             <div className="flex gap-1 overflow-x-auto custom-scrollbar max-w-[200px] sm:max-w-none">
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
-                <button 
-                  key={num} 
-                  onClick={() => setActivePage(num)} 
-                  className={`w-8 h-8 flex-shrink-0 rounded text-sm font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                >
+                <button key={num} onClick={() => setActivePage(num)} className={`w-8 h-8 flex-shrink-0 rounded text-sm font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>
                   {num}
                 </button>
               ))}
             </div>
-            
-            <button 
-              disabled={activePage === totalPages} 
-              onClick={() => setActivePage(p => p + 1)} 
-              className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 disabled:hover:border-white/10 disabled:hover:text-gray-400 transition-colors"
-            >
+            <button disabled={activePage === totalPages} onClick={() => setActivePage(p => p + 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
               <ChevronRight size={18} />
             </button>
           </div>
         )}
-
       </div>
 
+      {/* MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-rich-black border border-gold-400/30 rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
@@ -364,90 +372,120 @@ const AdminProducts = ({ }) => {
 
             <form onSubmit={handleSave} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                {/* ── Perfume Name ── */}
                 <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Perfume Name</label>
-                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Brand</label>
-                  <input required type="text" value={formData.brand} onChange={e => setFormData({...formData, brand: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
+                  <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
+                    <span>Perfume Name</span>
+                    <Counter value={formData.name} max={LIMITS.name} />
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    maxLength={LIMITS.name}
+                    value={formData.name}
+                    onChange={e => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="e.g. Baccarat Rouge 540"
+                    className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.name, LIMITS.name)}`}
+                  />
+                  {nearLimit(formData.name, LIMITS.name) && (
+                    <p className="text-red-400 text-xs mt-1">Approaching {LIMITS.name}-character limit.</p>
+                  )}
                 </div>
 
+                {/* ── Brand ── */}
+                <div>
+                  <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
+                    <span>Brand</span>
+                    <Counter value={formData.brand} max={LIMITS.brand} />
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    maxLength={LIMITS.brand}
+                    value={formData.brand}
+                    onChange={e => setFormData({ ...formData, brand: e.target.value })}
+                    placeholder="e.g. Maison Francis Kurkdjian"
+                    className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.brand, LIMITS.brand)}`}
+                  />
+                </div>
+
+                {/* ── Prices ── */}
                 <div>
                   <label className="block text-xs text-gold-400 font-bold uppercase tracking-widest mb-1">Selling Price (₱)</label>
-                  <input required type="number" min="0" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} className="w-full bg-black/50 border border-gold-400/30 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Final Price" />
+                  <input required type="number" min="0" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} className="w-full bg-black/50 border border-gold-400/30 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Final Price" />
+                </div>
+                <div>
+                  <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
+                    <span>Original Price (₱)</span><span className="text-gray-600">(Optional Sale)</span>
+                  </label>
+                  <input type="number" min="0" value={formData.compare_at_price} onChange={e => setFormData({ ...formData, compare_at_price: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Leave blank if not on sale" />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
-                    Original Price (₱) <span className="text-gray-600">(Optional Sale)</span>
+                  <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
+                    <span>Stock Count</span><span className="text-gray-600">(Optional)</span>
                   </label>
-                  <input type="number" min="0" value={formData.compare_at_price} onChange={e => setFormData({...formData, compare_at_price: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Leave blank if not on sale" />
+                  <input type="number" min="0" value={formData.stock_count} onChange={e => setFormData({ ...formData, stock_count: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Leave blank if unlimited" />
                 </div>
 
-                <div>
-                  <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between">
-                    Stock Count <span className="text-gray-600">(Optional)</span>
-                  </label>
-                  <input type="number" min="0" value={formData.stock_count} onChange={e => setFormData({...formData, stock_count: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="Leave blank if unlimited" />
-                </div>
                 <div className="grid grid-cols-2 gap-2">
+                  {/* ── Size ── */}
                   <div>
-                    <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Size</label>
-                    <input required type="text" value={formData.size} onChange={e => setFormData({...formData, size: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
+                    <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
+                      <span>Size</span>
+                      <Counter value={formData.size} max={LIMITS.size} />
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      maxLength={LIMITS.size}
+                      value={formData.size}
+                      onChange={e => setFormData({ ...formData, size: e.target.value })}
+                      className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.size, LIMITS.size)}`}
+                    />
                   </div>
                   <div>
                     <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Gender</label>
-                    <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors">
+                    <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors">
                       <option>Unisex</option><option>Male</option><option>Female</option>
                     </select>
                   </div>
                 </div>
               </div>
 
-              {/* ✨ AI SPARKLES BUTTON ADDED HERE ✨ */}
+              {/* ── Description ── */}
               <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1 flex justify-between items-end">
-                  <span>Product Description <span className="text-gray-600 font-normal normal-case">({formData.description.length}/800)</span></span>
-                  <button 
-                    type="button" onClick={handleAIGeneration}
-                    className="flex items-center gap-1.5 text-gold-400 hover:text-white transition-colors"
-                  >
+                <label className="flex justify-between items-end text-xs text-gray-400 uppercase tracking-widest mb-1">
+                  <span>Product Description <Counter value={formData.description} max={LIMITS.description} /></span>
+                  <button type="button" onClick={handleAIGeneration} className="flex items-center gap-1.5 text-gold-400 hover:text-white transition-colors">
                     <Sparkles size={14} /> <span className="normal-case">Generate with AI</span>
                   </button>
                 </label>
-                <textarea 
-                  required 
-                  maxLength={800}
-                  value={formData.description} 
-                  onChange={e => setFormData({...formData, description: e.target.value})} 
-                  className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors resize-none h-24 custom-scrollbar" 
-                  placeholder="Describe the scent profile, inspiration, and feeling of this perfume..." 
+                <textarea
+                  required
+                  maxLength={LIMITS.description}
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors resize-none h-24 custom-scrollbar ${inputBorder(formData.description, LIMITS.description)}`}
+                  placeholder="Describe the scent profile, inspiration, and feeling of this perfume..."
                 />
               </div>
 
-              {/* ✨ DYNAMIC NOTES & CUSTOM NOTE INPUT ✨ */}
+              {/* ── Fragrance Notes ── */}
               <div>
                 <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Fragrance Notes</label>
-                
-                {/* Custom Note Adder */}
                 <div className="flex gap-2 mb-3">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Type a new note (e.g. White Musk)..."
                     value={customNoteInput}
                     onChange={(e) => setCustomNoteInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomNote(e); }}
                     className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-400 outline-none"
                   />
-                  <button 
-                    type="button" onClick={handleAddCustomNote}
-                    className="px-4 py-2 bg-white/10 hover:bg-gold-400 text-gold-400 hover:text-black font-bold rounded-lg transition-colors text-sm"
-                  >
-                    Add
-                  </button>
+                  <button type="button" onClick={handleAddCustomNote} className="px-4 py-2 bg-white/10 hover:bg-gold-400 text-gold-400 hover:text-black font-bold rounded-lg transition-colors text-sm">Add</button>
                 </div>
-
                 <div className="flex flex-wrap gap-2 p-4 bg-black/30 border border-white/5 rounded-lg max-h-48 overflow-y-auto custom-scrollbar">
                   {allDisplayNotes.map(note => {
                     const isSelected = formData.notes.includes(note);
@@ -456,9 +494,7 @@ const AdminProducts = ({ }) => {
                         key={note}
                         type="button"
                         onClick={() => handleNoteToggle(note)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${
-                          isSelected ? 'bg-gold-400 text-black border-gold-400 shadow-[0_0_10px_rgba(212,175,55,0.3)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50 hover:text-white'
-                        }`}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${isSelected ? 'bg-gold-400 text-black border-gold-400 shadow-[0_0_10px_rgba(212,175,55,0.3)]' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50 hover:text-white'}`}
                       >
                         {note}
                       </button>
@@ -468,19 +504,21 @@ const AdminProducts = ({ }) => {
                 </div>
               </div>
 
+              {/* ── Availability ── */}
               <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-lg">
-                <input 
-                  type="checkbox" 
-                  id="available" 
-                  checked={formData.available} 
-                  onChange={e => setFormData({...formData, available: e.target.checked})}
+                <input
+                  type="checkbox"
+                  id="available"
+                  checked={formData.available}
+                  onChange={e => setFormData({ ...formData, available: e.target.checked })}
                   className="w-5 h-5 accent-gold-400 bg-transparent border-gray-600 rounded cursor-pointer"
                 />
                 <label htmlFor="available" className="text-sm font-bold text-white cursor-pointer select-none">
                   Product is Available for Purchase
                 </label>
               </div>
-              
+
+              {/* ── Images ── */}
               <div className="bg-black/30 p-4 border border-white/5 rounded-lg">
                 <div className="flex justify-between items-end mb-4">
                   <label className="block text-xs text-gray-400 uppercase tracking-widest">
@@ -488,17 +526,12 @@ const AdminProducts = ({ }) => {
                   </label>
                   <span className="text-xs text-gray-500">First image is the main thumbnail</span>
                 </div>
-                
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {formData.image_urls.map((url, index) => (
                     <div key={index} className="relative group aspect-square rounded-lg border-2 border-white/10 overflow-hidden bg-white/5">
                       <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <button 
-                          type="button" 
-                          onClick={() => handleRemoveImage(index)} 
-                          className="p-2 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg"
-                        >
+                        <button type="button" onClick={() => handleRemoveImage(index)} className="p-2 bg-red-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg">
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -507,12 +540,11 @@ const AdminProducts = ({ }) => {
                       )}
                     </div>
                   ))}
-                  
                   {formData.image_urls.length < 4 && (
                     <div className="aspect-square">
-                      <ImageUploader 
-                        onUploadSuccess={(url) => setFormData(prev => ({ ...prev, image_urls: [...prev.image_urls, url] }))} 
-                        onError={(err) => { if(showToast) showToast('Error', err, 'error'); }} 
+                      <ImageUploader
+                        onUploadSuccess={(url) => setFormData(prev => ({ ...prev, image_urls: [...prev.image_urls, url] }))}
+                        onError={(err) => { if (showToast) showToast('Error', err, 'error'); }}
                       />
                     </div>
                   )}
@@ -526,7 +558,6 @@ const AdminProducts = ({ }) => {
                 </button>
               </div>
             </form>
-
           </div>
         </div>
       )}
