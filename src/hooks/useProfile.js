@@ -59,21 +59,35 @@ export const useProfile = (activeTab) => {
     }
   }, [user, activeTab]);
 
+// ... existing imports ...
   const validateForm = () => {
     const newErrors = {};
     
-    // Optional phone, but if filled, MUST be a valid PH format
+    // 1. Phone Validation
     if (profileData.phone_number) {
-      // Matches 09123456789 or +639123456789
       const phPhoneRegex = /^(09|\+639)\d{9}$/;
       if (!phPhoneRegex.test(profileData.phone_number.trim())) {
         newErrors.phone_number = "Please enter a valid PH number (e.g., 09123456789 or +639123456789)";
       }
     }
 
+    // 2. Address Edge Cases
+    if (profileData.address.region) {
+      if (!profileData.address.street || profileData.address.street.trim().length < 5) {
+        newErrors.street = "Street address is too short (min 5 characters).";
+      }
+      if (profileData.address.street && profileData.address.street.length > 150) {
+        newErrors.street = "Street address is too long (max 150 characters).";
+      }
+      if (profileData.address.landmark && profileData.address.landmark.length > 150) {
+        newErrors.landmark = "Landmark is too long (max 150 characters).";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
+// ... rest of the hook stays exactly the same ...
 
   const saveProfile = async (passwords) => {
     if (!validateForm()) {

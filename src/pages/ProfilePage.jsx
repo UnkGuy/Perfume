@@ -164,10 +164,23 @@ const ProfilePage = () => {
                       <input type="text" value={profileData.username} onChange={(e) => setProfileData({...profileData, username: e.target.value})} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Phone size={14} className="text-gold-400"/> Phone Number (Optional)</label>
-                      <input type="tel" value={profileData.phone_number} onChange={(e) => setProfileData({...profileData, phone_number: e.target.value})} className={`w-full bg-black/40 border rounded-lg p-3 text-white focus:outline-none transition-colors ${errors?.phone_number ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-gold-400'}`} placeholder="09123456789 or +639..." />
-                      {errors?.phone_number && <p className="text-red-400 text-xs mt-1.5">{errors.phone_number}</p>}
-                    </div>
+  <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+    <Phone size={14} className="text-gold-400"/> Phone Number (Optional)
+  </label>
+  <input 
+    type="tel" 
+    value={profileData.phone_number} 
+    onChange={(e) => {
+      // Active sanitization: Only numbers and '+' allowed
+      const sanitized = e.target.value.replace(/[^\d+]/g, '');
+      setProfileData({...profileData, phone_number: sanitized});
+    }} 
+    maxLength={13} // Prevents entering numbers longer than +639123456789
+    className={`w-full bg-black/40 border rounded-lg p-3 text-white focus:outline-none transition-colors ${errors?.phone_number ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-gold-400'}`} 
+    placeholder="09123456789 or +639..." 
+  />
+  {errors?.phone_number && <p className="text-red-400 text-xs mt-1.5">{errors.phone_number}</p>}
+</div>
 
                     {/* ✨ The PSGC Address Block ✨ */}
                     <div className="md:col-span-2">
@@ -226,15 +239,31 @@ const ProfilePage = () => {
                             </div>
                           </div>
 
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">Street / House No. / Subdivision</label>
-                            <input type="text" value={profileData.address.street || ''} onChange={(e) => setProfileData(prev => ({...prev, address: {...prev.address, street: e.target.value}}))} placeholder="e.g. Blk 1 Lot 2, Mabini St." className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none" />
-                          </div>
+<div>
+  <label className="block text-xs text-gray-500 mb-1">Street / House No. / Subdivision</label>
+  <input 
+    type="text" 
+    value={profileData.address.street || ''} 
+    onChange={(e) => setProfileData(prev => ({...prev, address: {...prev.address, street: e.target.value}}))} 
+    maxLength={150} // Active max length
+    placeholder="e.g. Blk 1 Lot 2, Mabini St." 
+    className={`w-full bg-white/5 border rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none ${errors?.street ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-gold-400'}`} 
+  />
+  {errors?.street && <p className="text-red-400 text-xs mt-1.5">{errors.street}</p>}
+</div>
 
-                          <div>
-                            <label className="block text-xs text-gray-500 mb-1">Nearest Landmark (Optional)</label>
-                            <input type="text" value={profileData.address.landmark || ''} onChange={(e) => setProfileData(prev => ({...prev, address: {...prev.address, landmark: e.target.value}}))} placeholder="e.g. Beside the blue gate" className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-white text-sm focus:border-gold-400 outline-none" />
-                          </div>
+<div>
+  <label className="block text-xs text-gray-500 mb-1">Nearest Landmark (Optional)</label>
+  <input 
+    type="text" 
+    value={profileData.address.landmark || ''} 
+    onChange={(e) => setProfileData(prev => ({...prev, address: {...prev.address, landmark: e.target.value}}))} 
+    maxLength={150} // Active max length
+    placeholder="e.g. Beside the blue gate" 
+    className={`w-full bg-white/5 border rounded-lg px-3 py-2.5 text-white text-sm focus:outline-none ${errors?.landmark ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-gold-400'}`} 
+  />
+  {errors?.landmark && <p className="text-red-400 text-xs mt-1.5">{errors.landmark}</p>}
+</div>
                           
                           {/* Allow user to cancel editing if they already have an address saved */}
                           {profileData.address?.region && (
