@@ -1,22 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { fetchProductsAPI, saveProductAPI, deleteProductAPI } from '../services/productApi';
-import { logAdminActionAPI } from '../services/logApi'; // <-- Import API
-import { useAuth } from '../contexts/AuthContext';      // <-- Import Auth
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useProducts = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth(); // Get the admin user
+  const { user } = useAuth();
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProductsAPI,
   });
 
+  // ← Listen for the custom event fired by the bulk availability update in AdminProducts.
+  // This forces a cache invalidation without needing to pass the queryClient down as a prop.
+  useEffect(() => {
+    const handler = () => queryClient.invalidateQueries({ queryKey: ['products'] });
+    window.addEventListener('klscents:products-updated', handler);
+    return () => window.removeEventListener('klscents:products-updated', handler);
+  }, [queryClient]);
+
   const saveMutation = useMutation({
     mutationFn: ({ payload, id }) => saveProductAPI(payload, id),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      // Log Add or Edit
       const actionType = variables.id ? 'Edited Product' : 'Added New Product';
       logAdminActionAPI(user?.email, actionType, variables.payload.name);
     },
@@ -26,12 +34,11 @@ export const useProducts = () => {
     mutationFn: (id) => deleteProductAPI(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      // Log Deletion
       logAdminActionAPI(user?.email, 'Deleted Product', `Product ID: ${id}`);
     },
   });
 
-  const saveProduct = async (payload, id = null) => await saveMutation.mutateAsync({ payload, id });
+  const saveProduct   = async (payload, id = null) => await saveMutation.mutateAsync({ payload, id });
   const deleteProduct = async (id) => await deleteMutation.mutateAsync(id);
 
   return { products: products || [], isLoading, saveProduct, deleteProduct };

@@ -1,31 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, User, Search, Menu, X, Heart } from 'lucide-react';
-import { useShop } from '../../contexts/ShopContext'; 
+import { ShoppingBag, User, Search, Menu, X, Heart, Sun, Moon } from 'lucide-react';
+import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useUI } from '../../contexts/UIContext'; // <-- NEW
+import { useUI } from '../../contexts/UIContext';
 
 const Header = () => {
   const { user, userRole, handleLogout } = useAuth();
   const { cartItems, wishlistItems, showToast } = useShop();
-  // Pull all UI controls directly!
-  const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery } = useUI();
+  const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery, theme, toggleTheme } = useUI();
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false); 
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
 
-  // ... (Keep existing useEffects for scrolling and search debounce) ...
-  useEffect(() => {
-    setLocalSearch(searchQuery || '');
-  }, [searchQuery]);
+  useEffect(() => { setLocalSearch(searchQuery || ''); }, [searchQuery]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (setSearchQuery) {
-        setSearchQuery(localSearch);
-      }
-    }, 300); 
+      if (setSearchQuery) setSearchQuery(localSearch);
+    }, 300);
     return () => clearTimeout(timer);
   }, [localSearch, setSearchQuery]);
 
@@ -42,9 +36,7 @@ const Header = () => {
 
   const handleSearchChange = (e) => {
     setLocalSearch(e.target.value);
-    if (e.target.value.length > 0) {
-      setCurrentPage('products'); 
-    }
+    if (e.target.value.length > 0) setCurrentPage('products');
   };
 
   const handleSignOut = async () => {
@@ -53,17 +45,19 @@ const Header = () => {
     setCurrentPage('welcome');
   };
 
+  const isDark = theme === 'dark';
+
   return (
     <>
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-rich-black/95 backdrop-blur-md border-b border-white/5 py-4 shadow-lg' : 'bg-transparent py-6'}`}>
         <div className="container mx-auto px-6 max-w-7xl">
           <div className="flex justify-between items-center">
-            
+
             {/* Logo */}
             <div className="cursor-pointer group flex items-center gap-3" onClick={() => setCurrentPage('welcome')}>
-              <img 
-                src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" 
-                alt="KL Scents" 
+              <img
+                src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
+                alt="KL Scents"
                 className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover:border-gold-400/50 transition-colors shadow-lg"
               />
               <div className="hidden sm:flex flex-col leading-tight">
@@ -78,7 +72,11 @@ const Header = () => {
 
             <nav className="hidden md:flex items-center space-x-8">
               {navLinks.map((link) => (
-                <button key={link.id} onClick={() => setCurrentPage(link.id)} className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group">
+                <button
+                  key={link.id}
+                  onClick={() => setCurrentPage(link.id)}
+                  className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group"
+                >
                   {link.label}
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold-400 transition-all group-hover:w-full"></span>
                 </button>
@@ -86,13 +84,18 @@ const Header = () => {
             </nav>
 
             <div className="flex items-center space-x-4 md:space-x-6">
-              
+
+              {/* Search */}
               <div className="relative flex items-center">
                 {isSearchOpen && (
-                  <input 
-                    type="text" value={localSearch} onChange={handleSearchChange} 
+                  <input
+                    type="text"
+                    value={localSearch}
+                    onChange={handleSearchChange}
                     onKeyDown={(e) => { if (e.key === 'Enter') setCurrentPage('products'); }}
-                    autoFocus placeholder="Search scents..."
+                    autoFocus
+                    placeholder="Search scents..."
+                    maxLength={100}
                     className="absolute right-8 w-48 bg-black/50 border border-gold-400/50 rounded-full py-1.5 px-4 text-sm text-white focus:outline-none animate-slide-in"
                   />
                 )}
@@ -101,8 +104,17 @@ const Header = () => {
                 </button>
               </div>
 
-              {/* Updated Wishlist Click */}
-              <button className="relative text-gray-300 hover:text-gold-400 transition-colors group" onClick={() => setIsWishlistOpen(true)}>
+              {/* ← Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className="text-gray-300 hover:text-gold-400 transition-colors p-1"
+              >
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
+              {/* Wishlist */}
+              <button className="relative text-gray-300 hover:text-gold-400 transition-colors" onClick={() => setIsWishlistOpen(true)}>
                 <Heart size={20} />
                 {wishlistItems && wishlistItems.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
@@ -111,13 +123,13 @@ const Header = () => {
                 )}
               </button>
 
-              {/* ... (Keep User icon logic) ... */}
+              {/* User */}
               {user ? (
                 <div className="relative group flex items-center gap-2">
                   <button onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} className="text-gray-300 hover:text-gold-400 transition-colors py-2">
                     <User size={20} />
                   </button>
-                  <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+                  <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
                     {userRole === 'admin' && (
                       <button onClick={() => setCurrentPage('admin')} className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5">
                         Dashboard
@@ -137,21 +149,22 @@ const Header = () => {
                 </button>
               )}
 
-              {/* Updated Cart Click */}
-              <button 
-                onClick={(e) => { 
-                  e.preventDefault(); 
+              {/* Cart */}
+              <button
+                className="relative"
+                onClick={(e) => {
+                  e.preventDefault();
                   if (!user) {
-                     setCurrentPage('login'); 
-                     if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
-                     return;
+                    setCurrentPage('login');
+                    if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
+                    return;
                   }
-                  setIsCartOpen(true); 
+                  setIsCartOpen(true);
                 }}
               >
-                <ShoppingBag size={20} />
+                <ShoppingBag size={20} className="text-gray-300 hover:text-gold-400 transition-colors" />
                 {cartItems && cartItems.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full animate-bounce">
+                  <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
                     {cartItems.length}
                   </span>
                 )}
@@ -164,7 +177,7 @@ const Header = () => {
           </div>
         </div>
       </header>
-      
+
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[60] bg-rich-black/98 backdrop-blur-xl md:hidden flex flex-col items-center justify-center space-y-8 animate-fade-in">
           <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white">
@@ -179,6 +192,11 @@ const Header = () => {
               {link.label}
             </button>
           ))}
+          {/* Theme toggle in mobile menu too */}
+          <button onClick={toggleTheme} className="flex items-center gap-2 text-gray-400 hover:text-gold-400 text-sm uppercase tracking-widest">
+            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            {isDark ? 'Light Mode' : 'Dark Mode'}
+          </button>
         </div>
       )}
     </>

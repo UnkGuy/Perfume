@@ -12,15 +12,31 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
 
   if (recentOrder) {
     const lastOrderTime = new Date(recentOrder.created_at).getTime();
-    const currentTime = new Date().getTime();
-    if (currentTime - lastOrderTime < 60000) {
+    if (Date.now() - lastOrderTime < 60000) {
       throw new Error("Please wait a minute before placing another inquiry.");
     }
   }
 
-  // --- ✨ PROMO CODE VERIFICATION & INCREMENT ✨ ---
+  // --- STOCK AVAILABILITY CHECK ---
+  // Verify each item still has stock before committing the order
+  for (const item of localItems) {
+    const { data: product } = await supabase
+      .from('products')
+      .select('stock_count, available, name')
+      .eq('id', item.id)
+      .single();
+
+    if (!product?.available) {
+      throw new Error(`"${item.name}" is no longer available.`);
+    }
+    // Only enforce stock_count when it's explicitly tracked (not null = unlimited)
+    if (product?.stock_count != null && product.stock_count < item.quantity) {
+      throw new Error(`"${item.name}" only has ${product.stock_count} unit(s) left.`);
+    }
+  }
+
+  // --- PROMO CODE VERIFICATION & INCREMENT ---
   if (promoCode) {
-    // 1. Re-Verify the promo code is still valid at the exact moment of checkout
     const { data: promoData, error: promoErr } = await supabase
       .from('promo_codes')
       .select('*')
@@ -37,8 +53,6 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
       throw new Error("This promo code has expired.");
     }
 
-    // 2. Check if THIS user has already used this code
-    // We check their past messages metadata for the specific promo code
     const { data: pastUsage } = await supabase
       .from('messages')
       .select('id')
@@ -50,7 +64,6 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
       throw new Error("You have already used this promo code.");
     }
 
-    // 3. Increment the global usage counter!
     const { error: updateErr } = await supabase
       .from('promo_codes')
       .update({ times_used: promoData.times_used + 1 })
@@ -65,43 +78,70 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
     .insert([{ user_id: userId, total_amount: total, status: 'pending' }])
     .select()
     .single();
-    
+
   if (orderError) throw orderError;
 
   // --- INSERT ITEMS ---
   const orderItemsToInsert = localItems.map(item => ({
-    order_id: orderData.id, 
-    product_id: item.id, 
-    quantity: item.quantity, 
-    price_at_time: item.price
+    order_id: orderData.id,
+    product_id: item.id,
+    quantity: item.quantity,
+    price_at_time: item.price,
   }));
-  
+
   const { error: itemsError } = await supabase.from('order_items').insert(orderItemsToInsert);
   if (itemsError) throw itemsError;
 
+  // --- DECREMENT STOCK ---
+  // Best-effort: don't fail the order if stock update errors (log instead)
+  for (const item of localItems) {
+    try {
+      const { data: product } = await supabase
+        .from('products')
+        .select('stock_count')
+        .eq('id', item.id)
+        .single();
+
+      if (product?.stock_count != null) {
+        const newStock = Math.max(0, product.stock_count - item.quantity);
+        await supabase
+          .from('products')
+          .update({
+            stock_count: newStock,
+            available: newStock > 0, // auto-mark unavailable if stock hits 0
+          })
+          .eq('id', item.id);
+      }
+    } catch (stockErr) {
+      console.error(`Failed to decrement stock for product ${item.id}:`, stockErr);
+    }
+  }
+
   // --- SEND RECEIPT MESSAGE ---
   const chatItems = localItems.map(item => ({
-    name: item.name, quantity: item.quantity, price: item.price
+    name: item.name,
+    quantity: item.quantity,
+    price: item.price,
   }));
-  
+
   let formattedContent = `New Inquiry Placed.\nFulfillment: ${checkoutInfo.fulfillmentMethod}\nPayment: ${checkoutInfo.paymentMethod}\nContact: ${checkoutInfo.phoneNumber}\nLocation: ${checkoutInfo.location || 'N/A'}`;
   if (promoCode) formattedContent += `\nPromo Applied: ${promoCode}`;
 
-  const { error: msgError } = await supabase.from('messages').insert([{ 
-    sender_role: 'user', 
+  const { error: msgError } = await supabase.from('messages').insert([{
+    sender_role: 'user',
     content: formattedContent,
     user_id: userId,
-    metadata: { 
-      type: 'order_inquiry', 
-      order_id: orderData.id, 
-      total: total,
+    metadata: {
+      type: 'order_inquiry',
+      order_id: orderData.id,
+      total,
       items: chatItems,
       fulfillment: checkoutInfo.fulfillmentMethod,
       payment: checkoutInfo.paymentMethod,
       contact: checkoutInfo.phoneNumber,
       location: checkoutInfo.location,
-      promo_code: promoCode // ✨ Log the promo code to prevent reuse!
-    }
+      promo_code: promoCode,
+    },
   }]);
 
   if (msgError) throw msgError;
