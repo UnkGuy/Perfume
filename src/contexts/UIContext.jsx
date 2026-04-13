@@ -1,14 +1,29 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const UIContext = createContext({});
 
 export const UIProvider = ({ children }) => {
-  const [currentPage, setCurrentPage] = useState('welcome');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Trick: derive currentPage from the URL so existing components don't break
+  const currentPage = location.pathname === '/' ? 'welcome' : location.pathname.substring(1);
+
+  // Trick: Map the old state setter to the new router
+  const setCurrentPage = (page) => {
+    if (page === 'welcome') {
+      navigate('/');
+    } else {
+      navigate(`/${page}`);
+    }
+  };
+
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isWishlistOpen, setIsWishlistOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // ← Theme: 'dark' | 'light' — persisted in localStorage
+  // Theme logic remains unchanged
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem('klscents_theme') || 'dark';
@@ -17,9 +32,6 @@ export const UIProvider = ({ children }) => {
     }
   });
 
-  // Apply/remove the 'dark' class on <html> whenever theme changes
-  // This lets Tailwind's dark: variants work across the whole app.
-  // tailwind.config.js must have: darkMode: 'class'
   useEffect(() => {
     const root = document.documentElement;
     if (theme === 'dark') {

@@ -1,4 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from './services/supabase'; 
 import { Loader2 } from 'lucide-react';
 
@@ -11,7 +12,6 @@ import ChatWidget from './components/common/ChatWidget';
 // Contexts
 import { useAuth } from './contexts/AuthContext';
 import { useShop } from './contexts/ShopContext';
-import { useUI } from './contexts/UIContext'; // <-- NEW IMPORT
 
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const ProductPage = lazy(() => import('./pages/ProductPage'));
@@ -27,51 +27,34 @@ const PageLoader = () => (
 );
 
 function App() {
-  // Pulling state directly from Contexts!
   const { userRole } = useAuth(); 
   const { toasts, removeToast } = useShop();
-  const { currentPage, setCurrentPage } = useUI(); 
+  
+  const location = useLocation();
+  const navigate = useNavigate();
 
+  // Supabase Auth Recovery Links
   useEffect(() => {
     const hash = window.location.hash;
     if (hash && hash.includes('type=recovery')) {
-      setCurrentPage('reset-password');
+      navigate('/reset-password', { replace: true });
       window.history.replaceState(null, '', window.location.pathname);
     }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        setCurrentPage('reset-password');
+        navigate('/reset-password');
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [setCurrentPage]);
+  }, [navigate]);
 
-    // Fixes Bug 2 & 13: Scroll to top on page change
+  // Fixes Scroll to Top on page change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentPage]);
+  }, [location.pathname]);
   
-  const renderCurrentPage = () => {
-    // ZERO PROPS PASSED DOWN!
-    switch (currentPage) {
-      case 'welcome': return <WelcomePage />;
-      case 'products': return <ProductPage />;
-      case 'cart': return <CartPage />;
-      case 'login': return <LoginPage />;
-      case 'profile': return <ProfilePage />;
-      case 'reset-password': return <ResetPasswordPage />;
-      
-      case 'admin': 
-        if (userRole === 'admin') return <AdminDashboard />; 
-        setCurrentPage('welcome');
-        return null;
-          
-      default: return <WelcomePage />;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans">
       <Toast toasts={toasts} removeToast={removeToast} />
@@ -81,7 +64,23 @@ function App() {
       {userRole !== 'admin' && <ChatWidget />}
 
       <Suspense fallback={<PageLoader />}>
-        {renderCurrentPage()}
+        <Routes>
+          <Route path="/" element={<WelcomePage />} />
+          <Route path="/products" element={<ProductPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          
+          {/* Admin Route Protection */}
+          <Route 
+            path="/admin" 
+            element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />} 
+          />
+
+          {/* Catch-all for bad URLs */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </Suspense>
     </div>
   );
