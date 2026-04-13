@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, User, Search, Menu, X, Heart, Sun, Moon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUI } from '../../contexts/UIContext';
@@ -8,6 +9,7 @@ const Header = () => {
   const { user, userRole, handleLogout } = useAuth();
   const { cartItems, wishlistItems, showToast } = useShop();
   const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery, theme, toggleTheme } = useUI();
+  const navigate = useNavigate(); // <-- NEW
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -36,13 +38,23 @@ const Header = () => {
 
   const handleSearchChange = (e) => {
     setLocalSearch(e.target.value);
-    if (e.target.value.length > 0) setCurrentPage('products');
+    if (e.target.value.length > 0) navigate('/products', { state: { reset: true } });
   };
 
   const handleSignOut = async () => {
     await handleLogout();
     showToast('Logged Out', 'You have been successfully logged out.');
     setCurrentPage('welcome');
+  };
+
+  // ✨ NEW: Centralized navigation click handler
+  const handleNavClick = (linkId) => {
+    if (linkId === 'products') {
+      navigate('/products', { state: { reset: true } });
+    } else {
+      setCurrentPage(linkId);
+    }
+    setIsMobileMenuOpen(false);
   };
 
   const isDark = theme === 'dark';
@@ -54,11 +66,10 @@ const Header = () => {
           <div className="flex justify-between items-center">
 
             {/* Logo */}
-            {/* Logo */}
-<div className="cursor-pointer group flex items-center gap-3" onClick={() => {
-  setCurrentPage('welcome');
-  window.scrollTo({ top: 0, behavior: 'smooth' }); // Fixes Bug 7
-}}>
+            <div className="cursor-pointer group flex items-center gap-3" onClick={() => {
+              setCurrentPage('welcome');
+              window.scrollTo({ top: 0, behavior: 'smooth' }); 
+            }}>
               <img
                 src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
                 alt="KL Scents"
@@ -78,7 +89,7 @@ const Header = () => {
               {navLinks.map((link) => (
                 <button
                   key={link.id}
-                  onClick={() => setCurrentPage(link.id)}
+                  onClick={() => handleNavClick(link.id)}
                   className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group"
                 >
                   {link.label}
@@ -89,23 +100,23 @@ const Header = () => {
 
             <div className="flex items-center space-x-4 md:space-x-6">
 
-              {/* Search (Fixes Bug 9) */}
-<div className="relative flex items-center">
-  <button 
-    onClick={() => {
-      setCurrentPage('products');
-      // Wait for page transition, then focus the PredictiveSearch input
-      setTimeout(() => {
-        document.querySelector('input[placeholder="Search for your perfect scent..."]')?.focus();
-      }, 100);
-    }} 
-    className="text-gray-300 hover:text-gold-400 transition-colors z-10 p-1"
-  >
-    <Search size={20} />
-  </button>
-</div>
+              {/* Search */}
+              <div className="relative flex items-center">
+                <button 
+                  onClick={() => {
+                    navigate('/products', { state: { reset: true } });
+                    // Wait for page transition, then focus the PredictiveSearch input
+                    setTimeout(() => {
+                      document.querySelector('input[placeholder="Search for your perfect scent..."]')?.focus();
+                    }, 100);
+                  }} 
+                  className="text-gray-300 hover:text-gold-400 transition-colors z-10 p-1"
+                >
+                  <Search size={20} />
+                </button>
+              </div>
 
-              {/* ← Theme toggle */}
+              {/* Theme toggle */}
               <button
                 onClick={toggleTheme}
                 title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -187,7 +198,7 @@ const Header = () => {
           {navLinks.map((link) => (
             <button
               key={link.id}
-              onClick={() => { setCurrentPage(link.id); setIsMobileMenuOpen(false); }}
+              onClick={() => handleNavClick(link.id)}
               className="text-2xl font-light text-white hover:text-gold-400 tracking-widest uppercase"
             >
               {link.label}

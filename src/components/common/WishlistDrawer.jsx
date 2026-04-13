@@ -1,14 +1,15 @@
 import React from 'react';
 import { X, Trash2, Heart, ShoppingCart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
 import { useShop } from '../../contexts/ShopContext'; 
-import { useUI } from '../../contexts/UIContext'; // <-- NEW
+import { useUI } from '../../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-// NO PROPS REQUIRED!
 const WishlistDrawer = () => {
-  const { wishlistItems, toggleWishlist, addToCart } = useShop();
-  const { isWishlistOpen, setIsWishlistOpen } = useUI(); // Extracted from Context
+  const { wishlistItems, toggleWishlist, addToCart, showToast } = useShop();
+  const { isWishlistOpen, setIsWishlistOpen, setCurrentPage } = useUI();
+  const navigate = useNavigate(); // <-- NEW
 
   const items = wishlistItems || [];
 
@@ -38,14 +39,14 @@ const WishlistDrawer = () => {
                 <Heart size={48} className="text-gray-700" />
                 <p className="text-gray-500">Your wishlist is empty.</p>
                 <button 
-  onClick={() => {
-    setIsWishlistOpen(false);
-    setCurrentPage('products');
-  }} 
-  className="text-gold-400 hover:underline"
->
-  Explore Collection
-</button>
+                  onClick={() => {
+                    setIsWishlistOpen(false);
+                    setCurrentPage('products');
+                  }} 
+                  className="text-gold-400 hover:underline"
+                >
+                  Explore Collection
+                </button>
               </div>
             ) : (
               items.map((item, index) => {
@@ -53,11 +54,19 @@ const WishlistDrawer = () => {
 
                 return (
                   <div key={index} className="flex gap-4 items-start animate-fade-in bg-white/5 p-3 rounded-lg border border-white/5">
-                    <div className="w-20 h-20 bg-white/10 rounded-lg overflow-hidden flex-shrink-0">
-                      <img src={imageSource} alt={item.name} loading="lazy" className="w-full h-full object-cover" />
+                    <div 
+                      className="w-20 h-20 bg-white/10 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer"
+                      onClick={() => { setIsWishlistOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                    >
+                      <img src={imageSource} alt={item.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-white text-sm">{item.name}</h3>
+                      <h3 
+                        className="font-bold text-white text-sm cursor-pointer hover:text-gold-400 transition-colors"
+                        onClick={() => { setIsWishlistOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                      >
+                        {item.name}
+                      </h3>
                       <p className="text-gray-500 text-xs mb-2">{item.brand}</p>
                       <p className="text-gold-400 font-medium mb-3">₱{item.price}</p>
                       
@@ -65,8 +74,10 @@ const WishlistDrawer = () => {
                         <button 
                           onClick={() => {
                             if(item.available) {
-                              addToCart(item);
-                              toggleWishlist(item); 
+                              // ✨ FIXED BUG 6: Used Silent flags! ✨
+                              addToCart(item, 1, true);
+                              toggleWishlist(item, true); 
+                              showToast('Moved to Cart', `${item.name} moved to cart.`, 'success');
                             }
                           }}
                           disabled={!item.available}

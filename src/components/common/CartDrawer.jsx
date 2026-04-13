@@ -1,5 +1,6 @@
 import React from 'react';
-import { X, Trash2, ShoppingBag, ArrowRight, AlertCircle } from 'lucide-react';
+import { X, Trash2, ShoppingBag, ArrowRight, AlertCircle, Plus, Minus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUI } from '../../contexts/UIContext';
@@ -8,10 +9,10 @@ const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/obje
 
 const CartDrawer = () => {
   const { user } = useAuth();
-  const { cartItems, removeFromCart, showToast } = useShop();
+  const { cartItems, removeFromCart, showToast, updateQuantity } = useShop(); // Pull updateQuantity
   const { isCartOpen, setIsCartOpen, setCurrentPage } = useUI();
+  const navigate = useNavigate(); // <-- NEW
 
-  // ← was: sum + item.price  (ignored quantity — showed wrong total)
   const total = cartItems.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
   const hasUnavailableItems = cartItems.some(item => !item.available);
 
@@ -47,8 +48,11 @@ const CartDrawer = () => {
                 const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;
                 return (
                   <div key={index} className={`flex gap-4 items-start animate-fade-in ${!item.available ? 'opacity-60' : ''}`}>
-                    <div className="w-20 h-20 bg-white/5 rounded-lg overflow-hidden flex-shrink-0 border border-white/10 relative">
-                      <img src={imageSource} alt={item.name} className="w-full h-full object-cover" />
+                    <div 
+                      className="w-20 h-20 bg-white/5 rounded-lg overflow-hidden flex-shrink-0 border border-white/10 relative cursor-pointer"
+                      onClick={() => { setIsCartOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                    >
+                      <img src={imageSource} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
                       {!item.available && (
                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                           <X size={24} className="text-red-500" />
@@ -56,14 +60,29 @@ const CartDrawer = () => {
                       )}
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-white text-sm">{item.name}</h3>
+                      <h3 
+                        className="font-bold text-white text-sm cursor-pointer hover:text-gold-400 transition-colors"
+                        onClick={() => { setIsCartOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                      >
+                        {item.name}
+                      </h3>
                       <p className="text-gray-500 text-xs mb-1">{item.brand} • {item.size}</p>
                       {item.available ? (
-                        <p className="text-gold-400 font-medium">
-                          ₱{item.price} {item.quantity > 1 && <span className="text-gray-500 text-xs">× {item.quantity}</span>}
-                        </p>
+                        <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
+                          <p className="text-gold-400 font-medium">₱{item.price}</p>
+                          {/* ✨ FIXED BUG 8: Quantity Modifiers inside Drawer! ✨ */}
+                          <div className="flex items-center gap-2 bg-black/40 rounded px-1.5 py-0.5 border border-white/10">
+                            <button onClick={() => updateQuantity(index, -1)} disabled={item.quantity <= 1} className="p-0.5 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
+                              <Minus size={12} />
+                            </button>
+                            <span className="text-xs w-4 text-center">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(index, 1)} className="p-0.5 text-gray-400 hover:text-gold-400 transition-colors">
+                              <Plus size={12} />
+                            </button>
+                          </div>
+                        </div>
                       ) : (
-                        <p className="text-red-400 text-xs font-bold tracking-wider">OUT OF STOCK</p>
+                        <p className="text-red-400 text-xs font-bold tracking-wider mt-1">OUT OF STOCK</p>
                       )}
                     </div>
                     <button

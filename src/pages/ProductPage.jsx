@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, LayoutGrid, List, ChevronDown, SlidersHorizontal, ArrowUp } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
@@ -19,8 +20,10 @@ const MAX_LIMIT = 20000;
 const GAP = 50;
 
 const ProductPage = () => {
-  const { setCurrentPage, searchQuery, setSearchQuery } = useUI();
+  const { searchQuery, setSearchQuery } = useUI();
   const { products, isLoading } = useStoreProducts();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
   const dynamicSizes  = useMemo(() => [...new Set(products.map(p => p.size).filter(Boolean))].sort(), [products]);
@@ -40,9 +43,19 @@ const ProductPage = () => {
   const [showOutOfStock, setShowOutOfStock] = useState(false);
   const [isSortOpen, setIsSortOpen]         = useState(false);
   const [isFiltersOpen, setIsFiltersOpen]   = useState(false);
-
-  // ← Back to top visibility
   const [showBackToTop, setShowBackToTop]   = useState(false);
+
+  // ✨ NEW: Route State Listener for proper resets and details targeting
+  useEffect(() => {
+    if (location.state?.reset) {
+      setSelectedProduct(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (location.state?.selectedProduct) {
+      setSelectedProduct(location.state.selectedProduct);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 400);
@@ -61,11 +74,11 @@ const ProductPage = () => {
   const handleInput = (e, type) => {
     let val = parseInt(e.target.value) || 0;
     if (type === 'min') {
-      if (val < MIN_LIMIT) val = MIN_LIMIT; // Bound check
+      if (val < MIN_LIMIT) val = MIN_LIMIT;
       if (val > priceRange.max - GAP) val = priceRange.max - GAP;
       setPriceRange({ ...priceRange, min: val });
     } else {
-      if (val > MAX_LIMIT) val = MAX_LIMIT; // Bound check
+      if (val > MAX_LIMIT) val = MAX_LIMIT;
       if (val < priceRange.min + GAP) val = priceRange.min + GAP;
       setPriceRange({ ...priceRange, max: val });
     }
@@ -74,11 +87,11 @@ const ProductPage = () => {
   const handleSliderChange = (e, type) => {
     let val = parseInt(e.target.value);
     if (type === 'min') {
-      if (val < MIN_LIMIT) val = MIN_LIMIT; // Bound check
+      if (val < MIN_LIMIT) val = MIN_LIMIT;
       if (val > priceRange.max - GAP) val = priceRange.max - GAP;
       setPriceRange(prev => ({ ...prev, min: val }));
     } else {
-      if (val > MAX_LIMIT) val = MAX_LIMIT; // Bound check
+      if (val > MAX_LIMIT) val = MAX_LIMIT;
       if (val < priceRange.min + GAP) val = priceRange.min + GAP;
       setPriceRange(prev => ({ ...prev, max: val }));
     }
@@ -102,7 +115,6 @@ const ProductPage = () => {
         const q = searchQuery.toLowerCase();
         if (!product.name.toLowerCase().includes(q) && !product.brand?.toLowerCase().includes(q)) return false;
       }
-      // Replace the old rating logic with this exact match:
       if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
       if (product.price < priceRange.min || product.price > priceRange.max) return false;
       if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
@@ -124,7 +136,6 @@ const ProductPage = () => {
   const totalPages        = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = processedProducts.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE);
 
-  // ✨ MOVED startIdx and endIdx HERE so they run after activePage and processedProducts are created ✨
   const startIdx = processedProducts.length === 0 ? 0 : (activePage - 1) * ITEMS_PER_PAGE + 1;
   const endIdx = Math.min(activePage * ITEMS_PER_PAGE, processedProducts.length);
 
@@ -154,17 +165,19 @@ const ProductPage = () => {
           <PredictiveSearch products={products} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSelectProduct={setSelectedProduct} />
         )}
 
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+        {/* ✨ FIXED BUG 1: Parent Flex container removed gap logic, now handled precisely by the aside margins ✨ */}
+        <div className="flex flex-col lg:flex-row">
           {!selectedProduct && (
-            <aside className={`flex-shrink-0 relative z-20 transition-all duration-500 ease-in-out ${isFiltersOpen ? 'w-full lg:w-72' : 'w-full lg:w-auto'}`}>
-              <button
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                className="w-full flex items-center justify-between whitespace-nowrap gap-4 bg-black/40 border border-gold-400/30 p-4 rounded-xl text-gold-400 font-bold hover:bg-white/5 transition-colors mb-4 shadow-lg"
-              >
-                <div className="flex items-center gap-3"><SlidersHorizontal size={18} /><span>Filter Collection</span></div>
-                <ChevronDown size={18} className={`transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`} />
-              </button>
-              <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isFiltersOpen ? 'max-h-[2000px] opacity-100 mb-8' : 'max-h-0 opacity-0 lg:max-h-[2000px] lg:opacity-100'}`}>
+            <aside 
+              className={`flex-shrink-0 transition-all duration-500 ease-in-out overflow-hidden
+                ${isFiltersOpen 
+                  ? 'lg:w-72 lg:mr-12 max-h-[2000px] lg:max-h-none opacity-100 mb-8 lg:mb-0' 
+                  : 'lg:w-0 lg:mr-0 max-h-0 lg:max-h-none opacity-0 m-0'
+                }
+              `}
+            >
+              {/* Inner div maintains fixed width so the forms don't crush together during animation */}
+              <div className="w-full lg:w-72 pb-2">
                 <ProductFilters
                   ratingFilter={ratingFilter} setRatingFilter={setRatingFilter}
                   priceRange={priceRange} setPriceRange={setPriceRange}
@@ -182,7 +195,7 @@ const ProductPage = () => {
             </aside>
           )}
 
-          <main className={`flex-1 ${selectedProduct ? 'w-full' : ''}`}>
+          <main className={`flex-1 w-full min-w-0`}>
             {isLoading ? (
               <div className={gridClasses}>
                 {[...Array(8)].map((_, i) => <ProductSkeleton key={i} isCompact={viewMode === 'compact'} />)}
@@ -190,7 +203,10 @@ const ProductPage = () => {
             ) : selectedProduct ? (
               <ProductDetails
                 product={selectedProduct}
-                onBack={() => setSelectedProduct(null)}
+                onBack={() => {
+                  setSelectedProduct(null);
+                  navigate(location.pathname, { replace: true, state: {} });
+                }}
                 onSelect={setSelectedProduct}
                 onQuickView={setQuickViewProduct}
               />
@@ -203,6 +219,16 @@ const ProductPage = () => {
                   </div>
 
                   <div className="relative w-full md:w-auto flex flex-wrap items-center justify-start md:justify-end gap-3">
+                    
+                    {/* ✨ FIXED BUG 1: Moved Filter Toggle here so it doesn't leave negative space when closed ✨ */}
+                    <button
+                      onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                      className={`bg-black/40 border border-gold-400/30 text-gold-400 text-sm rounded px-4 py-2 outline-none hover:bg-gold-400 hover:text-black cursor-pointer flex items-center gap-2 transition-colors ${isFiltersOpen ? 'bg-gold-400 text-black' : ''}`}
+                    >
+                      <SlidersHorizontal size={16} />
+                      <span className="hidden sm:inline">Filters</span>
+                    </button>
+
                     <div className="flex items-center bg-black/40 border border-gold-400/30 rounded-lg p-1">
                       <button onClick={() => setViewMode('large')} className={`p-1.5 rounded transition-colors ${viewMode === 'large' ? 'bg-gold-400 text-black' : 'text-gray-500 hover:text-white'}`} title="Large Grid View">
                         <LayoutGrid size={18} />
@@ -272,7 +298,6 @@ const ProductPage = () => {
       <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />
       <Footer />
 
-      {/* ← Sticky Back to Top button */}
       <button
         onClick={scrollToTop}
         className={`fixed bottom-24 right-6 z-[35] p-3 bg-white/10 hover:bg-gold-400 hover:text-black text-white border border-white/20 hover:border-gold-400 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ${showBackToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}

@@ -18,7 +18,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [activeImageIndex, setActiveImageIndex]   = useState(0);
 
-  // ← hasPurchased now returned from the hook and forwarded to ReviewModal
   const { reviews, averageRating, canReview, hasPurchased, submitNewReview } = useReviews(product?.id, product?.rating);
 
   const images       = product?.image_urls?.length > 0 ? product.image_urls : [FALLBACK_IMAGE];
@@ -48,7 +47,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-        {/* Image gallery */}
         <div className="flex flex-col gap-4">
           <div className="relative aspect-square bg-white/5 rounded-2xl overflow-hidden border border-white/10 group">
             <img src={images[activeImageIndex]} alt={product.name} className="w-full h-full object-cover transition-opacity duration-300" />
@@ -73,12 +71,14 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
           )}
         </div>
 
-        {/* Info */}
         <div className="flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-xs font-bold tracking-widest text-gold-400 uppercase">{product.brand}</span>
             <span className="text-gray-600">•</span>
             <span className="text-xs text-gray-400 uppercase tracking-wider">{product.size}</span>
+            <span className="text-gray-600">•</span>
+            {/* ✨ FIXED BUG 10: Gender label ✨ */}
+            <span className="text-xs text-gray-400 uppercase tracking-wider">{product.gender || 'Unisex'}</span>
           </div>
 
           <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{product.name}</h1>
@@ -98,7 +98,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
               </span>
             </div>
 
-            {/* Show "Write a Review" for buyers who haven't reviewed yet */}
             {canReview && (
               <button onClick={() => setIsReviewModalOpen(true)}
                 className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-gold-400/10 text-gold-400 border border-gold-400/20 rounded-md hover:bg-gold-400 hover:text-black transition-all mt-2 font-medium"
@@ -107,7 +106,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
               </button>
             )}
 
-            {/* Show a softer prompt for logged-in non-buyers */}
             {user && !hasPurchased && !canReview && (
               <p className="text-xs text-gray-500 mt-2">Purchase this product to leave a review.</p>
             )}
@@ -164,10 +162,18 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
         </div>
       </div>
 
-      {/* Reviews */}
       <div id="reviews-section" className="pt-12 border-t border-white/10">
-        <h2 className="text-2xl font-bold text-white mb-8 flex items-center gap-3">
+        <h2 className="text-2xl font-bold text-white mb-8 flex flex-wrap items-center gap-3">
           Customer Reviews <span className="text-sm font-normal text-gray-500 bg-white/5 px-3 py-1 rounded-full">{reviews.length}</span>
+          
+          {/* ✨ FIXED BUG 9: Duplicated the button so it sits in the section title! ✨ */}
+          {canReview && (
+            <button onClick={() => setIsReviewModalOpen(true)}
+              className="ml-auto text-xs flex items-center gap-1.5 px-3 py-1.5 bg-gold-400/10 text-gold-400 border border-gold-400/20 rounded-md hover:bg-gold-400 hover:text-black transition-all font-medium"
+            >
+              <Edit3 size={14} /> Write a Review
+            </button>
+          )}
         </h2>
         {reviews.length === 0 ? (
           <div className="text-center py-12 bg-white/5 rounded-2xl border border-white/5">

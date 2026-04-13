@@ -18,16 +18,15 @@ const readGuestCart = () => {
 
 const writeGuestCart = (items) => {
   try {
-    // Store only the fields we need — don't persist ephemeral UI state
     const slim = items.map(({ id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity }) => ({
       id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity,
     }));
     localStorage.setItem(GUEST_CART_KEY, JSON.stringify(slim));
-  } catch { /* storage full — fail silently */ }
+  } catch { }
 };
 
 const clearGuestCart = () => {
-  try { localStorage.removeItem(GUEST_CART_KEY); } catch { /* ignore */ }
+  try { localStorage.removeItem(GUEST_CART_KEY); } catch { }
 };
 
 export const ShopProvider = ({ children }) => {
@@ -37,7 +36,6 @@ export const ShopProvider = ({ children }) => {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [toasts, setToasts] = useState([]);
 
-  // --- DATABASE / LOCALSTORAGE SYNC ---
   useEffect(() => {
     if (user) {
       const loadUserData = async () => {
@@ -48,11 +46,9 @@ export const ShopProvider = ({ children }) => {
           ]);
           setWishlistItems(wishItems);
 
-          // ← Merge guest cart into DB cart on login
           const guestCart = readGuestCart();
           if (guestCart.length > 0) {
             clearGuestCart();
-            // Merge: for each guest item, add to DB cart if not already there
             const merged = [...dbCart];
             for (const guestItem of guestCart) {
               const existing = merged.find(i => i.id === guestItem.id);
@@ -61,7 +57,6 @@ export const ShopProvider = ({ children }) => {
               } else {
                 merged.push(guestItem);
               }
-              // Persist the merged quantity to DB
               try {
                 const finalQty = existing ? existing.quantity : guestItem.quantity;
                 await syncCartItemAPI(user.id, guestItem.id, finalQty);
@@ -79,18 +74,15 @@ export const ShopProvider = ({ children }) => {
       };
       loadUserData();
     } else {
-      // Guest: load from localStorage
       setWishlistItems([]);
       setCartItems(readGuestCart());
     }
   }, [user]);
 
-  // Keep localStorage in sync for guests whenever cartItems changes
   useEffect(() => {
     if (!user) writeGuestCart(cartItems);
   }, [cartItems, user]);
 
-  // --- TOAST LOGIC ---
   const showToast = (title, message, type = 'success') => {
     const id = crypto.randomUUID();
     setToasts(prev => [...prev, { id, title, message, type }]);
@@ -99,8 +91,8 @@ export const ShopProvider = ({ children }) => {
 
   const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  // --- CART LOGIC ---
-  const addToCart = async (product, quantity = 1) => {
+  // Added silent parameter
+  const addToCart = async (product, quantity = 1, silent = false) => {
     let finalQuantity = quantity;
 
     setCartItems(prev => {
@@ -112,7 +104,7 @@ export const ShopProvider = ({ children }) => {
       return [...prev, { ...product, quantity }];
     });
 
-    showToast("Added to Cart", `${product.name} is now in your bag.`);
+    if (!silent) showToast("Added to Cart", `${product.name} is now in your bag.`);
 
     if (user) {
       try {
@@ -121,7 +113,6 @@ export const ShopProvider = ({ children }) => {
         console.error("Cart sync error", error);
       }
     }
-    // If guest: the useEffect above will persist to localStorage automatically
   };
 
   const updateQuantity = async (index, delta) => {
@@ -141,11 +132,12 @@ export const ShopProvider = ({ children }) => {
     }
   };
 
-  const removeFromCart = async (index) => {
+  // Added silent parameter and changed to 'info' type
+  const removeFromCart = async (index, silent = false) => {
     const itemToRemove = cartItems[index];
 
     setCartItems(prev => prev.filter((_, i) => i !== index));
-    showToast("Removed", "Item removed from cart.", "error");
+    if (!silent) showToast("Removed", "Item removed from cart.", "info");
 
     if (user && itemToRemove) {
       try {
@@ -168,23 +160,23 @@ export const ShopProvider = ({ children }) => {
     }
   };
 
-  // --- WISHLIST LOGIC ---
-  const toggleWishlist = async (product) => {
+  // Added silent parameter
+  const toggleWishlist = async (product, silent = false) => {
     const isSaved = wishlistItems.some(item => item.id === product.id);
 
     try {
       if (isSaved) {
         setWishlistItems(prev => prev.filter(item => item.id !== product.id));
-        showToast("Removed", `${product.name} removed from wishlist.`, "error");
+        if (!silent) showToast("Removed", `${product.name} removed from wishlist.`, "info");
         if (user) await updateWishlistAPI(user.id, product.id, false);
       } else {
         setWishlistItems(prev => [...prev, product]);
-        showToast("Saved", `${product.name} saved to wishlist.`);
+        if (!silent) showToast("Saved", `${product.name} saved to wishlist.`);
         if (user) await updateWishlistAPI(user.id, product.id, true);
       }
     } catch (error) {
       console.error("Wishlist error", error);
-      showToast("Error", "Could not update wishlist.", "error");
+      if (!silent) showToast("Error", "Could not update wishlist.", "error");
     }
   };
 

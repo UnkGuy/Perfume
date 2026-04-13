@@ -1,8 +1,6 @@
-// src/pages/ProfilePage.jsx
-// Address editing delegated to AddressEditor component — this file owns tab/save logic only.
-
 import React, { useState, useEffect } from 'react';
 import { Package, Clock, RefreshCw, LogOut, ArrowLeft, Settings, User, Phone, Lock, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import AddressEditor from '../components/profile/AddressEditor';
@@ -19,6 +17,7 @@ const ProfilePage = () => {
   const { user, handleLogout } = useAuth();
   const { addToCart, showToast } = useShop();
   const { setCurrentPage, setIsCartOpen } = useUI();
+  const navigate = useNavigate(); // <-- NEW
 
   const { orderHistory, isLoading: ordersLoading } = useUserOrders(user?.id);
   const [activeTab, setActiveTab] = useState('history');
@@ -41,7 +40,8 @@ const ProfilePage = () => {
   }, [isProfileLoading, profileData.address]);
 
   const handleReorder = (order) => {
-    order.order_items.forEach(item => { if (item.products) addToCart(item.products); });
+    // ✨ FIXED BUG 6: True flags prevent double toasts on every single item added! ✨
+    order.order_items.forEach(item => { if (item.products) addToCart(item.products, 1, true); });
     showToast('Cart Updated', `Items from Order #${order.id} added to your cart!`);
     setIsCartOpen(true);
   };
@@ -63,7 +63,6 @@ const ProfilePage = () => {
 
       <div className="flex-1 container mx-auto px-6 py-24 max-w-4xl animate-fade-in">
 
-        {/* User header card */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-3xl font-bold uppercase">
@@ -79,7 +78,6 @@ const ProfilePage = () => {
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="flex gap-4 border-b border-white/10 mb-8">
           <button
             onClick={() => setActiveTab('history')}
@@ -95,7 +93,6 @@ const ProfilePage = () => {
           </button>
         </div>
 
-        {/* ── Order History ── */}
         {activeTab === 'history' && (
           <div className="animate-fade-in">
             {ordersLoading ? (
@@ -112,14 +109,13 @@ const ProfilePage = () => {
             ) : (
               <div className="space-y-6">
                 {orderHistory.map(order => (
-                  <OrderHistoryCard key={order.id} order={order} onReorder={handleReorder} />
+                  <OrderHistoryCard key={order.id} order={order} onReorder={handleReorder} navigate={navigate} />
                 ))}
               </div>
             )}
           </div>
         )}
 
-        {/* ── Settings ── */}
         {activeTab === 'settings' && (
           <div className="bg-white/5 border border-white/10 rounded-2xl p-8 animate-fade-in">
             {isProfileLoading ? (
@@ -128,8 +124,6 @@ const ProfilePage = () => {
               </div>
             ) : (
               <form onSubmit={handleSaveSettings} className="space-y-8">
-
-                {/* Personal details */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Personal Details</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -162,7 +156,6 @@ const ProfilePage = () => {
                       {errors?.phone_number && <p className="text-red-400 text-xs mt-1.5">{errors.phone_number}</p>}
                     </div>
 
-                    {/* ← Address block is now its own component */}
                     <AddressEditor
                       profileData={profileData}
                       setProfileData={setProfileData}
@@ -183,7 +176,6 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                {/* Security */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
                   <p className="text-sm text-gray-500 mb-4">Leave these fields blank if you do not want to change your password.</p>
@@ -218,7 +210,7 @@ const ProfilePage = () => {
   );
 };
 
-const OrderHistoryCard = ({ order, onReorder }) => (
+const OrderHistoryCard = ({ order, onReorder, navigate }) => (
   <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
     <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
       <div>
@@ -246,11 +238,19 @@ const OrderHistoryCard = ({ order, onReorder }) => (
           const imageSource = prod.image_urls?.[0] || FALLBACK_IMAGE;
           return (
             <div key={index} className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-white/10 rounded overflow-hidden flex-shrink-0">
-                <img src={imageSource} alt={prod.name} className="w-full h-full object-cover" />
+              <div 
+                className="w-16 h-16 bg-white/10 rounded overflow-hidden flex-shrink-0 cursor-pointer"
+                onClick={() => navigate('/products', { state: { selectedProduct: prod } })}
+              >
+                <img src={imageSource} alt={prod.name} className="w-full h-full object-cover transition-transform hover:scale-110" />
               </div>
               <div className="flex-1">
-                <p className="font-bold text-sm text-white">{prod.name}</p>
+                <p 
+                  className="font-bold text-sm text-white cursor-pointer hover:text-gold-400 transition-colors"
+                  onClick={() => navigate('/products', { state: { selectedProduct: prod } })}
+                >
+                  {prod.name}
+                </p>
                 <p className="text-xs text-gray-500">{prod.brand} • {prod.size}</p>
               </div>
               <div className="text-right text-sm text-gray-400">

@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { Gem, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
 import { useAuthForm } from '../hooks/useAuthForm'; 
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
 const LoginPage = () => {
   const { setCurrentPage } = useUI();
+  const navigate = useNavigate(); // <-- USE NAVIGATE
+  
   const [view, setView] = useState('login'); 
   const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '' });
   
-  // ✨ Extract handleOAuthSignIn from hook, NOT locally
   const { submitAuth, handleOAuthSignIn, isLoading, error, setError } = useAuthForm();
 
   const handleInputChange = (e) => {
@@ -36,14 +38,15 @@ const LoginPage = () => {
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold-400/10 rounded-full blur-[120px] pointer-events-none"></div>
       
       <div className="relative w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in my-12">
-        <button onClick={() => setCurrentPage('welcome')} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-gray-400 hover:text-gold-400 transition-colors group">
+        
+        {/* ✨ FIXED BUG 4: Navigate back properly! ✨ */}
+        <button onClick={() => navigate(-1)} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-gray-400 hover:text-gold-400 transition-colors group">
           <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back
         </button>
         
         <div className="text-center mb-8 mt-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold-400/10 text-gold-400 mb-4 border border-gold-400/20">
-            <Gem size={32} />
-          </div>
+          {/* ✨ FIXED BUG 3: Changed Gem to Logo! ✨ */}
+          <img src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" alt="KL Scents" className="w-16 h-16 rounded-full object-cover mx-auto mb-4 border border-white/10 shadow-lg" />
           <h2 className="text-2xl font-bold text-white mb-2">{headerContent.title}</h2>
           <p className="text-sm text-gray-400">{headerContent.subtitle}</p>
         </div>

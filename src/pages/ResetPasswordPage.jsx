@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Gem, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useResetPassword } from '../hooks/useResetPassword'; 
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
-// ✨ NO PROPS ✨
 const ResetPasswordPage = () => {
   const { showToast } = useShop();
   const { setCurrentPage } = useUI();
@@ -29,9 +28,8 @@ const ResetPasswordPage = () => {
       <div className="relative w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
         
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gold-400/10 text-gold-400 mb-4 border border-gold-400/20">
-            <Gem size={32} />
-          </div>
+          {/* ✨ FIXED BUG 3: Changed Gem to Logo! ✨ */}
+          <img src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" alt="KL Scents" className="w-16 h-16 rounded-full object-cover mx-auto mb-4 border border-white/10 shadow-lg" />
           <h2 className="text-2xl font-bold text-white mb-2">Set New Password</h2>
           <p className="text-sm text-gray-400">Enter your new secure password below.</p>
         </div>
