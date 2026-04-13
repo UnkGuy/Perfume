@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, LayoutGrid, List, ChevronDown, SlidersHorizontal, ArrowUp } from 'lucide-react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom'; // <-- REMOVED useLocation, ADDED useParams
 
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
@@ -22,8 +22,8 @@ const GAP = 50;
 const ProductPage = () => {
   const { searchQuery, setSearchQuery } = useUI();
   const { products, isLoading } = useStoreProducts();
-  const location = useLocation();
   const navigate = useNavigate();
+  const { id } = useParams(); // ✨ NEW: Reads the ID directly from the URL!
 
   const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
   const dynamicSizes  = useMemo(() => [...new Set(products.map(p => p.size).filter(Boolean))].sort(), [products]);
@@ -45,17 +45,25 @@ const ProductPage = () => {
   const [isFiltersOpen, setIsFiltersOpen]   = useState(false);
   const [showBackToTop, setShowBackToTop]   = useState(false);
 
-  // ✨ NEW: Route State Listener for proper resets and details targeting
+  // ✨ NEW: The URL drives the app state!
   useEffect(() => {
-    if (location.state?.reset) {
+    // Prevent overriding if data is still fetching
+    if (isLoading || products.length === 0) return;
+
+    if (id) {
+      // Find product by URL ID
+      const found = products.find(p => p.id.toString() === id);
+      if (found) {
+        setSelectedProduct(found);
+      } else {
+        // ID doesn't exist, boot them back to the collection page
+        navigate('/products', { replace: true });
+      }
+    } else {
+      // No ID in URL, clear selection and show collection
       setSelectedProduct(null);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      navigate(location.pathname, { replace: true, state: {} });
-    } else if (location.state?.selectedProduct) {
-      setSelectedProduct(location.state.selectedProduct);
-      navigate(location.pathname, { replace: true, state: {} });
     }
-  }, [location.state, navigate, location.pathname]);
+  }, [id, products, isLoading, navigate]);
 
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 400);
@@ -162,10 +170,9 @@ const ProductPage = () => {
 
       <div className="container mx-auto px-4 md:px-6 py-24 max-w-[1600px]">
         {!selectedProduct && (
-          <PredictiveSearch products={products} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSelectProduct={setSelectedProduct} />
+          <PredictiveSearch products={products} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSelectProduct={(p) => navigate(`/products/${p.id}`)} />
         )}
 
-        {/* ✨ FIXED BUG 1: Parent Flex container removed gap logic, now handled precisely by the aside margins ✨ */}
         <div className="flex flex-col lg:flex-row">
           {!selectedProduct && (
             <aside 
@@ -176,7 +183,6 @@ const ProductPage = () => {
                 }
               `}
             >
-              {/* Inner div maintains fixed width so the forms don't crush together during animation */}
               <div className="w-full lg:w-72 pb-2">
                 <ProductFilters
                   ratingFilter={ratingFilter} setRatingFilter={setRatingFilter}
@@ -203,11 +209,8 @@ const ProductPage = () => {
             ) : selectedProduct ? (
               <ProductDetails
                 product={selectedProduct}
-                onBack={() => {
-                  setSelectedProduct(null);
-                  navigate(location.pathname, { replace: true, state: {} });
-                }}
-                onSelect={setSelectedProduct}
+                onBack={() => navigate('/products')} // ✨ Simply removes ID from URL
+                onSelect={(p) => navigate(`/products/${p.id}`)} // ✨ Drives directly to URL
                 onQuickView={setQuickViewProduct}
               />
             ) : (
@@ -219,8 +222,6 @@ const ProductPage = () => {
                   </div>
 
                   <div className="relative w-full md:w-auto flex flex-wrap items-center justify-start md:justify-end gap-3">
-                    
-                    {/* ✨ FIXED BUG 1: Moved Filter Toggle here so it doesn't leave negative space when closed ✨ */}
                     <button
                       onClick={() => setIsFiltersOpen(!isFiltersOpen)}
                       className={`bg-black/40 border border-gold-400/30 text-gold-400 text-sm rounded px-4 py-2 outline-none hover:bg-gold-400 hover:text-black cursor-pointer flex items-center gap-2 transition-colors ${isFiltersOpen ? 'bg-gold-400 text-black' : ''}`}
@@ -264,7 +265,7 @@ const ProductPage = () => {
                 <div className={gridClasses}>
                   {paginatedProducts.length > 0 ? (
                     paginatedProducts.map(product => (
-                      <ProductCard key={product.id} product={product} onSelect={setSelectedProduct} onQuickView={setQuickViewProduct} isCompact={viewMode === 'compact'} />
+                      <ProductCard key={product.id} product={product} onSelect={(p) => navigate(`/products/${p.id}`)} onQuickView={setQuickViewProduct} isCompact={viewMode === 'compact'} />
                     ))
                   ) : (
                     <div className="col-span-full py-24 text-center">

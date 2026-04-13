@@ -1,12 +1,11 @@
 import React from 'react';
 import { Trash2, Check, Plus, Minus, AlertCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
-import { useUI } from '../../contexts/UIContext';
+import { useNavigate } from 'react-router-dom'; 
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const CartItem = ({ item, index, handleQuantity, handleRemove }) => {
-  const navigate = useNavigate(); // <-- USED NAVIGATE
+  const navigate = useNavigate(); 
   const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;  
 
   return (
@@ -15,7 +14,7 @@ const CartItem = ({ item, index, handleQuantity, handleRemove }) => {
       ${item.available ? 'bg-white/5 border-white/5 hover:border-gold-400/30' : 'bg-red-500/5 border-red-500/30'}`}
     >
       
-      <div onClick={() => navigate('/products', { state: { selectedProduct: item } })} className="w-full sm:w-24 h-24 bg-white/10 rounded-lg overflow-hidden cursor-pointer flex-shrink-0 relative">
+      <div onClick={() => navigate(`/products/${item.id}`)} className="w-full sm:w-24 h-24 bg-white/10 rounded-lg overflow-hidden cursor-pointer flex-shrink-0 relative">
         <img 
           src={imageSource} 
           alt={item.name} 
@@ -27,7 +26,7 @@ const CartItem = ({ item, index, handleQuantity, handleRemove }) => {
       <div className="flex-1 flex flex-col justify-between">
         <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 onClick={() => navigate('/products', { state: { selectedProduct: item } })} className={`font-bold text-lg cursor-pointer transition-colors ${item.available ? 'hover:text-gold-400' : 'text-gray-400'}`}>
+            <h3 onClick={() => navigate(`/products/${item.id}`)} className={`font-bold text-lg cursor-pointer transition-colors ${item.available ? 'hover:text-gold-400' : 'text-gray-400'}`}>
               {item.name}
             </h3>
             <p className="text-sm text-gray-500">{item.brand} • {item.size}</p>

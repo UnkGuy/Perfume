@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingBag, User, Search, Menu, X, Heart, Sun, Moon } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
+import { useNavigate } from 'react-router-dom'; 
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUI } from '../../contexts/UIContext';
@@ -9,7 +9,7 @@ const Header = () => {
   const { user, userRole, handleLogout } = useAuth();
   const { cartItems, wishlistItems, showToast } = useShop();
   const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery, theme, toggleTheme } = useUI();
-  const navigate = useNavigate(); // <-- NEW
+  const navigate = useNavigate(); 
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -38,7 +38,7 @@ const Header = () => {
 
   const handleSearchChange = (e) => {
     setLocalSearch(e.target.value);
-    if (e.target.value.length > 0) navigate('/products', { state: { reset: true } });
+    if (e.target.value.length > 0) navigate('/products');
   };
 
   const handleSignOut = async () => {
@@ -47,10 +47,9 @@ const Header = () => {
     setCurrentPage('welcome');
   };
 
-  // ✨ NEW: Centralized navigation click handler
   const handleNavClick = (linkId) => {
     if (linkId === 'products') {
-      navigate('/products', { state: { reset: true } });
+      navigate('/products'); // ✨ Clean reset via routing
     } else {
       setCurrentPage(linkId);
     }
@@ -104,8 +103,7 @@ const Header = () => {
               <div className="relative flex items-center">
                 <button 
                   onClick={() => {
-                    navigate('/products', { state: { reset: true } });
-                    // Wait for page transition, then focus the PredictiveSearch input
+                    navigate('/products');
                     setTimeout(() => {
                       document.querySelector('input[placeholder="Search for your perfect scent..."]')?.focus();
                     }, 100);
@@ -204,7 +202,6 @@ const Header = () => {
               {link.label}
             </button>
           ))}
-          {/* Theme toggle in mobile menu too */}
           <button onClick={toggleTheme} className="flex items-center gap-2 text-gray-400 hover:text-gold-400 text-sm uppercase tracking-widest">
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
             {isDark ? 'Light Mode' : 'Dark Mode'}

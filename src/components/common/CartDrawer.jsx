@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Trash2, ShoppingBag, ArrowRight, AlertCircle, Plus, Minus } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
+import { useNavigate } from 'react-router-dom'; 
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUI } from '../../contexts/UIContext';
@@ -9,9 +9,9 @@ const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/obje
 
 const CartDrawer = () => {
   const { user } = useAuth();
-  const { cartItems, removeFromCart, showToast, updateQuantity } = useShop(); // Pull updateQuantity
+  const { cartItems, removeFromCart, showToast, updateQuantity } = useShop();
   const { isCartOpen, setIsCartOpen, setCurrentPage } = useUI();
-  const navigate = useNavigate(); // <-- NEW
+  const navigate = useNavigate(); 
 
   const total = cartItems.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
   const hasUnavailableItems = cartItems.some(item => !item.available);
@@ -41,7 +41,7 @@ const CartDrawer = () => {
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                 <ShoppingBag size={48} className="text-gray-700" />
                 <p className="text-gray-500">Your cart is empty.</p>
-                <button onClick={() => { setIsCartOpen(false); setCurrentPage('products'); }} className="text-gold-400 hover:underline">Start Shopping</button>
+                <button onClick={() => { setIsCartOpen(false); navigate('/products'); }} className="text-gold-400 hover:underline">Start Shopping</button>
               </div>
             ) : (
               cartItems.map((item, index) => {
@@ -50,7 +50,7 @@ const CartDrawer = () => {
                   <div key={index} className={`flex gap-4 items-start animate-fade-in ${!item.available ? 'opacity-60' : ''}`}>
                     <div 
                       className="w-20 h-20 bg-white/5 rounded-lg overflow-hidden flex-shrink-0 border border-white/10 relative cursor-pointer"
-                      onClick={() => { setIsCartOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                      onClick={() => { setIsCartOpen(false); navigate(`/products/${item.id}`); }}
                     >
                       <img src={imageSource} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
                       {!item.available && (
@@ -62,7 +62,7 @@ const CartDrawer = () => {
                     <div className="flex-1">
                       <h3 
                         className="font-bold text-white text-sm cursor-pointer hover:text-gold-400 transition-colors"
-                        onClick={() => { setIsCartOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                        onClick={() => { setIsCartOpen(false); navigate(`/products/${item.id}`); }}
                       >
                         {item.name}
                       </h3>
@@ -70,7 +70,6 @@ const CartDrawer = () => {
                       {item.available ? (
                         <div className="flex flex-wrap items-center justify-between mt-1 gap-2">
                           <p className="text-gold-400 font-medium">₱{item.price}</p>
-                          {/* ✨ FIXED BUG 8: Quantity Modifiers inside Drawer! ✨ */}
                           <div className="flex items-center gap-2 bg-black/40 rounded px-1.5 py-0.5 border border-white/10">
                             <button onClick={() => updateQuantity(index, -1)} disabled={item.quantity <= 1} className="p-0.5 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
                               <Minus size={12} />

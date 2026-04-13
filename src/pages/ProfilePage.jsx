@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Clock, RefreshCw, LogOut, ArrowLeft, Settings, User, Phone, Lock, Loader2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
+import { useNavigate } from 'react-router-dom'; 
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
 import AddressEditor from '../components/profile/AddressEditor';
@@ -17,7 +17,7 @@ const ProfilePage = () => {
   const { user, handleLogout } = useAuth();
   const { addToCart, showToast } = useShop();
   const { setCurrentPage, setIsCartOpen } = useUI();
-  const navigate = useNavigate(); // <-- NEW
+  const navigate = useNavigate(); 
 
   const { orderHistory, isLoading: ordersLoading } = useUserOrders(user?.id);
   const [activeTab, setActiveTab] = useState('history');
@@ -40,7 +40,6 @@ const ProfilePage = () => {
   }, [isProfileLoading, profileData.address]);
 
   const handleReorder = (order) => {
-    // ✨ FIXED BUG 6: True flags prevent double toasts on every single item added! ✨
     order.order_items.forEach(item => { if (item.products) addToCart(item.products, 1, true); });
     showToast('Cart Updated', `Items from Order #${order.id} added to your cart!`);
     setIsCartOpen(true);
@@ -102,7 +101,7 @@ const ProfilePage = () => {
                 <Package size={48} className="mx-auto text-gray-600 mb-4" />
                 <h3 className="text-xl font-bold text-white mb-2">No past inquiries found</h3>
                 <p className="text-gray-400 mb-6">You haven't requested any perfumes yet.</p>
-                <button onClick={() => setCurrentPage('products')} className="text-gold-400 hover:underline inline-flex items-center gap-2">
+                <button onClick={() => navigate('/products')} className="text-gold-400 hover:underline inline-flex items-center gap-2">
                   <ArrowLeft size={16} /> Browse Collection
                 </button>
               </div>
@@ -240,14 +239,14 @@ const OrderHistoryCard = ({ order, onReorder, navigate }) => (
             <div key={index} className="flex items-center gap-4">
               <div 
                 className="w-16 h-16 bg-white/10 rounded overflow-hidden flex-shrink-0 cursor-pointer"
-                onClick={() => navigate('/products', { state: { selectedProduct: prod } })}
+                onClick={() => navigate(`/products/${prod.id}`)}
               >
                 <img src={imageSource} alt={prod.name} className="w-full h-full object-cover transition-transform hover:scale-110" />
               </div>
               <div className="flex-1">
                 <p 
                   className="font-bold text-sm text-white cursor-pointer hover:text-gold-400 transition-colors"
-                  onClick={() => navigate('/products', { state: { selectedProduct: prod } })}
+                  onClick={() => navigate(`/products/${prod.id}`)}
                 >
                   {prod.name}
                 </p>

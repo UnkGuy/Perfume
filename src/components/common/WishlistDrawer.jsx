@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Trash2, Heart, ShoppingCart } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // <-- NEW IMPORT
+import { useNavigate } from 'react-router-dom'; 
 import { useShop } from '../../contexts/ShopContext'; 
 import { useUI } from '../../contexts/UIContext';
 
@@ -8,8 +8,8 @@ const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/obje
 
 const WishlistDrawer = () => {
   const { wishlistItems, toggleWishlist, addToCart, showToast } = useShop();
-  const { isWishlistOpen, setIsWishlistOpen, setCurrentPage } = useUI();
-  const navigate = useNavigate(); // <-- NEW
+  const { isWishlistOpen, setIsWishlistOpen } = useUI();
+  const navigate = useNavigate(); 
 
   const items = wishlistItems || [];
 
@@ -41,7 +41,7 @@ const WishlistDrawer = () => {
                 <button 
                   onClick={() => {
                     setIsWishlistOpen(false);
-                    setCurrentPage('products');
+                    navigate('/products');
                   }} 
                   className="text-gold-400 hover:underline"
                 >
@@ -56,14 +56,14 @@ const WishlistDrawer = () => {
                   <div key={index} className="flex gap-4 items-start animate-fade-in bg-white/5 p-3 rounded-lg border border-white/5">
                     <div 
                       className="w-20 h-20 bg-white/10 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer"
-                      onClick={() => { setIsWishlistOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                      onClick={() => { setIsWishlistOpen(false); navigate(`/products/${item.id}`); }}
                     >
                       <img src={imageSource} alt={item.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 hover:scale-110" />
                     </div>
                     <div className="flex-1">
                       <h3 
                         className="font-bold text-white text-sm cursor-pointer hover:text-gold-400 transition-colors"
-                        onClick={() => { setIsWishlistOpen(false); navigate('/products', { state: { selectedProduct: item } }); }}
+                        onClick={() => { setIsWishlistOpen(false); navigate(`/products/${item.id}`); }}
                       >
                         {item.name}
                       </h3>
@@ -74,7 +74,6 @@ const WishlistDrawer = () => {
                         <button 
                           onClick={() => {
                             if(item.available) {
-                              // ✨ FIXED BUG 6: Used Silent flags! ✨
                               addToCart(item, 1, true);
                               toggleWishlist(item, true); 
                               showToast('Moved to Cart', `${item.name} moved to cart.`, 'success');

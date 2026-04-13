@@ -66,7 +66,11 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<WelcomePage />} />
+          
+          {/* ✨ NEW: Dual routes for Products to handle with and without an ID ✨ */}
           <Route path="/products" element={<ProductPage />} />
+          <Route path="/products/:id" element={<ProductPage />} />
+          
           <Route path="/cart" element={<CartPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/profile" element={<ProfilePage />} />
