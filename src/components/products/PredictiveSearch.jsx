@@ -17,7 +17,7 @@ const PredictiveSearch = ({
     .slice(0, 5);
 
   return (
-    <div className="relative max-w-2xl mx-auto mb-12 group animate-fade-in z-[100]">
+    <div className="relative max-w-2xl mx-auto mb-12 group animate-fade-in z-30">
       <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gold-400 transition-colors group-hover:text-gold-300" size={20} />
       
       {searchQuery && (

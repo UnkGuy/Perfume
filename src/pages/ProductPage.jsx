@@ -61,9 +61,11 @@ const ProductPage = () => {
   const handleInput = (e, type) => {
     let val = parseInt(e.target.value) || 0;
     if (type === 'min') {
+      if (val < MIN_LIMIT) val = MIN_LIMIT; // Bound check
       if (val > priceRange.max - GAP) val = priceRange.max - GAP;
       setPriceRange({ ...priceRange, min: val });
     } else {
+      if (val > MAX_LIMIT) val = MAX_LIMIT; // Bound check
       if (val < priceRange.min + GAP) val = priceRange.min + GAP;
       setPriceRange({ ...priceRange, max: val });
     }
@@ -72,9 +74,11 @@ const ProductPage = () => {
   const handleSliderChange = (e, type) => {
     let val = parseInt(e.target.value);
     if (type === 'min') {
+      if (val < MIN_LIMIT) val = MIN_LIMIT; // Bound check
       if (val > priceRange.max - GAP) val = priceRange.max - GAP;
       setPriceRange(prev => ({ ...prev, min: val }));
     } else {
+      if (val > MAX_LIMIT) val = MAX_LIMIT; // Bound check
       if (val < priceRange.min + GAP) val = priceRange.min + GAP;
       setPriceRange(prev => ({ ...prev, max: val }));
     }
@@ -98,7 +102,8 @@ const ProductPage = () => {
         const q = searchQuery.toLowerCase();
         if (!product.name.toLowerCase().includes(q) && !product.brand?.toLowerCase().includes(q)) return false;
       }
-      if (product.rating < ratingFilter) return false;
+      // Replace the old rating logic with this exact match:
+      if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
       if (product.price < priceRange.min || product.price > priceRange.max) return false;
       if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
       if (selectedSizes.length > 0 && !selectedSizes.includes(product.size)) return false;
@@ -118,6 +123,10 @@ const ProductPage = () => {
   const hasActiveFilters = ratingFilter > 0 || priceRange.min > 0 || !!searchQuery || selectedNotes.length > 0 || selectedSizes.length > 0 || selectedBrands.length > 0;
   const totalPages        = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);
   const paginatedProducts = processedProducts.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE);
+
+  // ✨ MOVED startIdx and endIdx HERE so they run after activePage and processedProducts are created ✨
+  const startIdx = processedProducts.length === 0 ? 0 : (activePage - 1) * ITEMS_PER_PAGE + 1;
+  const endIdx = Math.min(activePage * ITEMS_PER_PAGE, processedProducts.length);
 
   const sortOptions = [
     { value: 'date',        label: 'Date: Newest' },
@@ -147,10 +156,10 @@ const ProductPage = () => {
 
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
           {!selectedProduct && (
-            <aside className="w-full lg:w-72 flex-shrink-0 relative z-20">
+            <aside className={`flex-shrink-0 relative z-20 transition-all duration-500 ease-in-out ${isFiltersOpen ? 'w-full lg:w-72' : 'w-full lg:w-auto'}`}>
               <button
                 onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                className="w-full flex items-center justify-between bg-black/40 border border-gold-400/30 p-4 rounded-xl text-gold-400 font-bold hover:bg-white/5 transition-colors mb-4 shadow-lg"
+                className="w-full flex items-center justify-between whitespace-nowrap gap-4 bg-black/40 border border-gold-400/30 p-4 rounded-xl text-gold-400 font-bold hover:bg-white/5 transition-colors mb-4 shadow-lg"
               >
                 <div className="flex items-center gap-3"><SlidersHorizontal size={18} /><span>Filter Collection</span></div>
                 <ChevronDown size={18} className={`transition-transform duration-300 ${isFiltersOpen ? 'rotate-180' : ''}`} />
@@ -190,7 +199,7 @@ const ProductPage = () => {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-10 animate-fade-in">
                   <div>
                     <h2 className="text-3xl font-bold text-white mb-1">All Perfumes</h2>
-                    <p className="text-gray-500 text-sm">Showing {paginatedProducts.length} of {processedProducts.length} luxury scents</p>
+                    <p className="text-gray-500 text-sm">Showing {startIdx}-{endIdx} of {processedProducts.length} luxury scents</p>
                   </div>
 
                   <div className="relative w-full md:w-auto flex flex-wrap items-center justify-start md:justify-end gap-3">

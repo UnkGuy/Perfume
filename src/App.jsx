@@ -48,6 +48,11 @@ function App() {
     return () => subscription.unsubscribe();
   }, [setCurrentPage]);
 
+    // Fixes Bug 2 & 13: Scroll to top on page change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
+  
   const renderCurrentPage = () => {
     // ZERO PROPS PASSED DOWN!
     switch (currentPage) {

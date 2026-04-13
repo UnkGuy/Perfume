@@ -17,7 +17,7 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
   const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
   
   return (
-    <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex ${!product.available ? 'opacity-80' : ''} ${isCompact ? 'flex-row h-36 items-stretch' : 'flex-col h-full'}`}>
+    <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex ${!product.available ? 'opacity-80' : ''} ${isCompact ? 'flex-row min-h-[12rem] items-stretch' : 'flex-col h-full'}`}>
       
       <div className="absolute top-3 right-3 z-20 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform translate-x-2 group-hover:translate-x-0">
         <button onClick={(e) => { e.stopPropagation(); toggleWishlist(product); }} className={`bg-rich-black/90 backdrop-blur-sm rounded-full text-white border border-white/10 hover:border-red-500 hover:text-red-500 transition-all shadow-lg ${isCompact ? 'p-1.5' : 'p-2'}`} title="Add to Wishlist">
@@ -28,7 +28,7 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
         </button>
       </div>
 
-      <div className={`relative overflow-hidden bg-white/5 cursor-pointer flex-shrink-0 ${isCompact ? 'w-32 md:w-36 h-full' : 'w-full aspect-[4/5]'}`} onClick={() => onSelect(product)}>
+      <div className={`relative overflow-hidden bg-white/5 cursor-pointer flex-shrink-0 ${isCompact ? 'w-40 md:w-48 h-full min-h-[12rem]' : 'w-full aspect-[4/5]'}`} onClick={() => onSelect(product)}> 
           <img src={imageSource} alt={product.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
           <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             {product.available && !isDiscounted && <span className={`bg-gold-400 text-black font-bold rounded-sm uppercase tracking-wider shadow-lg ${isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'}`}>New</span>}
@@ -48,9 +48,9 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
             </div>
         </div>
         
-        <p className={`text-gray-500 uppercase tracking-wide truncate flex-shrink-0 ${isCompact ? 'text-[10px] mb-1' : 'text-xs mb-3'}`}>
-          {product.brand} • {product.size}
-        </p>
+       <p className={`text-gray-500 uppercase tracking-wide truncate flex-shrink-0 ${isCompact ? 'text-[10px] mb-1' : 'text-xs mb-3'}`}>
+  {product.brand} • {product.size} • {product.gender || 'Unisex'}
+</p>
         
         {isCompact ? (
           <div className="hidden sm:flex flex-col mb-2 flex-1 min-w-0 min-h-0 overflow-hidden justify-center">

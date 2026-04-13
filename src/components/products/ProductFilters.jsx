@@ -43,11 +43,9 @@ const ProductFilters = ({
             <Filter size={20} />
             <h3 className="font-bold tracking-wide">Filters</h3>
           </div>
-          {hasActiveFilters && (
             <button onClick={clearAllFilters} className="text-xs text-gold-400 hover:text-white underline transition-colors">
               Clear
             </button>
-          )}
         </div>
 
         {/* Rating Filter */}
@@ -65,7 +63,7 @@ const ProductFilters = ({
                      <Star key={i} size={14} className={i < starCount ? "fill-gold-400 text-gold-400" : "fill-gray-700 text-gray-700"} />
                    ))}
                 </div>
-                <span className="text-xs group-hover:text-gold-400 transition-colors">{starCount < 5 && "& Up"}</span>
+<span className="text-xs group-hover:text-gold-400 transition-colors">Stars</span>
               </label>
             ))}
             <label className="flex items-center gap-3 cursor-pointer">

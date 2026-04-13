@@ -54,7 +54,11 @@ const Header = () => {
           <div className="flex justify-between items-center">
 
             {/* Logo */}
-            <div className="cursor-pointer group flex items-center gap-3" onClick={() => setCurrentPage('welcome')}>
+            {/* Logo */}
+<div className="cursor-pointer group flex items-center gap-3" onClick={() => {
+  setCurrentPage('welcome');
+  window.scrollTo({ top: 0, behavior: 'smooth' }); // Fixes Bug 7
+}}>
               <img
                 src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
                 alt="KL Scents"
@@ -85,24 +89,21 @@ const Header = () => {
 
             <div className="flex items-center space-x-4 md:space-x-6">
 
-              {/* Search */}
-              <div className="relative flex items-center">
-                {isSearchOpen && (
-                  <input
-                    type="text"
-                    value={localSearch}
-                    onChange={handleSearchChange}
-                    onKeyDown={(e) => { if (e.key === 'Enter') setCurrentPage('products'); }}
-                    autoFocus
-                    placeholder="Search scents..."
-                    maxLength={100}
-                    className="absolute right-8 w-48 bg-black/50 border border-gold-400/50 rounded-full py-1.5 px-4 text-sm text-white focus:outline-none animate-slide-in"
-                  />
-                )}
-                <button onClick={() => setIsSearchOpen(!isSearchOpen)} className="text-gray-300 hover:text-gold-400 transition-colors z-10 p-1">
-                  {isSearchOpen ? <X size={20} /> : <Search size={20} />}
-                </button>
-              </div>
+              {/* Search (Fixes Bug 9) */}
+<div className="relative flex items-center">
+  <button 
+    onClick={() => {
+      setCurrentPage('products');
+      // Wait for page transition, then focus the PredictiveSearch input
+      setTimeout(() => {
+        document.querySelector('input[placeholder="Search for your perfect scent..."]')?.focus();
+      }, 100);
+    }} 
+    className="text-gray-300 hover:text-gold-400 transition-colors z-10 p-1"
+  >
+    <Search size={20} />
+  </button>
+</div>
 
               {/* ← Theme toggle */}
               <button

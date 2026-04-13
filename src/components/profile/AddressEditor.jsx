@@ -123,8 +123,8 @@ const AddressEditor = ({
             <div>
               <label className="block text-xs text-gray-500 mb-1">Region</label>
               <select value={addressCodes.region} onChange={handleRegionChange} className={selectClass}>
-                <option value="">Select Region</option>
-                {regions.map(r => <option key={r.code} value={r.code}>{r.name}</option>)}
+                <option value="" className="bg-rich-black text-white">Select Region</option>
+                {regions.map(r => <option key={r.code} value={r.code} className="bg-rich-black text-white">{r.name}</option>)}
               </select>
             </div>
             <div>
@@ -135,10 +135,10 @@ const AddressEditor = ({
                 disabled={!addressCodes.region || (provinces.length === 0 && cities.length > 0)}
                 className={selectClass}
               >
-                <option value="">
+                <option value="" className="bg-rich-black text-white">
                   {provinces.length === 0 && cities.length > 0 ? 'Metro Manila / NCR' : 'Select Province'}
                 </option>
-                {provinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
+                {provinces.map(p => <option key={p.code} value={p.code} className="bg-rich-black text-white">{p.name}</option>)}
               </select>
             </div>
           </div>
@@ -155,8 +155,8 @@ const AddressEditor = ({
                 disabled={!addressCodes.region || cities.length === 0}
                 className={selectClass}
               >
-                <option value="">Select City</option>
-                {cities.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
+                <option value="" className="bg-rich-black text-white">Select City</option>
+                {cities.map(c => <option key={c.code} value={c.code} className="bg-rich-black text-white">{c.name}</option>)}
               </select>
             </div>
             <div>
@@ -170,8 +170,8 @@ const AddressEditor = ({
                 disabled={!addressCodes.city || barangays.length === 0}
                 className={selectClass}
               >
-                <option value="">Select Barangay</option>
-                {barangays.map(b => <option key={b.code} value={b.code}>{b.name}</option>)}
+                <option value="" className="bg-rich-black text-white">Select Barangay</option>
+                {barangays.map(b => <option key={b.code} value={b.code} className="bg-rich-black text-white">{b.name}</option>)}
               </select>
             </div>
           </div>

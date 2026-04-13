@@ -37,7 +37,15 @@ const WishlistDrawer = () => {
               <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
                 <Heart size={48} className="text-gray-700" />
                 <p className="text-gray-500">Your wishlist is empty.</p>
-                <button onClick={() => setIsWishlistOpen(false)} className="text-gold-400 hover:underline">Explore Collection</button>
+                <button 
+  onClick={() => {
+    setIsWishlistOpen(false);
+    setCurrentPage('products');
+  }} 
+  className="text-gold-400 hover:underline"
+>
+  Explore Collection
+</button>
               </div>
             ) : (
               items.map((item, index) => {
