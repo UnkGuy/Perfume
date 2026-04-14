@@ -1,27 +1,37 @@
 import React from 'react';
 import { Instagram, Facebook } from 'lucide-react';
-import { useUI } from '../../contexts/UIContext'; // <-- NEW IMPORT
+import { useNavigate } from 'react-router-dom';
+import { useUI } from '../../contexts/UIContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 const Footer = () => {
-  const { setCurrentPage } = useUI(); // <-- NEW
+  const { setCurrentPage } = useUI();
+  const { userRole } = useAuth();
+  const navigate = useNavigate();
+
+  const isAdmin = userRole === 'admin';
+
+  const handleLogoClick = () => {
+    if (isAdmin) {
+      navigate('/admin');
+    } else {
+      setCurrentPage('welcome');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
 
   return (
     <footer className="bg-rich-black border-t border-gold-400/20 pt-16 pb-8 relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-1 bg-gold-400/30 blur-[50px] pointer-events-none" />
 
       <div className="container mx-auto px-6 max-w-7xl flex flex-col items-center text-center">
-        
-        {/* ✨ FIXED BUG 2: Clickable Logo ✨ */}
-        <div 
+        <div
           className="flex items-center gap-4 mb-6 group cursor-pointer"
-          onClick={() => {
-            setCurrentPage('welcome');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }}
+          onClick={handleLogoClick}
         >
-          <img 
-            src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" 
-            alt="KL Scents" 
+          <img
+            src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
+            alt="KL Scents"
             className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:border-gold-400/50 transition-colors shadow-lg"
           />
           <div className="flex flex-col items-center">
@@ -50,9 +60,9 @@ const Footer = () => {
 };
 
 const SocialIcon = ({ icon, href }) => (
-  <a 
-    href={href} 
-    target="_blank" 
+  <a
+    href={href}
+    target="_blank"
     rel="noreferrer"
     className="text-gray-400 hover:text-gold-400 hover:scale-110 transition-all duration-300"
   >

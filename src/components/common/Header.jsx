@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, User, Search, Menu, X, Heart, Sun, Moon } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; 
+import { ShoppingBag, User, Search, Menu, X, Heart, Sun, Moon, LayoutDashboard } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUI } from '../../contexts/UIContext';
@@ -9,11 +9,12 @@ const Header = () => {
   const { user, userRole, handleLogout } = useAuth();
   const { cartItems, wishlistItems, showToast } = useShop();
   const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery, theme, toggleTheme } = useUI();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
+
+  const isAdmin = userRole === 'admin';
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery || '');
 
   useEffect(() => { setLocalSearch(searchQuery || ''); }, [searchQuery]);
@@ -31,14 +32,26 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { id: 'welcome', label: 'Home' },
+  // Customer nav links only — admin never sees these
+  const customerNavLinks = [
+    { id: 'welcome',  label: 'Home' },
     { id: 'products', label: 'Collection' },
   ];
 
-  const handleSearchChange = (e) => {
-    setLocalSearch(e.target.value);
-    if (e.target.value.length > 0) navigate('/products');
+  const handleLogoClick = () => {
+    if (isAdmin) {
+      navigate('/admin');
+    } else {
+      setCurrentPage('welcome');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleSearchClick = () => {
+    navigate('/products');
+    setTimeout(() => {
+      document.querySelector('input[placeholder="Search for your perfect scent..."]')?.focus();
+    }, 100);
   };
 
   const handleSignOut = async () => {
@@ -49,7 +62,7 @@ const Header = () => {
 
   const handleNavClick = (linkId) => {
     if (linkId === 'products') {
-      navigate('/products'); // ✨ Clean reset via routing
+      navigate('/products');
     } else {
       setCurrentPage(linkId);
     }
@@ -65,10 +78,7 @@ const Header = () => {
           <div className="flex justify-between items-center">
 
             {/* Logo */}
-            <div className="cursor-pointer group flex items-center gap-3" onClick={() => {
-              setCurrentPage('welcome');
-              window.scrollTo({ top: 0, behavior: 'smooth' }); 
-            }}>
+            <div className="cursor-pointer group flex items-center gap-3" onClick={handleLogoClick}>
               <img
                 src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
                 alt="KL Scents"
@@ -79,40 +89,50 @@ const Header = () => {
                   KL<span className="text-gold-400">SCENTS</span>
                 </h1>
                 <span className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-medium -mt-1 group-hover:text-white transition-colors">
-                  Philippines
+                  {isAdmin ? 'Admin Portal' : 'Philippines'}
                 </span>
               </div>
             </div>
 
-            <nav className="hidden md:flex items-center space-x-8">
-              {navLinks.map((link) => (
+            {/* Nav: customer links only — hidden for admin */}
+            {!isAdmin && (
+              <nav className="hidden md:flex items-center space-x-8">
+                {customerNavLinks.map((link) => (
+                  <button
+                    key={link.id}
+                    onClick={() => handleNavClick(link.id)}
+                    className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group"
+                  >
+                    {link.label}
+                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold-400 transition-all group-hover:w-full"></span>
+                  </button>
+                ))}
+              </nav>
+            )}
+
+            {/* Admin nav pill */}
+            {isAdmin && (
+              <nav className="hidden md:flex items-center">
                 <button
-                  key={link.id}
-                  onClick={() => handleNavClick(link.id)}
-                  className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group"
+                  onClick={() => navigate('/admin')}
+                  className="flex items-center gap-2 px-4 py-2 bg-gold-400/10 text-gold-400 border border-gold-400/20 rounded-lg text-sm font-bold tracking-widest uppercase hover:bg-gold-400/20 transition-colors"
                 >
-                  {link.label}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold-400 transition-all group-hover:w-full"></span>
+                  <LayoutDashboard size={16} /> Dashboard
                 </button>
-              ))}
-            </nav>
+              </nav>
+            )}
 
             <div className="flex items-center space-x-4 md:space-x-6">
 
-              {/* Search */}
-              <div className="relative flex items-center">
-                <button 
-                  onClick={() => {
-                    navigate('/products');
-                    setTimeout(() => {
-                      document.querySelector('input[placeholder="Search for your perfect scent..."]')?.focus();
-                    }, 100);
-                  }} 
+              {/* Search — customer only */}
+              {!isAdmin && (
+                <button
+                  onClick={handleSearchClick}
                   className="text-gray-300 hover:text-gold-400 transition-colors z-10 p-1"
                 >
                   <Search size={20} />
                 </button>
-              </div>
+              )}
 
               {/* Theme toggle */}
               <button
@@ -123,31 +143,38 @@ const Header = () => {
                 {isDark ? <Sun size={18} /> : <Moon size={18} />}
               </button>
 
-              {/* Wishlist */}
-              <button className="relative text-gray-300 hover:text-gold-400 transition-colors" onClick={() => setIsWishlistOpen(true)}>
-                <Heart size={20} />
-                {wishlistItems && wishlistItems.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
-                    {wishlistItems.length}
-                  </span>
-                )}
-              </button>
+              {/* Wishlist — customer only */}
+              {!isAdmin && (
+                <button className="relative text-gray-300 hover:text-gold-400 transition-colors" onClick={() => setIsWishlistOpen(true)}>
+                  <Heart size={20} />
+                  {wishlistItems && wishlistItems.length > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
+                      {wishlistItems.length}
+                    </span>
+                  )}
+                </button>
+              )}
 
               {/* User */}
               {user ? (
                 <div className="relative group flex items-center gap-2">
-                  <button onClick={() => setCurrentPage(userRole === 'admin' ? 'admin' : 'profile')} className="text-gray-300 hover:text-gold-400 transition-colors py-2">
+                  <button
+                    onClick={() => setCurrentPage(isAdmin ? 'admin' : 'profile')}
+                    className="text-gray-300 hover:text-gold-400 transition-colors py-2"
+                  >
                     <User size={20} />
                   </button>
-                  <div className="absolute top-full right-0 mt-2 w-32 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-                    {userRole === 'admin' && (
-                      <button onClick={() => setCurrentPage('admin')} className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5">
+                  <div className="absolute top-full right-0 mt-2 w-36 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    {isAdmin && (
+                      <button onClick={() => navigate('/admin')} className="w-full text-left px-4 py-2 text-sm text-gold-400 font-bold hover:bg-white/5 transition-colors border-b border-white/5">
                         Dashboard
                       </button>
                     )}
-                    <button onClick={() => setCurrentPage('profile')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5">
-                      My Account
-                    </button>
+                    {!isAdmin && (
+                      <button onClick={() => setCurrentPage('profile')} className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:text-gold-400 hover:bg-white/5 transition-colors border-b border-white/5">
+                        My Account
+                      </button>
+                    )}
                     <button onClick={handleSignOut} className="w-full text-left px-4 py-2 text-sm text-red-400 hover:bg-white/5 transition-colors">
                       Sign Out
                     </button>
@@ -159,41 +186,47 @@ const Header = () => {
                 </button>
               )}
 
-              {/* Cart */}
-              <button
-                className="relative"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (!user) {
-                    setCurrentPage('login');
-                    if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
-                    return;
-                  }
-                  setIsCartOpen(true);
-                }}
-              >
-                <ShoppingBag size={20} className="text-gray-300 hover:text-gold-400 transition-colors" />
-                {cartItems && cartItems.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
-                    {cartItems.length}
-                  </span>
-                )}
-              </button>
+              {/* Cart — customer only */}
+              {!isAdmin && (
+                <button
+                  className="relative"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (!user) {
+                      setCurrentPage('login');
+                      if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
+                      return;
+                    }
+                    setIsCartOpen(true);
+                  }}
+                >
+                  <ShoppingBag size={20} className="text-gray-300 hover:text-gold-400 transition-colors" />
+                  {cartItems && cartItems.length > 0 && (
+                    <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
+                      {cartItems.length}
+                    </span>
+                  )}
+                </button>
+              )}
 
-              <button className="md:hidden text-gray-300" onClick={() => setIsMobileMenuOpen(true)}>
-                <Menu size={24} />
-              </button>
+              {/* Mobile menu toggle — customer only */}
+              {!isAdmin && (
+                <button className="md:hidden text-gray-300" onClick={() => setIsMobileMenuOpen(true)}>
+                  <Menu size={24} />
+                </button>
+              )}
             </div>
           </div>
         </div>
       </header>
 
-      {isMobileMenuOpen && (
+      {/* Mobile menu — customer only */}
+      {!isAdmin && isMobileMenuOpen && (
         <div className="fixed inset-0 z-[60] bg-rich-black/98 backdrop-blur-xl md:hidden flex flex-col items-center justify-center space-y-8 animate-fade-in">
           <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white">
             <X size={32} />
           </button>
-          {navLinks.map((link) => (
+          {customerNavLinks.map((link) => (
             <button
               key={link.id}
               onClick={() => handleNavClick(link.id)}

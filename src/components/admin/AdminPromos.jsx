@@ -63,6 +63,9 @@ const AdminPromos = () => {
     formErrors[field] ? (
       <p className="flex items-center gap-1 text-red-400 text-xs mt-1"><AlertCircle size={11} />{formErrors[field]}</p>
     ) : null;
+const todayLocal = new Date();
+todayLocal.setMinutes(todayLocal.getMinutes() - todayLocal.getTimezoneOffset());
+const minDateString = todayLocal.toISOString().split('T')[0];
 
   return (
     <div className="animate-fade-in space-y-8">
@@ -74,8 +77,8 @@ const AdminPromos = () => {
       {/* Create form */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-6">
         <h4 className="text-sm font-bold uppercase tracking-widest text-gold-400 mb-4 flex items-center gap-2">
-          <Plus size={16} /> Create New Code
-        </h4>
+  Create New Code
+</h4>
         <form onSubmit={handleCreate} className="flex flex-wrap items-start gap-4">
           <div className="flex-1 min-w-[150px]">
             <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Code Name</label>
@@ -98,10 +101,10 @@ const AdminPromos = () => {
           <div className="flex-1 min-w-[150px]">
             <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Expiry Date (Opt)</label>
             <input type="date" value={expiry}
-              onChange={e => { setExpiry(e.target.value); setFormErrors(f => ({...f, expiry: ''})); }}
-              min={new Date().toISOString().split('T')[0]}
-              className={inputClass('expiry')}
-            />
+  onChange={e => { setExpiry(e.target.value); setFormErrors(f => ({...f, expiry: ''})); }}
+  min={minDateString}
+  className={inputClass('expiry')}
+/>
             <ErrorMsg field="expiry" />
           </div>
           <div className="w-36">

@@ -1,42 +1,91 @@
 import React, { useState } from 'react';
-import { Loader2, Eye, EyeOff, MessageCircle, Search } from 'lucide-react';
+import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import { useShop } from '../../contexts/ShopContext';
 
 const statusClass = (status) =>
   status === 'pending'   ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' :
   status === 'shipped'   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
+  status === 'canceled'  ? 'bg-red-500/10 text-red-400 border border-red-500/30' :
                            'bg-green-500/10 text-green-400 border border-green-500/30';
 
 const AdminOrders = ({ onNavigateToMessages }) => {
   const { showToast } = useShop();
   const { orders, isLoading, changeOrderStatus } = useOrders(showToast);
   const [expandedOrderId, setExpandedOrderId] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [idSearch, setIdSearch] = useState('');
+  const [emailSearch, setEmailSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
-  const filteredOrders = orders.filter(order =>
-    order.id.toString().includes(searchQuery) ||
-    (order.profiles?.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    order.status.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredOrders = orders.filter(order => {
+    // ID search: exact prefix match on numeric order ID
+    const matchesId = !idSearch.trim() || order.id.toString().includes(idSearch.trim());
+    // Email search: substring match on email only — completely isolated from status words
+    const matchesEmail = !emailSearch.trim() ||
+      (order.profiles?.email || '').toLowerCase().includes(emailSearch.trim().toLowerCase());
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    return matchesId && matchesEmail && matchesStatus;
+  });
 
   if (isLoading) return <div className="flex justify-center items-center h-64 text-gold-400"><Loader2 className="animate-spin" size={32} /></div>;
 
   return (
     <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-black/20">
-        <div className="relative w-full md:w-64">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input type="text" placeholder="Search ID, email, or status..." value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
-          />
+      <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20">
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          {/* Order ID search */}
+          <div className="relative w-full sm:w-36">
+            <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Order ID…"
+              value={idSearch}
+              onChange={e => setIdSearch(e.target.value.replace(/\D/g, ''))}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+            />
+          </div>
+
+          {/* Email search — completely separate so pending@completed.com can't pollute status filter */}
+          <div className="relative flex-1 min-w-[180px]">
+            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search by email…"
+              value={emailSearch}
+              onChange={e => setEmailSearch(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+            />
+          </div>
+
+          {/* Status filter */}
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="shipped">Shipped</option>
+            <option value="completed">Completed</option>
+            <option value="canceled">Canceled</option>
+          </select>
+
+          <button
+            onClick={() => onNavigateToMessages?.()}
+            className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold"
+          >
+            <MessageCircle size={16} /> Open Messages Console
+          </button>
         </div>
-        <button onClick={() => onNavigateToMessages?.()}
-          className="w-full md:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold"
-        >
-          <MessageCircle size={16} /> Open Messages Console
-        </button>
+
+        {(idSearch || emailSearch) && (
+          <p className="text-xs text-gray-500">
+            Showing {filteredOrders.length} of {orders.length} orders
+            {idSearch && <span> · ID contains "<span className="text-gold-400">{idSearch}</span>"</span>}
+            {emailSearch && <span> · Email contains "<span className="text-gold-400">{emailSearch}</span>"</span>}
+          </p>
+        )}
       </div>
 
       {/* Desktop */}
@@ -51,7 +100,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
           </thead>
           <tbody className="divide-y divide-white/5 text-sm text-gray-300">
             {filteredOrders.length === 0 ? (
-              <tr><td colSpan="6" className="p-8 text-center text-gray-500">No orders found matching "{searchQuery}".</td></tr>
+              <tr><td colSpan="6" className="p-8 text-center text-gray-500">No orders found matching your filters.</td></tr>
             ) : filteredOrders.map(order => (
               <React.Fragment key={order.id}>
                 <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
@@ -60,22 +109,31 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                   <td className="p-4">{order.profiles?.email || 'Unknown User'}</td>
                   <td className="p-4 font-bold text-white">₱{Number(order.total_amount).toLocaleString()}</td>
                   <td className="p-4">
-                    <select value={order.status}
-                      onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id)}
+                    <select
+                      value={order.status}
+                      onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
                       className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${statusClass(order.status)}`}
                     >
-                      <option value="pending" className="bg-rich-black text-white">Pending</option>
-                      <option value="shipped" className="bg-rich-black text-white">Shipped</option>
+                      <option value="pending"   className="bg-rich-black text-white">Pending</option>
+                      <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
                       <option value="completed" className="bg-rich-black text-white">Completed</option>
+                      <option value="canceled"  className="bg-rich-black text-white">Canceled</option>
                     </select>
                   </td>
                   <td className="p-4 flex justify-end gap-2">
-                    <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                    <button
+                      onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                       className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}
                     >
                       {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
-                    <button onClick={() => onNavigateToMessages?.()} className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"><MessageCircle size={16} /></button>
+                    <button
+                      onClick={() => onNavigateToMessages?.(order.user_id)}
+                      className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"
+                      title="Message this customer"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
                   </td>
                 </tr>
                 {expandedOrderId === order.id && (
@@ -116,18 +174,27 @@ const AdminOrders = ({ onNavigateToMessages }) => {
               <p className="text-sm text-gray-300 truncate">{order.profiles?.email || 'Unknown User'}</p>
             </div>
             <div className="flex justify-between items-center gap-3">
-              <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id)}
+              <select
+                value={order.status}
+                onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
                 className={`flex-1 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${statusClass(order.status)}`}
               >
-                <option value="pending" className="bg-rich-black text-white">Pending</option>
-                <option value="shipped" className="bg-rich-black text-white">Shipped</option>
+                <option value="pending"   className="bg-rich-black text-white">Pending</option>
+                <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
                 <option value="completed" className="bg-rich-black text-white">Completed</option>
+                <option value="canceled"  className="bg-rich-black text-white">Canceled</option>
               </select>
               <div className="flex gap-2">
-                <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                <button
+                  onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
                   className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}
                 >{expandedOrderId === order.id ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-                <button onClick={() => onNavigateToMessages?.()} className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"><MessageCircle size={18} /></button>
+                <button
+                  onClick={() => onNavigateToMessages?.(order.user_id)}
+                  className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"
+                >
+                  <MessageCircle size={18} />
+                </button>
               </div>
             </div>
             {expandedOrderId === order.id && (

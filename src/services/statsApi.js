@@ -5,9 +5,8 @@ export const fetchDashboardStatsAPI = async () => {
   const { count: inquiries } = await supabase
     .from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
 
-  const { data: revData } = await supabase.from('orders').select('total_amount');
-  const revenue = revData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
-
+ const { data: revData } = await supabase.from('orders').select('total_amount').eq('status', 'completed');
+const revenue = revData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
   const { count: activeUsers } = await supabase
     .from('profiles').select('*', { count: 'exact', head: true });
 
@@ -18,11 +17,12 @@ export const fetchDashboardStatsAPI = async () => {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const { data: recentOrders } = await supabase
-    .from('orders')
-    .select('created_at, total_amount')
-    .gte('created_at', thirtyDaysAgo.toISOString())
-    .order('created_at', { ascending: true });
+const { data: recentOrders } = await supabase
+  .from('orders')
+  .select('created_at, total_amount')
+  .eq('status', 'completed') // <-- Added filter
+  .gte('created_at', thirtyDaysAgo.toISOString())
+  .order('created_at', { ascending: true });
 
   const chartDataMap = {};
   recentOrders?.forEach(order => {

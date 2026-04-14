@@ -5,10 +5,9 @@ import { logAdminActionAPI } from '../services/logApi';
 import { useAuth } from '../contexts/AuthContext';
 
 const STATUS_MESSAGES = {
-  shipped: (orderId) =>
-    `📦 Your order #${orderId} has been marked as shipped! We'll be in touch with delivery details shortly. Thank you for shopping with KL Scents! 🌟`,
-  completed: (orderId) =>
-    `✅ Your order #${orderId} has been completed. We hope you love your new scent! Feel free to leave a review. 💛`,
+  shipped: (orderId) => `📦 Your order #${orderId} has been marked as shipped! We'll be in touch with delivery details shortly. Thank you for shopping with KL Scents! 🌟`,
+  completed: (orderId) => `✅ Your order #${orderId} has been completed. We hope you love your new scent! Feel free to leave a review. 💛`,
+  canceled: (orderId) => `❌ Your order #${orderId} has been canceled. If you have any questions or concerns regarding this cancellation, please reply to this message.`,
 };
 
 export const useOrders = (showToast) => {
@@ -21,9 +20,13 @@ export const useOrders = (showToast) => {
   });
 
   const statusMutation = useMutation({
-    mutationFn: ({ orderId, newStatus }) => updateOrderStatusAPI(orderId, newStatus),
+    mutationFn: ({ orderId, newStatus, orderItems }) =>
+      updateOrderStatusAPI(orderId, newStatus, orderItems),
     onSuccess: async (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+
       if (showToast) showToast('Success', `Order #${variables.orderId} updated to ${variables.newStatus}`);
 
       logAdminActionAPI(
@@ -42,7 +45,6 @@ export const useOrders = (showToast) => {
             user_id: variables.orderUserId,
           });
         } catch (err) {
-          // Don't fail the status update just because the notification failed
           console.warn('Status notification message failed:', err);
         }
       }
@@ -52,9 +54,8 @@ export const useOrders = (showToast) => {
     },
   });
 
-  // ← orderUserId passed through so the mutation can notify the right user
-  const changeOrderStatus = async (orderId, newStatus, orderUserId) => {
-    await statusMutation.mutateAsync({ orderId, newStatus, orderUserId });
+  const changeOrderStatus = async (orderId, newStatus, orderUserId, orderItems = []) => {
+    await statusMutation.mutateAsync({ orderId, newStatus, orderUserId, orderItems });
   };
 
   return { orders: orders || [], isLoading, changeOrderStatus };

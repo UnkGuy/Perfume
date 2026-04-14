@@ -92,30 +92,8 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
   const { error: itemsError } = await supabase.from('order_items').insert(orderItemsToInsert);
   if (itemsError) throw itemsError;
 
-  // --- DECREMENT STOCK ---
-  // Best-effort: don't fail the order if stock update errors (log instead)
-  for (const item of localItems) {
-    try {
-      const { data: product } = await supabase
-        .from('products')
-        .select('stock_count')
-        .eq('id', item.id)
-        .single();
-
-      if (product?.stock_count != null) {
-        const newStock = Math.max(0, product.stock_count - item.quantity);
-        await supabase
-          .from('products')
-          .update({
-            stock_count: newStock,
-            available: newStock > 0, // auto-mark unavailable if stock hits 0
-          })
-          .eq('id', item.id);
-      }
-    } catch (stockErr) {
-      console.error(`Failed to decrement stock for product ${item.id}:`, stockErr);
-    }
-  }
+  // NOTE: Stock is NOT decremented here. It only decrements when the admin
+  // marks the order as "completed" in the admin dashboard.
 
   // --- SEND RECEIPT MESSAGE ---
   const chatItems = localItems.map(item => ({

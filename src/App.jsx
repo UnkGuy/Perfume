@@ -63,25 +63,23 @@ function App() {
       {userRole !== 'admin' && <ChatWidget />}
 
       <Suspense fallback={<PageLoader />}>
-        <Routes>
-          <Route path="/" element={<WelcomePage />} />
-          
-          <Route path="/products" element={<ProductPage />} />
-          <Route path="/products/:id" element={<ProductPage />} />
-          
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          
-          <Route 
-            path="/admin" 
-            element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />} 
-          />
-
-          {/* ✨ FIXED: Send all bad URLs to the 404 page instead of the home page ✨ */}
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+<Routes>
+  {/* If admin tries to go home or to products, bounce them to admin */}
+  <Route path="/" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <WelcomePage />} />
+  <Route path="/products" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ProductPage />} />
+  <Route path="/products/:id" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ProductPage />} />
+  
+  <Route path="/cart" element={<CartPage />} />
+  <Route path="/login" element={<LoginPage />} />
+  <Route path="/profile" element={<ProfilePage />} />
+  <Route path="/reset-password" element={<ResetPasswordPage />} />
+  
+  <Route 
+    path="/admin" 
+    element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />} 
+  />
+  <Route path="*" element={<NotFoundPage />} />
+</Routes>
       </Suspense>
     </div>
   );

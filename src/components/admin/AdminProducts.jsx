@@ -114,10 +114,17 @@ const AdminProducts = () => {
     if (formData.brand.length > LIMITS.brand) { showToast('Error', `Brand max ${LIMITS.brand} chars.`, 'error'); return; }
     if (formData.size.length > LIMITS.size)   { showToast('Error', `Size max ${LIMITS.size} chars.`,   'error'); return; }
 
-    const price = parseFloat(formData.price);
-    const compareAt = formData.compare_at_price ? parseFloat(formData.compare_at_price) : null;
-    if (isNaN(price) || price < 0)                         { showToast('Error', 'Price must be a positive number.', 'error'); return; }
-    if (compareAt !== null && compareAt <= price)           { showToast('Error', 'Original price must be higher than the selling price.', 'error'); return; }
+const price = parseFloat(formData.price);
+const compareAt = formData.compare_at_price ? parseFloat(formData.compare_at_price) : null;
+
+if (isNaN(price) || price < 0) { 
+  showToast('Error', 'Price must be a positive number.', 'error'); 
+  return; 
+}
+if (compareAt !== null && price >= compareAt) { 
+  showToast('Invalid Price', 'The Original Price must be a higher number than your Final Selling Price.', 'error'); 
+  return; 
+}
     if (formData.stock_count !== '' && parseInt(formData.stock_count) < 0) { showToast('Error', 'Stock count cannot be negative.', 'error'); return; }
 
     setIsSaving(true);
@@ -140,11 +147,21 @@ const AdminProducts = () => {
   };
 
   // ── Delete ───────────────────────────────────────────────────────────────────
-  const handleDelete = async (id, name) => {
-    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    try { await deleteProduct(id); showToast('Deleted', `${name} removed.`); }
-    catch { showToast('Error', 'Failed to delete product.', 'error'); }
-  };
+const handleDelete = async (id, name) => {
+  if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  try { 
+    await deleteProduct(id); 
+    showToast('Deleted', `${name} removed.`); 
+  }
+  catch (err) { 
+    // This catches the Supabase constraint violation cleanly
+    showToast(
+      'Cannot Delete Product', 
+      `Users already have "${name}" in their order history. Edit the product and uncheck "Available for Purchase" to hide it from the store instead.`, 
+      'error'
+    ); 
+  }
+};
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
   const statusBadge = (available) => available

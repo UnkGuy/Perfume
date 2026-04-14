@@ -1,18 +1,24 @@
 import React from 'react';
 import { TrendingUp, Users, ShoppingBag, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
-import { useUI } from '../../contexts/UIContext';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 
-const PIE_COLORS = ['#d4af37', '#b59325', '#917518', '#6b550b', '#423403'];
+// Distinct, vibrant colors ordered from most to least prominent
+// Data is already sorted most→least in statsApi, so index 0 = top seller
+const PIE_COLORS = [
+  '#d4af37', // Gold — top seller
+  '#60a5fa', // Blue
+  '#34d399', // Green
+  '#f97316', // Orange
+  '#a78bfa', // Purple
+];
 
 const AdminOverview = () => {
   const { stats, isLoading } = useDashboardStats();
-  const { setCurrentPage } = useUI(); // not actually used here but kept for parity
 
   if (isLoading) {
     return (
@@ -67,12 +73,22 @@ const AdminOverview = () => {
         </div>
 
         <div className="bg-white/5 border border-white/10 p-4 md:p-6 rounded-xl md:rounded-2xl lg:col-span-1 flex flex-col">
-          <h3 className="text-sm md:text-lg font-bold text-white mb-4 md:mb-6 uppercase tracking-widest">Top Best Sellers</h3>
+          <h3 className="text-sm md:text-lg font-bold text-white mb-1 uppercase tracking-widest">Top Best Sellers</h3>
+          <p className="text-xs text-gray-500 mb-4">Most → least sold</p>
           {stats.bestSellers && stats.bestSellers.length > 0 ? (
-            <div className="h-64 md:h-80 w-full flex-1">
+            <div className="h-64 md:h-72 w-full flex-1">
               <ResponsiveContainer width="99%" height="100%" minHeight={250}>
                 <PieChart>
-                  <Pie data={stats.bestSellers} cx="50%" cy="45%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
+                  <Pie
+                    data={stats.bestSellers}
+                    cx="50%"
+                    cy="40%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                  >
                     {stats.bestSellers.map((_, index) => (
                       <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
@@ -82,7 +98,17 @@ const AdminOverview = () => {
                     itemStyle={{ color: '#d4af37', fontWeight: 'bold' }}
                     formatter={v => [`${v} Units Sold`, 'Sales']}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '10px', color: '#888', paddingTop: '10px' }} />
+                  {/* Legend rendered in data order = most to least prominent */}
+                  <Legend
+                    verticalAlign="bottom"
+                    height={56}
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: '10px', paddingTop: '12px' }}
+                    formatter={(value, entry) => (
+                      <span style={{ color: entry.color }}>{value}</span>
+                    )}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -94,7 +120,7 @@ const AdminOverview = () => {
         </div>
       </div>
 
-      {/* ← NEW: Low Stock Alert */}
+      {/* Low Stock Alert */}
       {stats.lowStockProducts && stats.lowStockProducts.length > 0 && (
         <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
