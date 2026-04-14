@@ -46,24 +46,32 @@ const ProductPage = () => {
   const [showBackToTop, setShowBackToTop]   = useState(false);
 
   // ✨ NEW: The URL drives the app state!
+  // ✨ NEW: Route State Listener for proper resets and details targeting
   useEffect(() => {
     // Prevent overriding if data is still fetching
     if (isLoading || products.length === 0) return;
 
-    if (id) {
+    if (location.state?.reset) {
+      setSelectedProduct(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (location.state?.selectedProduct) {
+      setSelectedProduct(location.state.selectedProduct);
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (id) {
       // Find product by URL ID
       const found = products.find(p => p.id.toString() === id);
       if (found) {
         setSelectedProduct(found);
       } else {
-        // ID doesn't exist, boot them back to the collection page
-        navigate('/products', { replace: true });
+        // ✨ FIXED: Send invalid product IDs to the 404 page ✨
+        navigate('/not-found', { replace: true });
       }
     } else {
       // No ID in URL, clear selection and show collection
       setSelectedProduct(null);
     }
-  }, [id, products, isLoading, navigate]);
+  }, [id, products, isLoading, navigate, location.state, location.pathname]);
 
   useEffect(() => {
     const handleScroll = () => setShowBackToTop(window.scrollY > 400);

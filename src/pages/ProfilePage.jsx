@@ -21,9 +21,11 @@ const ProfilePage = () => {
 
   const { orderHistory, isLoading: ordersLoading } = useUserOrders(user?.id);
   const [activeTab, setActiveTab] = useState('history');
-  const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
-  const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors } = useProfile(activeTab);
+  // ✨ PULL IN hasPassword FROM HOOK ✨
+  const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors, hasPassword } = useProfile(activeTab);
+  
   const { regions, provinces, cities, barangays, getProvinces, getCities, getBarangays, isFetchingLocation } = usePSGC();
 
   const [isEditingAddress, setIsEditingAddress] = useState(false);
@@ -47,9 +49,11 @@ const ProfilePage = () => {
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
+    
+    // Removed frontend gatekeeper because the hook securely handles all validation now!
     const success = await saveProfile(passwords);
     if (success) {
-      setPasswords({ newPassword: '', confirmPassword: '' });
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setIsEditingAddress(false);
     }
   };
@@ -176,17 +180,38 @@ const ProfilePage = () => {
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
-                  <p className="text-sm text-gray-500 mb-4">Leave these fields blank if you do not want to change your password.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
+                  
+                  {/* ✨ Contextual helper text based on hasPassword ✨ */}
+                  <p className="text-sm text-gray-500 mb-4">
+                    {hasPassword 
+                      ? "Leave these fields blank if you do not want to change your password." 
+                      : "You signed in with a social account. Set a password here to enable email login."}
+                  </p>
+                  
+                  {/* ✨ Dynamic Grid based on hasPassword ✨ */}
+                  <div className={`grid grid-cols-1 ${hasPassword ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
+                    
+                    {hasPassword && (
+                      <div>
+                        <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Lock size={14} className="text-gold-400" /> Current Password</label>
+                        <input type="password" value={passwords.currentPassword} onChange={e => setPasswords({ ...passwords, currentPassword: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="••••••••" />
+                      </div>
+                    )}
+                    
                     <div>
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Lock size={14} className="text-gold-400" /> New Password</label>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <Lock size={14} className="text-gold-400" /> 
+                        {hasPassword ? 'New Password' : 'Set Password'}
+                      </label>
                       <input type="password" value={passwords.newPassword} onChange={e => setPasswords({ ...passwords, newPassword: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="••••••••" />
                     </div>
+                    
                     <div>
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Lock size={14} className="text-gold-400" /> Confirm New Password</label>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Lock size={14} className="text-gold-400" /> Confirm Password</label>
                       <input type="password" value={passwords.confirmPassword} onChange={e => setPasswords({ ...passwords, confirmPassword: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="••••••••" />
                     </div>
+                    
                   </div>
                 </div>
 
@@ -210,6 +235,7 @@ const ProfilePage = () => {
 };
 
 const OrderHistoryCard = ({ order, onReorder, navigate }) => (
+  // ... No changes needed here, component continues as normal ...
   <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
     <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
       <div>

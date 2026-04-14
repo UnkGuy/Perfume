@@ -19,6 +19,7 @@ const CartPage = lazy(() => import('./pages/CartPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard')); 
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage')); // ✨ NEW IMPORT
 
 const PageLoader = () => (
   <div className="min-h-screen bg-rich-black flex items-center justify-center">
@@ -33,7 +34,6 @@ function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Supabase Auth Recovery Links
   useEffect(() => {
     const hash = window.location.hash;
     if (hash && hash.includes('type=recovery')) {
@@ -50,7 +50,6 @@ function App() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Fixes Scroll to Top on page change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
@@ -67,7 +66,6 @@ function App() {
         <Routes>
           <Route path="/" element={<WelcomePage />} />
           
-          {/* ✨ NEW: Dual routes for Products to handle with and without an ID ✨ */}
           <Route path="/products" element={<ProductPage />} />
           <Route path="/products/:id" element={<ProductPage />} />
           
@@ -76,14 +74,13 @@ function App() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           
-          {/* Admin Route Protection */}
           <Route 
             path="/admin" 
             element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />} 
           />
 
-          {/* Catch-all for bad URLs */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* ✨ FIXED: Send all bad URLs to the 404 page instead of the home page ✨ */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </div>

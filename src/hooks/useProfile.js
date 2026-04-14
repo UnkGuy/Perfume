@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchUserProfileAPI, updateUserProfileAPI } from '../services/userApi';
-import { resetPasswordAPI } from '../services/authApi'; 
+import { loginAPI, updatePasswordAPI } from '../services/authApi'; 
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
 
@@ -12,37 +12,36 @@ export const useProfile = (activeTab) => {
     username: '', 
     phone_number: '',
     address: {
-      region: '',
-      province: '',
-      city: '',
-      barangay: '',
-      street: '', // Block, Lot, House No., Street, Subdivision
-      landmark: '' // Very helpful for PH deliveries
+      region: '', province: '', city: '', barangay: '', street: '', landmark: ''
     }
   });
   
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  // ✨ NEW: Track if the user already has a password identity
+  const [hasPassword, setHasPassword] = useState(false);
 
   useEffect(() => {
     if (user && activeTab === 'settings') {
+      // Check Supabase's internal provider list
+      const providers = user?.app_metadata?.providers || [];
+      setHasPassword(providers.includes('email'));
+
       const loadProfile = async () => {
         setIsProfileLoading(true);
         try {
           const data = await fetchUserProfileAPI(user.id);
           if (data) {
-            // Parse the address if it was saved as JSON, otherwise fallback gracefully
             let parsedAddress = { region: '', province: '', city: '', barangay: '', street: '', landmark: '' };
             if (data.address) {
               try {
                 parsedAddress = JSON.parse(data.address);
               } catch (e) {
-                // If they had an old single-string address, dump it in the street field
                 parsedAddress.street = data.address;
               }
             }
-
             setProfileData({
               username: data.username || '',
               phone_number: data.phone_number || '',
@@ -59,19 +58,14 @@ export const useProfile = (activeTab) => {
     }
   }, [user, activeTab]);
 
-// ... existing imports ...
   const validateForm = () => {
     const newErrors = {};
-    
-    // 1. Phone Validation
     if (profileData.phone_number) {
       const phPhoneRegex = /^(09|\+639)\d{9}$/;
       if (!phPhoneRegex.test(profileData.phone_number.trim())) {
         newErrors.phone_number = "Please enter a valid PH number (e.g., 09123456789 or +639123456789)";
       }
     }
-
-    // 2. Address Edge Cases
     if (profileData.address.region) {
       if (!profileData.address.street || profileData.address.street.trim().length < 5) {
         newErrors.street = "Street address is too short (min 5 characters).";
@@ -83,11 +77,9 @@ export const useProfile = (activeTab) => {
         newErrors.landmark = "Landmark is too long (max 150 characters).";
       }
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-// ... rest of the hook stays exactly the same ...
 
   const saveProfile = async (passwords) => {
     if (!validateForm()) {
@@ -97,20 +89,45 @@ export const useProfile = (activeTab) => {
 
     setIsSaving(true);
     try {
-      // Stringify the address object to fit your existing 'text' DB column
+      // 1. Update Profile Information
       const payloadToSave = {
         username: profileData.username,
         phone_number: profileData.phone_number,
         address: JSON.stringify(profileData.address)
       };
-
       await updateUserProfileAPI(user.id, payloadToSave);
 
+      // 2. Handle Password Security
       if (passwords?.newPassword) {
-         await resetPasswordAPI(user.email);
-         if (showToast) showToast("Profile Updated", "Details saved. A password reset email has been sent.");
+        if (passwords.newPassword !== passwords.confirmPassword) {
+            throw new Error("New passwords do not match.");
+        }
+
+        // If they DO have an email password, we MUST verify their current one to prevent tampering
+        if (hasPassword) {
+          if (!passwords.currentPassword) {
+            throw new Error("Please enter your current password to authorize this change.");
+          }
+          try {
+            await loginAPI(user.email, passwords.currentPassword);
+          } catch (authErr) {
+            throw new Error("Incorrect current password.");
+          }
+        }
+
+        // ACTUAL PASSWORD UPDATE
+        await updatePasswordAPI(passwords.newPassword);
+        
+        // ✨ NEW: Dynamic Feedback based on previous state
+        if (!hasPassword) {
+          if (showToast) showToast("Password Set!", "You can now use your email and this password to log in.", "success");
+          setHasPassword(true); // Update local state so the UI adjusts immediately
+        } else {
+          if (showToast) showToast("Success", "Profile and password updated successfully.");
+        }
       } else {
-         if (showToast) showToast("Success", "Profile updated successfully.");
+        // No password was entered, just a normal profile update
+        if (showToast) showToast("Success", "Profile updated successfully.");
       }
       
       return true;
@@ -132,5 +149,5 @@ export const useProfile = (activeTab) => {
     }));
   };
 
-  return { profileData, setProfileData, handleAddressChange, isProfileLoading, isSaving, saveProfile, errors };
+  return { profileData, setProfileData, handleAddressChange, isProfileLoading, isSaving, saveProfile, errors, hasPassword };
 };
