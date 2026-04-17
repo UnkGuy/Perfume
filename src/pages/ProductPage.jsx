@@ -14,7 +14,7 @@ import ProductSkeleton from '../components/products/ProductSkeleton';
 import { useStoreProducts } from '../hooks/useStoreProducts';
 import { useUI } from '../contexts/UIContext';
 
-const ITEMS_PER_PAGE = 16;
+const ITEMS_PER_PAGE = 18;
 const MIN_LIMIT = 0;
 const MAX_LIMIT = 20000;
 const GAP = 50;
@@ -25,9 +25,22 @@ const ProductPage = () => {
   const navigate = useNavigate();
   const { id } = useParams(); // ✨ NEW: Reads the ID directly from the URL!
 
-  const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
-  const dynamicSizes  = useMemo(() => [...new Set(products.map(p => p.size).filter(Boolean))].sort(), [products]);
-  const dynamicNotes  = useMemo(() => [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort(), [products]);
+ const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
+// Collect sizes from base product AND all variants
+const dynamicSizes = useMemo(() => {
+  const sizeSet = new Set();
+  products.forEach(p => {
+    (p.product_variants || []).forEach(v => { if (v.size) sizeSet.add(v.size); });
+  });
+  return [...sizeSet].sort();
+}, [products]);
+const dynamicNotes = useMemo(() => [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort(), [products]);
+
+// helper – lowest price for a product (variants or base)
+const getEffectivePrice = (p) => {
+  if (!p.product_variants || p.product_variants.length === 0) return 0;
+  return Math.min(...p.product_variants.map(v => Number(v.price)));
+};
 
   const [activePage, setActivePage]         = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -124,29 +137,39 @@ const ProductPage = () => {
     setShowOutOfStock(false);
   }, [setSearchQuery]);
 
-  const processedProducts = useMemo(() => {
-    let filtered = products.filter(product => {
-      if (!showOutOfStock && !product.available) return false;
-      if (searchQuery) {
-        const q = searchQuery.toLowerCase();
-        if (!product.name.toLowerCase().includes(q) && !product.brand?.toLowerCase().includes(q)) return false;
-      }
-      if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
-      if (product.price < priceRange.min || product.price > priceRange.max) return false;
-      if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
-      if (selectedSizes.length > 0 && !selectedSizes.includes(product.size)) return false;
-      if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
-      if (selectedGender.length > 0 && product.gender && !selectedGender.includes(product.gender)) return false;
-      return true;
-    });
+const processedProducts = useMemo(() => {
+  let filtered = products.filter(product => {
+    if (!showOutOfStock && !product.available) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!product.name.toLowerCase().includes(q) && !product.brand?.toLowerCase().includes(q)) return false;
+    }
+    if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
 
-    return filtered.sort((a, b) => {
-      if (sortOption === 'price-asc') return a.price - b.price;
-      if (sortOption === 'price-desc') return b.price - a.price;
-      if (sortOption === 'rating-desc') return b.rating - a.rating;
-      return 0;
-    });
-  }, [products, showOutOfStock, searchQuery, ratingFilter, priceRange, selectedNotes, selectedSizes, selectedBrands, selectedGender, sortOption]);
+    // Price filter uses lowest available price (variant or base)
+    const effectivePrice = getEffectivePrice(product);
+    if (effectivePrice < priceRange.min || effectivePrice > priceRange.max) return false;
+
+    if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
+
+    // Size filter checks base size + all variant sizes
+    if (selectedSizes.length > 0) {
+      const allSizes = [product.size, ...(product.product_variants || []).map(v => v.size)].filter(Boolean);
+      if (!allSizes.some(s => selectedSizes.includes(s))) return false;
+    }
+
+    if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
+    if (selectedGender.length > 0 && product.gender && !selectedGender.includes(product.gender)) return false;
+    return true;
+  });
+
+  return filtered.sort((a, b) => {
+    if (sortOption === 'price-asc') return getEffectivePrice(a) - getEffectivePrice(b);
+    if (sortOption === 'price-desc') return getEffectivePrice(b) - getEffectivePrice(a);
+    if (sortOption === 'rating-desc') return b.rating - a.rating;
+    return 0;
+  });
+}, [products, showOutOfStock, searchQuery, ratingFilter, priceRange, selectedNotes, selectedSizes, selectedBrands, selectedGender, sortOption]);
 
   const hasActiveFilters = ratingFilter > 0 || priceRange.min > 0 || !!searchQuery || selectedNotes.length > 0 || selectedSizes.length > 0 || selectedBrands.length > 0;
   const totalPages        = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);
@@ -230,13 +253,17 @@ const ProductPage = () => {
                   </div>
 
                   <div className="relative w-full md:w-auto flex flex-wrap items-center justify-start md:justify-end gap-3">
-                    <button
-                      onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                      className={`bg-black/40 border border-gold-400/30 text-gold-400 text-sm rounded px-4 py-2 outline-none hover:bg-gold-400 hover:text-black cursor-pointer flex items-center gap-2 transition-colors ${isFiltersOpen ? 'bg-gold-400 text-black' : ''}`}
-                    >
-                      <SlidersHorizontal size={16} />
-                      <span className="hidden sm:inline">Filters</span>
-                    </button>
+<button
+  onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+  className={`border text-sm rounded px-4 py-2 outline-none cursor-pointer flex items-center gap-2 transition-colors ${
+    isFiltersOpen 
+      ? 'bg-gold-400 border-gold-400 text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
+      : 'bg-black/40 border-gold-400/30 text-gold-400 hover:bg-gold-400 hover:text-black'
+  }`}
+>
+  <SlidersHorizontal size={16} />
+  <span className="hidden sm:inline">Filters</span>
+</button>
 
                     <div className="flex items-center bg-black/40 border border-gold-400/30 rounded-lg p-1">
                       <button onClick={() => setViewMode('large')} className={`p-1.5 rounded transition-colors ${viewMode === 'large' ? 'bg-gold-400 text-black' : 'text-gray-500 hover:text-white'}`} title="Large Grid View">

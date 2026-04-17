@@ -4,9 +4,12 @@ export const fetchUserCartAPI = async (userId) => {
   const { data, error } = await supabase
     .from('cart_items')
     .select(`
+      id,
       quantity,
       product_id,
-      products (*)
+      variant_id,
+      products ( id, name, brand, gender, notes, available, image_urls, description ),
+      product_variants ( id, size, price, compare_at_price, stock_count, image_url )
     `)
     .eq('user_id', userId);
 
@@ -15,61 +18,64 @@ export const fetchUserCartAPI = async (userId) => {
     throw error;
   }
 
-  console.log("Raw DB Cart Data on Load:", data);
+  // Safely flatten the data so the cart component gets a clean object
+  return data.map(item => {
+    const p = Array.isArray(item.products) ? item.products[0] : item.products;
+    const v = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
 
-  // Flatten data safely
-  const formattedCart = data.map(item => {
-    // Sometimes Supabase returns joined data as an array, sometimes as an object. This handles both!
-    const productData = Array.isArray(item.products) ? item.products[0] : item.products;
-    
-    if (!productData) {
-      console.warn(`Missing product data for cart item with product_id: ${item.product_id}`);
-      return null;
-    }
+    if (!p || !v) return null;
 
     return {
-      ...productData,
-      quantity: item.quantity
+      ...p,
+      // Overwrite base details with specific variant details
+      variant_id: v.id,
+      size: v.size,
+      price: Number(v.price),
+      compare_at_price: v.compare_at_price ? Number(v.compare_at_price) : null,
+      stock_count: v.stock_count,
+      image_urls: v.image_url ? [v.image_url] : p.image_urls,
+      // Retain cart quantities
+      quantity: item.quantity,
+      cart_item_id: item.id
     };
-  }).filter(item => item !== null); // Remove any broken items
-
-  console.log("Formatted Cart for React:", formattedCart);
-  
-  return formattedCart;
+  }).filter(Boolean); // removes any null items
 };
 
-// Inside src/services/cartApi.js
-export const syncCartItemAPI = async (userId, productId, quantity) => {
-  // 1. Check if the item is already in the database cart
+export const syncCartItemAPI = async (userId, productId, quantity, variantId) => {
+  if (!variantId) throw new Error("Variant ID is required to sync cart items.");
+
   const { data: existing, error: fetchErr } = await supabase
     .from('cart_items')
     .select('id')
     .eq('user_id', userId)
     .eq('product_id', productId)
+    .eq('variant_id', variantId)
     .maybeSingle();
 
   if (fetchErr) throw fetchErr;
 
-  // 2. If it exists, update the quantity. If not, insert a new row.
   if (existing) {
     const { error: updateErr } = await supabase
       .from('cart_items')
-      .update({ quantity: quantity })
+      .update({ quantity })
       .eq('id', existing.id);
     if (updateErr) throw updateErr;
   } else {
     const { error: insertErr } = await supabase
       .from('cart_items')
-      .insert([{ user_id: userId, product_id: productId, quantity: quantity }]);
+      .insert([{ user_id: userId, product_id: productId, quantity, variant_id: variantId }]);
     if (insertErr) throw insertErr;
   }
 };
-export const removeFromCartAPI = async (userId, productId) => {
-  const { error } = await supabase
+
+export const removeFromCartAPI = async (userId, productId, variantId) => {
+   const { error } = await supabase
     .from('cart_items')
     .delete()
     .eq('user_id', userId)
-    .eq('product_id', productId);
+    .eq('product_id', productId)
+    .eq('variant_id', variantId); // strictly require variant_id now
+
   if (error) throw error;
 };
 

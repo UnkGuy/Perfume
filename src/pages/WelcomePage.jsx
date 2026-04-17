@@ -1,8 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
-import { ArrowRight, Sparkles, Droplets, Wind } from 'lucide-react';
-import { useUI } from '../contexts/UIContext'; // <-- NEW IMPORT
+import { ArrowRight, Sparkles, Droplets, Wind, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useUI } from '../contexts/UIContext';
+import { useStoreProducts } from '../hooks/useStoreProducts';
 
 const HERO_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
@@ -37,15 +39,54 @@ const FeatureCard = ({ icon, title, description, delay }) => {
   );
 };
 
-// ✨ Removed ALL props! ✨
 const WelcomePage = () => {
-  const { setCurrentPage } = useUI(); // Pull routing from Context
+  const { setCurrentPage } = useUI(); 
+  const { products } = useStoreProducts();
+  const [heroImgIdx, setHeroImgIdx] = useState(0);
+
+const heroImages = useMemo(() => {
+  const imgs = (products || [])
+    .filter(p => p.available && p.image_urls?.length > 0)
+    .map(p => p.image_urls[0]);
+  return imgs.length > 0 ? imgs : [HERO_IMAGE];
+}, [products]);
+
+useEffect(() => {
+  if (heroImages.length <= 1) return;
+  const timer = setInterval(() => setHeroImgIdx(prev => (prev + 1) % heroImages.length), 5000);
+  return () => clearInterval(timer);
+}, [heroImages]);
+  const navigate = useNavigate();
 
   const storyImageRef = useScrollReveal();
   const storyHeadingRef = useScrollReveal();
   const storyP1Ref = useScrollReveal();
   const storyP2Ref = useScrollReveal();
   const storyBtnRef = useScrollReveal();
+
+  const carouselRef = useRef(null);
+  const scrollCarousel = (direction) => {
+    if (carouselRef.current) {
+      const scrollAmount = carouselRef.current.offsetWidth * 0.8;
+      carouselRef.current.scrollBy({ 
+        left: direction === 'left' ? -scrollAmount : scrollAmount, 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
+  const featuredProducts = (products || []).filter(p => p.available).slice(0, 8);
+
+  // Content for the scrolling marquee banner
+  const marqueeText = [
+    "Free Shipping Nationwide", "•",
+    "Artisan Crafted", "•",
+    "Extrait de Parfum", "•",
+    "Cruelty-Free", "•",
+    "Luxury Fragrances", "•"
+  ];
+  // Duplicate array multiple times to ensure the loop is seamless on wide screens
+  const repeatedMarquee = [...marqueeText, ...marqueeText, ...marqueeText, ...marqueeText];
 
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans flex flex-col selection:bg-gold-400 selection:text-black">
@@ -61,19 +102,46 @@ const WelcomePage = () => {
         .story-image-wrap.is-visible { opacity: 1; transform: translateX(0) scale(1); }
         .story-divider { display: block; width: 0; height: 2px; background: linear-gradient(90deg, #d4af37, transparent); margin-bottom: 1.5rem; transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s; }
         .reveal-fade.is-visible .story-divider { width: 64px; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* New Marquee Animation */
+        @keyframes scroll-x {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          display: flex;
+          width: max-content;
+          animation: scroll-x 20s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
       `}</style>
 
       <div className="relative z-50">
-        {/* ✨ Header takes NO PROPS now! ✨ */}
         <Header />
       </div>
 
       <main className="flex-1">
+        {/* HERO SECTION */}
         <section className="relative h-[85vh] flex items-center overflow-hidden">
-          <div className="absolute inset-0 z-0">
-            <img src={HERO_IMAGE} alt="Luxury Perfume" className="w-full h-full object-cover opacity-40 scale-105 animate-slow-pan" />
-            <div className="absolute inset-0 bg-gradient-to-r from-rich-black via-rich-black/80 to-transparent"></div>
-          </div>
+          <div className="absolute inset-0 z-0 bg-rich-black">
+  {heroImages.map((src, idx) => (
+    <img
+      key={src}
+      src={src}
+      alt="Luxury Perfume"
+      className="absolute inset-0 w-full h-full object-cover scale-105 animate-slow-pan"
+      style={{
+        opacity: idx === heroImgIdx ? 0.4 : 0,
+        transition: 'opacity 1.2s ease-in-out',
+      }}
+    />
+  ))}
+  <div className="absolute inset-0 bg-gradient-to-r from-rich-black via-rich-black/80 to-transparent"></div>
+</div>
           <div className="container mx-auto px-6 relative z-10 max-w-7xl">
             <div className="max-w-2xl animate-fade-in-up">
               <span className="text-gold-400 font-bold tracking-widest uppercase text-sm mb-4 block">Discover Your Signature</span>
@@ -85,7 +153,7 @@ const WelcomePage = () => {
               </p>
               <button 
                 onClick={() => setCurrentPage('products')}
-                className="group px-8 py-4 bg-gold-400 text-rich-black font-bold uppercase tracking-widest rounded-sm hover:bg-gold-300 transition-all flex items-center gap-3"
+                className="group px-8 py-4 bg-gold-400 text-rich-black font-bold uppercase tracking-widest rounded-sm hover:bg-gold-300 transition-all flex items-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)]"
               >
                 Shop Collection <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
               </button>
@@ -93,7 +161,22 @@ const WelcomePage = () => {
           </div>
         </section>
 
-        <section className="py-24 bg-white/5 border-y border-white/5">
+        {/* SCROLLING MARQUEE BANNER */}
+        <div className="bg-gold-400 py-3 overflow-hidden border-y border-gold-500 shadow-lg">
+          <div className="animate-marquee flex gap-8 md:gap-12 items-center">
+            {repeatedMarquee.map((text, idx) => (
+              <span 
+                key={idx} 
+                className={`text-black font-bold uppercase tracking-widest whitespace-nowrap ${text === '•' ? 'text-[10px] opacity-60' : 'text-xs md:text-sm'}`}
+              >
+                {text}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* FEATURES SECTION */}
+        <section className="py-24 bg-white/5">
           <div className="container mx-auto px-6 max-w-7xl">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
               <FeatureCard icon={<Sparkles size={28} />} title="Premium Ingredients" description="Sourced globally from the finest botanicals to ensure a rich, long-lasting scent profile." delay="0s" />
@@ -103,7 +186,79 @@ const WelcomePage = () => {
           </div>
         </section>
 
-        <section className="py-24">
+        {/* INTERACTIVE CAROUSEL SECTION */}
+        {featuredProducts.length > 0 && (
+          <section className="py-24 relative overflow-hidden border-t border-white/5">
+            <div className="container mx-auto px-6 max-w-7xl mb-10 flex justify-between items-end">
+              <div>
+                <span className="text-gold-400 font-bold tracking-widest uppercase text-sm mb-2 block">Trending</span>
+                <h2 className="text-3xl md:text-4xl font-bold text-white">Featured Collection</h2>
+              </div>
+              <div className="hidden md:flex gap-3">
+                <button 
+                  onClick={() => scrollCarousel('left')}
+                  className="p-3 border border-white/20 rounded-full hover:border-gold-400 hover:text-gold-400 transition-colors"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button 
+                  onClick={() => scrollCarousel('right')}
+                  className="p-3 border border-white/20 rounded-full hover:border-gold-400 hover:text-gold-400 transition-colors"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div 
+              ref={carouselRef}
+              className="flex overflow-x-auto gap-6 px-6 md:px-12 pb-8 custom-scrollbar snap-x snap-mandatory hide-scrollbar"
+            >
+              {featuredProducts.map((product) => {
+  const imgSource = product.image_urls?.[0] || HERO_IMAGE;
+  
+  const displayPrice = product.product_variants?.length > 0 
+    ? Math.min(...product.product_variants.map(v => v.price)) 
+    : product.price;
+
+  return (
+    <div 
+      key={product.id} 
+      onClick={() => navigate(`/products/${product.id}`)}
+      /* ✨ Forcing even smaller widths: 160px mobile, 200px desktop */
+      className="w-[160px] min-w-[160px] md:w-[200px] md:min-w-[200px] snap-center shrink-0 group cursor-pointer"
+    >
+      <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 border border-white/10 group-hover:border-gold-400/50 transition-colors">
+                      <img 
+                        src={imgSource} 
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-5">
+                        <span className="bg-gold-400 text-black px-4 py-2 font-bold uppercase tracking-widest text-[10px] md:text-xs rounded shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                          View Details
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-base md:text-lg font-bold text-white group-hover:text-gold-400 transition-colors truncate">{product.name}</h3>
+                        <p className="text-gray-400 text-xs uppercase tracking-wider mt-1 truncate">{product.brand}</p>
+                      </div>
+                      <p className="text-white font-medium whitespace-nowrap text-sm md:text-base">
+                        {product.product_variants?.length > 1 && <span className="text-[10px] text-gray-400 mr-1 block sm:inline text-right">From</span>}
+                        ₱{displayPrice}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* STORY SECTION */}
+        <section className="py-24 bg-white/5 border-t border-white/5">
           <div className="container mx-auto px-6 max-w-7xl">
             <div className="flex flex-col md:flex-row items-center gap-16">
               <div ref={storyImageRef} className="story-image-wrap w-full md:w-1/2 relative aspect-square md:aspect-[4/5] rounded-2xl overflow-hidden">

@@ -14,7 +14,9 @@ export const fetchOrdersAPI = async () => {
         quantity, 
         price_at_time,
         product_id,
-        products (name)
+        variant_id,
+        products (name),
+        product_variants (size)
       )
     `)
     .order('created_at', { ascending: false });
@@ -31,28 +33,27 @@ export const updateOrderStatusAPI = async (orderId, newStatus, orderItems = []) 
 
   if (error) throw error;
 
-  // Only decrement stock when an order is marked as completed
+  // ✨ FIXED: Deduct stock from product_variants, not products! ✨
   if (newStatus === 'completed' && orderItems.length > 0) {
     for (const item of orderItems) {
+      if (!item.variant_id) continue; // Safety check
+      
       try {
-        const { data: product } = await supabase
-          .from('products')
+        const { data: variant } = await supabase
+          .from('product_variants')
           .select('stock_count')
-          .eq('id', item.product_id)
+          .eq('id', item.variant_id)
           .single();
 
-        if (product?.stock_count != null) {
-          const newStock = Math.max(0, product.stock_count - item.quantity);
+        if (variant?.stock_count != null) {
+          const newStock = Math.max(0, variant.stock_count - item.quantity);
           await supabase
-            .from('products')
-            .update({
-              stock_count: newStock,
-              available: newStock > 0,
-            })
-            .eq('id', item.product_id);
+            .from('product_variants')
+            .update({ stock_count: newStock })
+            .eq('id', item.variant_id);
         }
       } catch (err) {
-        console.error(`Stock update failed for product ${item.product_id}:`, err);
+        console.error(`Stock update failed for variant ${item.variant_id}:`, err);
       }
     }
   }
@@ -64,8 +65,9 @@ export const fetchUserOrdersAPI = async (userId) => {
     .select(`
       id, created_at, status, total_amount,
       order_items (
-        quantity, price_at_time,
-        products (*)
+        quantity, price_at_time, variant_id,
+        products (*),
+        product_variants (*)
       )
     `)
     .eq('user_id', userId)

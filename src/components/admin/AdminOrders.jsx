@@ -18,9 +18,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
   const [statusFilter, setStatusFilter] = useState('all');
 
   const filteredOrders = orders.filter(order => {
-    // ID search: exact prefix match on numeric order ID
     const matchesId = !idSearch.trim() || order.id.toString().includes(idSearch.trim());
-    // Email search: substring match on email only — completely isolated from status words
     const matchesEmail = !emailSearch.trim() ||
       (order.profiles?.email || '').toLowerCase().includes(emailSearch.trim().toLowerCase());
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
@@ -33,7 +31,6 @@ const AdminOrders = ({ onNavigateToMessages }) => {
     <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
       <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20">
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-          {/* Order ID search */}
           <div className="relative w-full sm:w-36">
             <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
@@ -46,7 +43,6 @@ const AdminOrders = ({ onNavigateToMessages }) => {
             />
           </div>
 
-          {/* Email search — completely separate so pending@completed.com can't pollute status filter */}
           <div className="relative flex-1 min-w-[180px]">
             <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input
@@ -58,7 +54,6 @@ const AdminOrders = ({ onNavigateToMessages }) => {
             />
           </div>
 
-          {/* Status filter */}
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
@@ -143,7 +138,14 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                         <h4 className="text-xs uppercase tracking-widest text-gray-500 mb-3 font-bold">Order Items</h4>
                         {order.order_items.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center text-sm mb-1">
-                            <div><span className="text-gold-400 font-bold mr-2">{item.quantity}x</span><span className="text-white">{item.products?.name || 'Unknown'}</span></div>
+                            <div>
+                              <span className="text-gold-400 font-bold mr-2">{item.quantity}x</span>
+                              {/* ✨ FIXED: Show specific size variant requested ✨ */}
+                              <span className="text-white">
+                                {item.products?.name || 'Unknown'} 
+                                {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
+                              </span>
+                            </div>
                             <span className="text-gray-400 font-mono">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
                           </div>
                         ))}
@@ -202,7 +204,12 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                 <h4 className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 font-bold border-b border-white/10 pb-2">Order Items</h4>
                 {order.order_items.map((item, idx) => (
                   <div key={idx} className="flex justify-between text-xs gap-3 mb-1.5">
-                    <span className="flex-1 truncate"><span className="text-gold-400 font-bold mr-1.5">{item.quantity}x</span>{item.products?.name || 'Unknown'}</span>
+                    {/* ✨ FIXED: Show specific size variant requested ✨ */}
+                    <span className="flex-1 truncate">
+                      <span className="text-gold-400 font-bold mr-1.5">{item.quantity}x</span>
+                      {item.products?.name || 'Unknown'} 
+                      {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
+                    </span>
                     <span className="text-gray-400 font-mono flex-shrink-0">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
                   </div>
                 ))}

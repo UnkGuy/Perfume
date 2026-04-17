@@ -6,15 +6,20 @@ import { useUI } from '../../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
-// Look how clean these props are now! Just the things specific to THIS card.
 const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
   const { setCurrentPage } = useUI();
-
+  
+  const isAdmin = userRole === 'admin'; 
   const isInWishlist = wishlistItems?.some(item => item.id === product.id);
   const imageSource = product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE;
-  const isDiscounted = product.compare_at_price && product.compare_at_price > product.price;
+
+  // ✨ NEW: Variant-only logic
+  const variants = product.product_variants || [];
+  const defaultVariant = variants[0] || {};
+  const minPrice = variants.length > 0 ? Math.min(...variants.map(v => v.price)) : 0;
+  const isDiscounted = variants.some(v => v.compare_at_price && v.compare_at_price > v.price);
   
   return (
     <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex ${!product.available ? 'opacity-80' : ''} ${isCompact ? 'flex-row min-h-[12rem] items-stretch' : 'flex-col h-full'}`}>
@@ -49,8 +54,8 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
         </div>
         
        <p className={`text-gray-500 uppercase tracking-wide truncate flex-shrink-0 ${isCompact ? 'text-[10px] mb-1' : 'text-xs mb-3'}`}>
-  {product.brand} • {product.size} • {product.gender || 'Unisex'}
-</p>
+          {product.brand} • {variants.length} Sizes • {product.gender || 'Unisex'}
+       </p>
         
         {isCompact ? (
           <div className="hidden sm:flex flex-col mb-2 flex-1 min-w-0 min-h-0 overflow-hidden justify-center">
@@ -64,13 +69,15 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
         <div className={`mt-auto flex items-center justify-between flex-shrink-0 ${isCompact ? 'pt-2' : 'pt-4 border-t border-white/10'}`}>
           <div className="flex flex-col min-w-0">
             <div className="flex items-end gap-2 truncate">
-              <span className={`font-medium text-white ${isCompact ? 'text-sm md:text-base' : 'text-xl'}`}>₱{product.price}</span>
-              {isDiscounted && <span className={`text-gray-500 line-through mb-0.5 truncate ${isCompact ? 'text-[10px] hidden sm:inline' : 'text-sm'}`}>₱{product.compare_at_price}</span>}
+              <span className={`font-medium text-white ${isCompact ? 'text-sm md:text-base' : 'text-xl'}`}>
+                {variants.length > 1 && <span className="text-xs text-gray-400 mr-1">From</span>}
+                ₱{minPrice}
+              </span>
             </div>
           </div>
 
           <button 
-            disabled={!product.available}
+            disabled={!product.available || isAdmin}
             onClick={(e) => { 
               e.stopPropagation(); 
               if (!user) {
@@ -78,9 +85,17 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
                 setCurrentPage('login');
                 return;
               }
-              addToCart(product); 
+              // ✨ NEW: Map the default variant properties to the cart item
+              addToCart({
+                ...product,
+                price: defaultVariant.price,
+                size: defaultVariant.size,
+                variant_id: defaultVariant.id,
+                stock_count: defaultVariant.stock_count,
+                image_urls: defaultVariant.image_url ? [defaultVariant.image_url] : product.image_urls
+              }); 
             }}
-            className={`rounded-full transition-colors flex items-center justify-center flex-shrink-0 ${isCompact ? 'p-2' : 'p-2.5'} ${product.available ? 'bg-gold-400 text-black hover:bg-gold-300 shadow-md' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
+            className={`rounded-full transition-colors flex items-center justify-center flex-shrink-0 ${isCompact ? 'p-2' : 'p-2.5'} ${product.available && !isAdmin ? 'bg-gold-400 text-black hover:bg-gold-300 shadow-md' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
           >
             <span className="sr-only">Add</span>
             <svg xmlns="http://www.w3.org/2000/svg" width={isCompact ? "14" : "18"} height={isCompact ? "14" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>

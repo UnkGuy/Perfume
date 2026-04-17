@@ -7,15 +7,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 
-// Distinct, vibrant colors ordered from most to least prominent
-// Data is already sorted most→least in statsApi, so index 0 = top seller
-const PIE_COLORS = [
-  '#d4af37', // Gold — top seller
-  '#60a5fa', // Blue
-  '#34d399', // Green
-  '#f97316', // Orange
-  '#a78bfa', // Purple
-];
+const PIE_COLORS = ['#d4af37', '#60a5fa', '#34d399', '#f97316', '#a78bfa'];
 
 const AdminOverview = () => {
   const { stats, isLoading } = useDashboardStats();
@@ -30,8 +22,6 @@ const AdminOverview = () => {
 
   return (
     <div className="space-y-6 md:space-y-8 animate-fade-in">
-
-      {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <StatCard icon={<ShoppingBag size={20} />} color="gold"   title="Total Inquiries"    value={stats.inquiries} />
         <StatCard icon={<TrendingUp size={20} />}  color="green"  title="Est. Revenue"       value={`₱${stats.revenue.toLocaleString()}`} />
@@ -39,7 +29,6 @@ const AdminOverview = () => {
         <StatCard icon={<AlertCircle size={20} />}  color="orange" title="Unavailable Items"  value={stats.outOfStock} />
       </div>
 
-      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <div className="bg-white/5 border border-white/10 p-4 md:p-6 rounded-xl md:rounded-2xl lg:col-span-2">
           <h3 className="text-sm md:text-lg font-bold text-white mb-4 md:mb-6 uppercase tracking-widest">Revenue (Last 30 Days)</h3>
@@ -79,16 +68,7 @@ const AdminOverview = () => {
             <div className="h-64 md:h-72 w-full flex-1">
               <ResponsiveContainer width="99%" height="100%" minHeight={250}>
                 <PieChart>
-                  <Pie
-                    data={stats.bestSellers}
-                    cx="50%"
-                    cy="40%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="value"
-                    stroke="none"
-                  >
+                  <Pie data={stats.bestSellers} cx="50%" cy="40%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
                     {stats.bestSellers.map((_, index) => (
                       <Cell key={index} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
@@ -98,16 +78,10 @@ const AdminOverview = () => {
                     itemStyle={{ color: '#d4af37', fontWeight: 'bold' }}
                     formatter={v => [`${v} Units Sold`, 'Sales']}
                   />
-                  {/* Legend rendered in data order = most to least prominent */}
                   <Legend
-                    verticalAlign="bottom"
-                    height={56}
-                    iconType="circle"
-                    iconSize={8}
+                    verticalAlign="bottom" height={56} iconType="circle" iconSize={8}
                     wrapperStyle={{ fontSize: '10px', paddingTop: '12px' }}
-                    formatter={(value, entry) => (
-                      <span style={{ color: entry.color }}>{value}</span>
-                    )}
+                    formatter={(value, entry) => (<span style={{ color: entry.color }}>{value}</span>)}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -120,25 +94,28 @@ const AdminOverview = () => {
         </div>
       </div>
 
-      {/* Low Stock Alert */}
+      {/* ✨ FIXED: Low Stock Alert now correctly reads the product_variants data ✨ */}
       {stats.lowStockProducts && stats.lowStockProducts.length > 0 && (
         <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">
             <AlertTriangle size={18} className="text-orange-400 flex-shrink-0" />
             <h3 className="text-sm font-bold text-orange-400 uppercase tracking-widest">
-              Low Stock Alert — {stats.lowStockProducts.length} product{stats.lowStockProducts.length > 1 ? 's' : ''} running low
+              Low Stock Alert — {stats.lowStockProducts.length} variant{stats.lowStockProducts.length > 1 ? 's' : ''} running low
             </h3>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {stats.lowStockProducts.map(product => (
-              <div key={product.id} className="flex items-center justify-between bg-black/30 border border-white/5 rounded-lg px-4 py-3">
+            {stats.lowStockProducts.map(variant => (
+              <div key={variant.id} className="flex items-center justify-between bg-black/30 border border-white/5 rounded-lg px-4 py-3">
                 <div className="overflow-hidden">
-                  <p className="text-sm font-medium text-white truncate">{product.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{product.brand}</p>
+                  <p className="text-sm font-medium text-white truncate">
+                    {variant.products?.name || variant.name} 
+                    <span className="text-gold-400 text-xs ml-1">({variant.size})</span>
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{variant.products?.brand || variant.brand}</p>
                 </div>
                 <div className="flex-shrink-0 ml-3 text-right">
-                  <span className={`text-lg font-bold ${product.stock_count <= 1 ? 'text-red-400' : 'text-orange-400'}`}>
-                    {product.stock_count}
+                  <span className={`text-lg font-bold ${variant.stock_count <= 1 ? 'text-red-400' : 'text-orange-400'}`}>
+                    {variant.stock_count}
                   </span>
                   <p className="text-[10px] text-gray-500">left</p>
                 </div>
@@ -152,17 +129,10 @@ const AdminOverview = () => {
 };
 
 const StatCard = ({ icon, color, title, value }) => {
-  const colorMap = {
-    gold:   'bg-gold-400/10 text-gold-400',
-    green:  'bg-green-500/10 text-green-400',
-    blue:   'bg-blue-500/10 text-blue-400',
-    orange: 'bg-orange-500/10 text-orange-400',
-  };
+  const colorMap = { gold: 'bg-gold-400/10 text-gold-400', green: 'bg-green-500/10 text-green-400', blue: 'bg-blue-500/10 text-blue-400', orange: 'bg-orange-500/10 text-orange-400' };
   return (
     <div className="bg-white/5 border border-white/10 p-3 md:p-6 rounded-xl flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 hover:border-white/20 transition-colors">
-      <div className={`w-8 h-8 md:w-12 md:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[color]}`}>
-        {icon}
-      </div>
+      <div className={`w-8 h-8 md:w-12 md:h-12 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[color]}`}>{icon}</div>
       <div className="overflow-hidden w-full">
         <p className="text-[9px] md:text-xs text-gray-400 font-medium uppercase tracking-widest mb-0.5 md:mb-1 truncate">{title}</p>
         <p className="text-lg md:text-2xl font-bold text-white truncate">{value}</p>

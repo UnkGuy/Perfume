@@ -12,12 +12,15 @@ const STATUS_COLORS = {
   canceled:  'bg-red-500/10 text-red-400 border-red-500/30',
 };
 
+const MAX_CHARS = 250;
+
 const AdminMessages = ({ defaultSelectedUser }) => {
   const { showToast } = useShop();
   const [selectedUser, setSelectedUser] = useState(null);
   const [reply, setReply] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [latestOrder, setLatestOrder] = useState(null);
+  
   const messagesEndRef = useRef(null);
 
   const { activeChats, isLoading: chatsLoading } = useActiveChats();
@@ -30,7 +33,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
     }
   }, [defaultSelectedUser]);
 
-  // Fetch the selected user's latest order so we can show its status
   useEffect(() => {
     if (!selectedUser) { setLatestOrder(null); return; }
     const fetchLatestOrder = async () => {
@@ -44,14 +46,23 @@ const AdminMessages = ({ defaultSelectedUser }) => {
       setLatestOrder(data || null);
     };
     fetchLatestOrder();
-  }, [selectedUser, messages]); // re-fetch when messages update (status change sends a message)
+  }, [selectedUser, messages]); 
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleReply(e);
+    }
+  };
+
   const handleReply = async (e) => {
-    e.preventDefault();
+    e?.preventDefault();
+    if (!reply.trim() || reply.length > MAX_CHARS) return;
+    
     const { success } = await sendMessage(reply);
     if (success) {
       setReply('');
@@ -61,16 +72,12 @@ const AdminMessages = ({ defaultSelectedUser }) => {
   };
 
   const selectedChatData = activeChats.find(c => c.id === selectedUser);
-
-  const filteredChats = activeChats.filter(chat =>
-    chat.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredChats = activeChats.filter(chat => chat.email.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
-    <div className="h-[600px] md:h-[700px] bg-rich-black border border-white/10 rounded-xl overflow-hidden flex animate-fade-in relative shadow-2xl">
+    <div className="h-[600px] md:h-[70vh] w-full bg-rich-black border border-white/10 rounded-xl overflow-hidden flex animate-fade-in relative shadow-2xl">
 
-      {/* LEFT: Chat List */}
-      <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-white/10 flex-col bg-black/40`}>
+      <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-white/10 flex-col bg-black/40 min-w-0 flex-shrink-0`}>
         <div className="p-4 border-b border-white/10 flex flex-col gap-3">
           <h3 className="font-bold text-white tracking-widest uppercase text-sm">Active Inquiries</h3>
           <div className="relative">
@@ -117,8 +124,7 @@ const AdminMessages = ({ defaultSelectedUser }) => {
         </div>
       </div>
 
-      {/* RIGHT: Chat Window */}
-      <div className={`${!selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-2/3 flex-col relative`}>
+      <div className={`${!selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-2/3 flex-col relative min-w-0 overflow-hidden`}>
         {!selectedUser ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-white/5">
             <MessageSquare size={48} className="mb-4 opacity-20" />
@@ -126,14 +132,10 @@ const AdminMessages = ({ defaultSelectedUser }) => {
           </div>
         ) : (
           <>
-            {/* Header with user info + latest order status */}
             <div className="p-3 md:p-4 border-b border-white/10 bg-black/20 sticky top-0 z-10 backdrop-blur-md">
               <div className="flex justify-between items-start gap-2">
                 <div className="flex items-center gap-2 md:gap-3 overflow-hidden">
-                  <button
-                    onClick={() => setSelectedUser(null)}
-                    className="md:hidden p-1.5 -ml-1.5 text-gray-400 hover:text-white transition-colors"
-                  >
+                  <button onClick={() => setSelectedUser(null)} className="md:hidden p-1.5 -ml-1.5 text-gray-400 hover:text-white transition-colors">
                     <ArrowLeft size={20} />
                   </button>
                   <div className="flex flex-col overflow-hidden">
@@ -145,27 +147,24 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                 <button
                   onClick={() => toggleBan(!isBanned)}
                   className={`flex items-center gap-1.5 md:gap-2 px-2.5 py-1.5 rounded text-[10px] md:text-xs font-bold transition-colors flex-shrink-0 ${
-                    isBanned
-                      ? 'bg-white/10 text-white hover:bg-white/20'
-                      : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white'
+                    isBanned ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white'
                   }`}
                 >
                   {isBanned ? <><CheckCircle size={14} className="hidden sm:block"/> Unblock</> : <><Ban size={14} className="hidden sm:block"/> Block</>}
                 </button>
               </div>
 
-              {/* Latest order status badge */}
               {latestOrder && (
-                <div className={`mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium w-fit ${STATUS_COLORS[latestOrder.status] || STATUS_COLORS.pending}`}>
-                  <Package size={12} />
-                  <span>Latest Order #{latestOrder.id}:</span>
-                  <span className="font-bold uppercase tracking-wider">{latestOrder.status}</span>
-                  <span className="text-inherit opacity-60">· ₱{Number(latestOrder.total_amount).toLocaleString()}</span>
+                <div className={`mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium w-fit max-w-full overflow-hidden ${STATUS_COLORS[latestOrder.status] || STATUS_COLORS.pending}`}>
+                  <Package size={12} className="flex-shrink-0" />
+                  <span className="truncate">Latest Order #{latestOrder.id}:</span>
+                  <span className="font-bold uppercase tracking-wider flex-shrink-0">{latestOrder.status}</span>
+                  <span className="text-inherit opacity-60 flex-shrink-0">· ₱{Number(latestOrder.total_amount).toLocaleString()}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-black/10">
+            <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-black/10 min-w-0">
               {messages.map((msg, index) => {
                 const isAdmin = msg.sender_role === 'admin';
                 const isOrder = msg.metadata?.type === 'order_inquiry';
@@ -195,21 +194,22 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                       </div>
                     )}
 
-                    <div className={`flex flex-col mb-4 ${isAdmin ? 'items-end' : 'items-start'}`}>
+                    {/* ✨ FIXED: Added w-full to the wrapper so it strictly obeys bounds ✨ */}
+                    <div className={`flex flex-col mb-4 w-full min-w-0 ${isAdmin ? 'items-end' : 'items-start'}`}>
                       {isOrder ? (
-                        <div className="bg-black/60 border border-gold-400/30 p-3 md:p-4 rounded-xl w-full max-w-[95%] md:max-w-[90%] text-sm shadow-lg">
+                        <div className="bg-black/60 border border-gold-400/30 p-3 md:p-4 rounded-xl w-full max-w-[95%] md:max-w-[90%] text-sm shadow-lg overflow-hidden">
                           <div className="flex flex-wrap items-center gap-2 mb-3 text-gold-400 font-bold border-b border-white/10 pb-2">
                             <ShoppingBag size={16} /> Order #{msg.metadata.order_id}
                           </div>
                           <div className="space-y-1 mb-3 bg-white/5 p-2 md:p-3 rounded text-xs md:text-sm">
                             {msg.metadata.items?.map((item, idx) => (
                               <div key={idx} className="flex justify-between gap-4">
-                                <span className="text-gray-300 truncate">{item.quantity}x {item.name}</span>
+                                <span className="text-gray-300 truncate">{item.quantity}x {item.name} {item.size ? `(${item.size})` : ''}</span>
                                 <span className="text-gray-400 flex-shrink-0">₱{item.price * item.quantity}</span>
                               </div>
                             ))}
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] md:text-xs text-gray-400 mb-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] md:text-xs text-gray-400 mb-3 break-all">
                             <div className="truncate"><span className="text-gray-500">Method:</span> {msg.metadata.fulfillment}</div>
                             <div className="truncate"><span className="text-gray-500">Payment:</span> {msg.metadata.payment}</div>
                             <div className="truncate"><span className="text-gray-500">Contact:</span> {msg.metadata.contact}</div>
@@ -221,7 +221,8 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                           </div>
                         </div>
                       ) : (
-                        <div className={`p-2.5 md:p-3 rounded-2xl max-w-[85%] md:max-w-[75%] text-xs md:text-sm whitespace-pre-wrap ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
+                        /* ✨ FIXED: Changed break-words to break-all ✨ */
+                        <div className={`p-2.5 md:p-3 rounded-2xl max-w-[85%] md:max-w-[75%] text-xs md:text-sm whitespace-pre-wrap break-all overflow-hidden ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
                           {msg.content}
                         </div>
                       )}
@@ -232,19 +233,39 @@ const AdminMessages = ({ defaultSelectedUser }) => {
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleReply} className="p-3 md:p-4 border-t border-white/10 bg-black/40">
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                  placeholder="Type a reply..."
-                  className="w-full bg-black/50 border border-white/20 rounded-full py-2.5 md:py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
-                />
+            <form onSubmit={handleReply} className="p-3 md:p-4 border-t border-white/10 bg-black/40 flex flex-col gap-1.5 relative w-full min-w-0">
+              <div className="flex justify-end px-2">
+                <span className={`text-[10px] font-medium transition-colors ${
+                  reply.length >= MAX_CHARS ? 'text-red-400' : 
+                  reply.length >= MAX_CHARS * 0.8 ? 'text-gold-400' : 'text-gray-500'
+                }`}>
+                  {reply.length}/{MAX_CHARS}
+                </span>
+              </div>
+              
+              <div className="relative w-full min-w-0 overflow-hidden">
+                <div className="grid w-full min-w-0">
+                  <div 
+                    aria-hidden="true" 
+                    className="invisible whitespace-pre-wrap break-all col-start-1 col-end-2 row-start-1 row-end-2 py-3 pl-4 pr-12 text-sm leading-relaxed border border-transparent min-h-[3rem] max-h-[25vh] overflow-hidden w-full"
+                  >
+                    {reply + ' '}
+                  </div>
+                  
+                  <textarea
+                    maxLength={MAX_CHARS}
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a reply... (Shift+Enter for new line)"
+                    className="w-full h-full resize-none col-start-1 col-end-2 row-start-1 row-end-2 bg-black/50 border border-white/20 rounded-2xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors custom-scrollbar break-all leading-relaxed overflow-y-auto"
+                  />
+                </div>
+                
                 <button
                   type="submit"
-                  disabled={!reply.trim()}
-                  className="absolute right-1.5 md:right-2 p-1.5 md:p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 transition-all"
+                  disabled={!reply.trim() || reply.length > MAX_CHARS}
+                  className="absolute right-1.5 md:right-2 bottom-1.5 md:bottom-2 p-1.5 md:p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 transition-all z-10"
                 >
                   <Send size={16} />
                 </button>

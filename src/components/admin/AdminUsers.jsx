@@ -8,6 +8,7 @@ const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');  
 
   useEffect(() => {
     fetchUsers();
@@ -59,7 +60,12 @@ const AdminUsers = () => {
     }
   };
 
-  const filtered = users.filter(u => (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()));
+  const filtered = users.filter(u => {
+  const matchesSearch = (u.email || '').toLowerCase().includes(searchQuery.toLowerCase());
+  const role = u.user_roles?.[0]?.role || 'customer';
+  const matchesRole = roleFilter === 'all' || role === roleFilter;
+  return matchesSearch && matchesRole;
+});
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -68,12 +74,23 @@ const AdminUsers = () => {
           <h3 className="text-2xl font-bold text-white mb-1">Accounts</h3>
           <p className="text-gray-400 text-sm">Manage registered users and permissions.</p>
         </div>
-        <div className="relative w-64">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400"
-          />
-        </div>
+        <div className="flex gap-3 items-center">
+  <select 
+    value={roleFilter} 
+    onChange={e => setRoleFilter(e.target.value)}
+    className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400"
+  >
+    <option value="all">All Roles</option>
+    <option value="customer">Customers</option>
+    <option value="admin">Admins</option>
+  </select>
+  <div className="relative w-64">
+    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+    <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+      className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400"
+    />
+  </div>
+</div>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">

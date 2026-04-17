@@ -5,8 +5,9 @@ export const fetchDashboardStatsAPI = async () => {
   const { count: inquiries } = await supabase
     .from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
 
- const { data: revData } = await supabase.from('orders').select('total_amount').eq('status', 'completed');
-const revenue = revData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
+  const { data: revData } = await supabase.from('orders').select('total_amount').eq('status', 'completed');
+  const revenue = revData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
+  
   const { count: activeUsers } = await supabase
     .from('profiles').select('*', { count: 'exact', head: true });
 
@@ -17,12 +18,12 @@ const revenue = revData?.reduce((acc, curr) => acc + Number(curr.total_amount), 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-const { data: recentOrders } = await supabase
-  .from('orders')
-  .select('created_at, total_amount')
-  .eq('status', 'completed') // <-- Added filter
-  .gte('created_at', thirtyDaysAgo.toISOString())
-  .order('created_at', { ascending: true });
+  const { data: recentOrders } = await supabase
+    .from('orders')
+    .select('created_at, total_amount')
+    .eq('status', 'completed')
+    .gte('created_at', thirtyDaysAgo.toISOString())
+    .order('created_at', { ascending: true });
 
   const chartDataMap = {};
   recentOrders?.forEach(order => {
@@ -55,13 +56,12 @@ const { data: recentOrders } = await supabase
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
-  // 4. ← NEW: Low stock products (tracked stock < 5, not unlimited/null)
+  // 4. ✨ FIXED: Low stock products now looks at product_variants ✨
   const { data: lowStockProducts } = await supabase
-    .from('products')
-    .select('id, name, brand, stock_count, available')
-    .not('stock_count', 'is', null) // only products with tracked stock
-    .lt('stock_count', 5)           // fewer than 5 units
-    .eq('available', true)          // still marked available (needs attention)
+    .from('product_variants')
+    .select('id, size, stock_count, products(name, brand)')
+    .not('stock_count', 'is', null) 
+    .lt('stock_count', 5)
     .order('stock_count', { ascending: true })
     .limit(10);
 

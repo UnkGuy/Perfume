@@ -23,7 +23,6 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('history');
   const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
-  // ✨ PULL IN hasPassword FROM HOOK ✨
   const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors, hasPassword } = useProfile(activeTab);
   
   const { regions, provinces, cities, barangays, getProvinces, getCities, getBarangays, isFetchingLocation } = usePSGC();
@@ -42,15 +41,24 @@ const ProfilePage = () => {
   }, [isProfileLoading, profileData.address]);
 
   const handleReorder = (order) => {
-    order.order_items.forEach(item => { if (item.products) addToCart(item.products, 1, true); });
+    order.order_items.forEach(item => { 
+      if (item.products) {
+        // Grab specific variant if it exists for reordering
+        const variant = item.product_variants || {};
+        addToCart({
+          ...item.products,
+          price: item.price_at_time, // Reorder at current catalog price or past price? Usually you want the active one, but addToCart overrides
+          size: variant.size || item.products.size || 'Standard',
+          variant_id: item.variant_id
+        }, 1, true);
+      } 
+    });
     showToast('Cart Updated', `Items from Order #${order.id} added to your cart!`);
     setIsCartOpen(true);
   };
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
-    
-    // Removed frontend gatekeeper because the hook securely handles all validation now!
     const success = await saveProfile(passwords);
     if (success) {
       setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
@@ -182,14 +190,12 @@ const ProfilePage = () => {
                 <div>
                   <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
                   
-                  {/* ✨ Contextual helper text based on hasPassword ✨ */}
                   <p className="text-sm text-gray-500 mb-4">
                     {hasPassword 
                       ? "Leave these fields blank if you do not want to change your password." 
                       : "You signed in with a social account. Set a password here to enable email login."}
                   </p>
                   
-                  {/* ✨ Dynamic Grid based on hasPassword ✨ */}
                   <div className={`grid grid-cols-1 ${hasPassword ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
                     
                     {hasPassword && (
@@ -235,7 +241,6 @@ const ProfilePage = () => {
 };
 
 const OrderHistoryCard = ({ order, onReorder, navigate }) => (
-  // ... No changes needed here, component continues as normal ...
   <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
     <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
       <div>
@@ -259,8 +264,14 @@ const OrderHistoryCard = ({ order, onReorder, navigate }) => (
       <div className="space-y-4 mb-6">
         {order.order_items.map((item, index) => {
           const prod = item.products;
+          // ✨ FIXED: Supabase sometimes returns joins as arrays. We must safely unwrap it! ✨
+          const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
+          
           if (!prod) return null;
-          const imageSource = prod.image_urls?.[0] || FALLBACK_IMAGE;
+
+          const imageSource = variant?.image_url || prod.image_urls?.[0] || FALLBACK_IMAGE;
+          const displaySize = variant?.size || prod.size || 'Standard';
+
           return (
             <div key={index} className="flex items-center gap-4">
               <div 
@@ -276,7 +287,7 @@ const OrderHistoryCard = ({ order, onReorder, navigate }) => (
                 >
                   {prod.name}
                 </p>
-                <p className="text-xs text-gray-500">{prod.brand} • {prod.size}</p>
+                <p className="text-xs text-gray-500">{prod.brand} • {displaySize}</p>
               </div>
               <div className="text-right text-sm text-gray-400">
                 {item.quantity}x @ ₱{item.price_at_time}

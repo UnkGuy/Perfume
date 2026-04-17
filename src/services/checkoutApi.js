@@ -17,21 +17,32 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
     }
   }
 
-  // --- STOCK AVAILABILITY CHECK ---
-  // Verify each item still has stock before committing the order
+  // --- STOCK AVAILABILITY CHECK (VARIANT-AWARE) ---
   for (const item of localItems) {
-    const { data: product } = await supabase
+    // 1. Check if base product is still active
+    const { data: product, error: prodErr } = await supabase
       .from('products')
-      .select('stock_count, available, name')
+      .select('available, name')
       .eq('id', item.id)
       .single();
 
-    if (!product?.available) {
-      throw new Error(`"${item.name}" is no longer available.`);
+    if (prodErr || !product?.available) {
+      throw new Error(`"${item.name}" is currently unavailable.`);
     }
-    // Only enforce stock_count when it's explicitly tracked (not null = unlimited)
-    if (product?.stock_count != null && product.stock_count < item.quantity) {
-      throw new Error(`"${item.name}" only has ${product.stock_count} unit(s) left.`);
+
+    // 2. Check the specific variant's stock
+    const { data: variant, error: varErr } = await supabase
+      .from('product_variants')
+      .select('stock_count')
+      .eq('id', item.variant_id)
+      .single();
+
+    if (varErr || !variant) {
+      throw new Error(`The specific size for "${item.name}" could not be found.`);
+    }
+
+    if (variant.stock_count != null && variant.stock_count < item.quantity) {
+      throw new Error(`"${item.name}" (${item.size}) only has ${variant.stock_count} unit(s) left.`);
     }
   }
 
@@ -87,19 +98,20 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
     product_id: item.id,
     quantity: item.quantity,
     price_at_time: item.price,
+    // NOTE: If you add a variant_id column to your order_items table in Supabase, 
+    // you should add `variant_id: item.variant_id` here too!
   }));
 
   const { error: itemsError } = await supabase.from('order_items').insert(orderItemsToInsert);
   if (itemsError) throw itemsError;
 
-  // NOTE: Stock is NOT decremented here. It only decrements when the admin
-  // marks the order as "completed" in the admin dashboard.
-
   // --- SEND RECEIPT MESSAGE ---
   const chatItems = localItems.map(item => ({
     name: item.name,
+    size: item.size, // Now the admin will see which size was ordered in the chat!
     quantity: item.quantity,
     price: item.price,
+    variant_id: item.variant_id
   }));
 
   let formattedContent = `New Inquiry Placed.\nFulfillment: ${checkoutInfo.fulfillmentMethod}\nPayment: ${checkoutInfo.paymentMethod}\nContact: ${checkoutInfo.phoneNumber}\nLocation: ${checkoutInfo.location || 'N/A'}`;

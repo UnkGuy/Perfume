@@ -2,13 +2,17 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, User, ShoppingBag, AlertCircle } from 'lucide-react';
 import { useMessageThread } from '../../hooks/useMessages';
 import { useUserBan } from '../../hooks/useUserBan';
-import { useAuth } from '../../contexts/AuthContext'; // ← was receiving user as prop; pull from context instead
+import { useAuth } from '../../contexts/AuthContext';
+
+const MAX_CHARS = 250;
 
 const ChatWidget = () => {
-  const { user } = useAuth(); // ← fix: was undefined because App.jsx never passed the prop
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null); 
 
   const { messages, sendMessage } = useMessageThread(user?.id, 'user');
   const { isBanned } = useUserBan(user?.id);
@@ -18,10 +22,29 @@ const ChatWidget = () => {
   }, [messages, isOpen]);
 
   const handleSend = async (e) => {
-    e.preventDefault();
-    if (isBanned) return;
+    e?.preventDefault();
+    if (isBanned || newMessage.trim().length === 0 || newMessage.length > MAX_CHARS) return;
+    
     const { success } = await sendMessage(newMessage);
-    if (success) setNewMessage('');
+    if (success) {
+      setNewMessage('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    }
+  };
+
+  const handleInput = (e) => {
+    setNewMessage(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(e);
+    }
   };
 
   if (!user) return null;
@@ -60,7 +83,7 @@ const ChatWidget = () => {
         <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-black/40">
           {messages.length === 0 && (
             <div className="flex flex-col items-start animate-fade-in mb-6">
-              <div className="p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed bg-white/10 text-white border border-white/5 rounded-tl-sm">
+              <div className="p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap break-words bg-white/10 text-white border border-white/5 rounded-tl-sm">
                 Hello! Welcome to KL Scents. How can I help you with your order today? 👋
               </div>
             </div>
@@ -109,7 +132,8 @@ const ChatWidget = () => {
                       <div className="space-y-1 mb-3 bg-black/40 p-2 rounded">
                         {msg.metadata.items?.map((item, idx) => (
                           <div key={idx} className="flex justify-between gap-4">
-                            <span className="text-gray-300">{item.quantity}x {item.name}</span>
+                            {/* ✨ FIXED: Append size here ✨ */}
+                            <span className="text-gray-300">{item.quantity}x {item.name} {item.size ? `(${item.size})` : ''}</span>
                             <span className="text-gray-400">₱{item.price * item.quantity}</span>
                           </div>
                         ))}
@@ -128,7 +152,7 @@ const ChatWidget = () => {
                       </div>
                     </div>
                   ) : (
-                    <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
+                    <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
                       {msg.content}
                     </div>
                   )}
@@ -146,21 +170,35 @@ const ChatWidget = () => {
               <span>Your messaging privileges have been restricted.</span>
             </div>
           ) : (
-            <div className="relative flex items-center">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Type your message..."
-                className="w-full bg-black/50 border border-white/20 rounded-full py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors placeholder-gray-500"
-              />
-              <button
-                type="submit"
-                disabled={!newMessage.trim()}
-                className="absolute right-2 p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                <Send size={16} />
-              </button>
+            <div className="flex flex-col gap-1.5 relative">
+              <div className="flex justify-end px-2">
+                <span className={`text-[10px] font-medium transition-colors ${
+                  newMessage.length >= MAX_CHARS ? 'text-red-400' : 
+                  newMessage.length >= MAX_CHARS * 0.8 ? 'text-gold-400' : 'text-gray-500'
+                }`}>
+                  {newMessage.length}/{MAX_CHARS}
+                </span>
+              </div>
+              <div className="relative flex items-end">
+                <textarea
+                  ref={textareaRef}
+                  maxLength={MAX_CHARS}
+                  value={newMessage}
+                  onChange={handleInput}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your message..."
+                  rows={1}
+                  className="w-full bg-black/50 border border-white/20 rounded-2xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors placeholder-gray-500 resize-none overflow-y-auto custom-scrollbar"
+                  style={{ minHeight: '44px' }}
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim() || newMessage.length > MAX_CHARS}
+                  className="absolute right-2 bottom-2 p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
             </div>
           )}
         </form>

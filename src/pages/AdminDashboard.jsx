@@ -92,6 +92,12 @@ const AdminDashboard = () => {
             </div>
           </div>
           <button
+  onClick={() => window.location.href = '/products'}
+  className="w-full flex items-center gap-3 px-4 py-2 text-gold-400 hover:bg-gold-400/10 rounded-lg transition-colors mb-2"
+>
+  <Package size={18} /> View Collection
+</button>
+          <button
             onClick={adminLogout}
             className="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
           >

@@ -3,7 +3,8 @@ import { supabase } from './supabase';
 export const fetchUserWishlistAPI = async (userId) => {
   const { data, error } = await supabase
     .from('wishlists')
-    .select('product_id, products(*)')
+    // ✨ FIXED: Include variants so the drawer can show prices! ✨
+    .select('product_id, products(*, product_variants(*))')
     .eq('user_id', userId);
     
   if (error) throw error;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, X, Heart } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useShop } from '../../contexts/ShopContext';
@@ -11,17 +11,28 @@ const QuickViewModal = ({ product, onClose }) => {
   const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
   const { setCurrentPage } = useUI();
 
+  // ✨ NEW: Manage variant selection locally in the modal
+  const variants = product?.product_variants || [];
+  const [selectedVariant, setSelectedVariant] = useState(variants[0]);
+
+  useEffect(() => {
+    if(product?.product_variants?.length > 0) setSelectedVariant(product.product_variants[0]);
+  }, [product]);
+
   if (!product) return null;
 
   const isInWishlist = wishlistItems?.some(item => item.id === product.id);
-  const imageSource = product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE;
+  
+  // Update display values based on selection
+  const displayPrice = selectedVariant?.price || 0;
+  const displaySize = selectedVariant?.size || '';
+  const imageSource = selectedVariant?.image_url || (product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE);
 
   return (
-    // ... (Keep existing JSX exactly the same, but notice it now uses the context functions instead of props!)
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in" onClick={onClose}>
       <div className="bg-rich-black border border-gold-400/30 rounded-2xl max-w-3xl w-full relative shadow-2xl overflow-hidden flex flex-col md:flex-row" onClick={e => e.stopPropagation()}>
         
-        <button className="absolute top-4 right-4 z-10 text-gray-500 hover:text-white transition-colors" onClick={onClose}>
+        <button className="absolute top-4 right-4 z-10 text-gray-500 hover:text-white bg-black/40 rounded-full p-1 transition-colors" onClick={onClose}>
           <X size={24} />
         </button>
 
@@ -33,7 +44,7 @@ const QuickViewModal = ({ product, onClose }) => {
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-bold tracking-widest text-gold-400 uppercase">{product.brand}</span>
             <span className="text-gray-600">•</span>
-            <span className="text-xs text-gray-400 uppercase tracking-wider">{product.size}</span>
+            <span className="text-xs text-gray-400 uppercase tracking-wider">{displaySize}</span>
           </div>
           
           <h2 className="text-2xl font-bold text-white mb-2">{product.name}</h2>
@@ -47,7 +58,21 @@ const QuickViewModal = ({ product, onClose }) => {
             <span className="text-xs text-gray-400">({product.rating})</span>
           </div>
 
-          <p className="text-2xl font-light text-white mb-6">₱{product.price}</p>
+          <p className="text-2xl font-light text-white mb-4">₱{displayPrice}</p>
+
+          {/* ✨ NEW: Variant Size Buttons for Quick View */}
+          {variants.length > 1 && (
+            <div className="mb-4">
+              <p className="text-xs font-bold text-white uppercase tracking-wider mb-2">Select Size</p>
+              <div className="flex flex-wrap gap-2">
+                {variants.map(v => (
+                  <button key={v.id} onClick={() => setSelectedVariant(v)} className={`px-3 py-1.5 border rounded text-xs transition-all ${selectedVariant?.id === v.id ? 'border-gold-400 bg-gold-400/10 text-gold-400' : 'border-white/10 text-gray-400 hover:border-gold-400/50'}`}>
+                    {v.size}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {product.description && (
             <div className="mb-4">
@@ -56,7 +81,7 @@ const QuickViewModal = ({ product, onClose }) => {
           )}
 
           <div className="mb-8 flex-1">
-            <p className="text-sm text-gray-400 mb-2">Key Notes:</p>
+            <p className="text-sm text-gray-400 mb-1">Key Notes:</p>
             <p className="text-sm text-gray-300 font-medium">{product.notes?.join(", ")}</p>
           </div>
 
@@ -70,7 +95,15 @@ const QuickViewModal = ({ product, onClose }) => {
                   onClose();
                   return;
                 }
-                addToCart(product); 
+                // ✨ Map flattened variant data
+                addToCart({
+                  ...product,
+                  price: displayPrice,
+                  size: displaySize,
+                  variant_id: selectedVariant?.id,
+                  stock_count: selectedVariant?.stock_count,
+                  image_urls: [imageSource]
+                }); 
                 onClose(); 
               }}
               className={`flex-1 py-3 font-bold rounded transition-colors ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}

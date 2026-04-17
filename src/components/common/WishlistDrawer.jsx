@@ -51,6 +51,11 @@ const WishlistDrawer = () => {
             ) : (
               items.map((item, index) => {
                 const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;
+                
+                // ✨ NEW: Extract from variants for wishlist display
+                const variants = item.product_variants || [];
+                const defaultVariant = variants[0] || {};
+                const displayPrice = variants.length > 0 ? Math.min(...variants.map(v => v.price)) : 0;
 
                 return (
                   <div key={index} className="flex gap-4 items-start animate-fade-in bg-white/5 p-3 rounded-lg border border-white/5">
@@ -68,13 +73,21 @@ const WishlistDrawer = () => {
                         {item.name}
                       </h3>
                       <p className="text-gray-500 text-xs mb-2">{item.brand}</p>
-                      <p className="text-gold-400 font-medium mb-3">₱{item.price}</p>
+                      <p className="text-gold-400 font-medium mb-3">₱{displayPrice}</p>
                       
                       <div className="flex items-center gap-3">
                         <button 
                           onClick={() => {
                             if(item.available) {
-                              addToCart(item, 1, true);
+                              // ✨ NEW: Map the variant properties!
+                              addToCart({
+                                ...item,
+                                price: defaultVariant.price,
+                                size: defaultVariant.size,
+                                variant_id: defaultVariant.id,
+                                stock_count: defaultVariant.stock_count,
+                                image_urls: defaultVariant.image_url ? [defaultVariant.image_url] : item.image_urls
+                              }, 1, true);
                               toggleWishlist(item, true); 
                               showToast('Moved to Cart', `${item.name} moved to cart.`, 'success');
                             }

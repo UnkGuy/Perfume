@@ -18,8 +18,9 @@ const readGuestCart = () => {
 
 const writeGuestCart = (items) => {
   try {
-    const slim = items.map(({ id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity }) => ({
-      id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity,
+    // Added variant_id to the saved data
+    const slim = items.map(({ id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity, variant_id }) => ({
+      id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity, variant_id,
     }));
     localStorage.setItem(GUEST_CART_KEY, JSON.stringify(slim));
   } catch { }
@@ -51,7 +52,8 @@ export const ShopProvider = ({ children }) => {
             clearGuestCart();
             const merged = [...dbCart];
             for (const guestItem of guestCart) {
-              const existing = merged.find(i => i.id === guestItem.id);
+              // Now checks for both product ID AND variant ID
+              const existing = merged.find(i => i.id === guestItem.id && i.variant_id === guestItem.variant_id);
               if (existing) {
                 existing.quantity += guestItem.quantity;
               } else {
@@ -59,7 +61,7 @@ export const ShopProvider = ({ children }) => {
               }
               try {
                 const finalQty = existing ? existing.quantity : guestItem.quantity;
-                await syncCartItemAPI(user.id, guestItem.id, finalQty);
+                await syncCartItemAPI(user.id, guestItem.id, finalQty, guestItem.variant_id);
               } catch (err) {
                 console.error('Merge sync error for item', guestItem.id, err);
               }
@@ -91,24 +93,24 @@ export const ShopProvider = ({ children }) => {
 
   const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
 
-  // Added silent parameter
   const addToCart = async (product, quantity = 1, silent = false) => {
     let finalQuantity = quantity;
 
     setCartItems(prev => {
-      const existing = prev.find(item => item.id === product.id);
+      // Now checks for both product ID AND variant ID
+      const existing = prev.find(item => item.id === product.id && item.variant_id === product.variant_id);
       if (existing) {
         finalQuantity = existing.quantity + quantity;
-        return prev.map(item => item.id === product.id ? { ...item, quantity: finalQuantity } : item);
+        return prev.map(item => (item.id === product.id && item.variant_id === product.variant_id) ? { ...item, quantity: finalQuantity } : item);
       }
       return [...prev, { ...product, quantity }];
     });
 
-    if (!silent) showToast("Added to Cart", `${product.name} is now in your bag.`);
+    if (!silent) showToast("Added to Cart", `${product.name} (${product.size}) is now in your bag.`);
 
     if (user) {
       try {
-        await syncCartItemAPI(user.id, product.id, finalQuantity);
+        await syncCartItemAPI(user.id, product.id, finalQuantity, product.variant_id);
       } catch (error) {
         console.error("Cart sync error", error);
       }
@@ -125,14 +127,13 @@ export const ShopProvider = ({ children }) => {
 
     if (user) {
       try {
-        await syncCartItemAPI(user.id, item.id, newQuantity);
+        await syncCartItemAPI(user.id, item.id, newQuantity, item.variant_id);
       } catch (error) {
         console.error("Cart sync error", error);
       }
     }
   };
 
-  // Added silent parameter and changed to 'info' type
   const removeFromCart = async (index, silent = false) => {
     const itemToRemove = cartItems[index];
 
@@ -141,7 +142,7 @@ export const ShopProvider = ({ children }) => {
 
     if (user && itemToRemove) {
       try {
-        await removeFromCartAPI(user.id, itemToRemove.id);
+        await removeFromCartAPI(user.id, itemToRemove.id, itemToRemove.variant_id);
       } catch (error) {
         console.error("Cart sync error", error);
       }
@@ -160,7 +161,6 @@ export const ShopProvider = ({ children }) => {
     }
   };
 
-  // Added silent parameter
   const toggleWishlist = async (product, silent = false) => {
     const isSaved = wishlistItems.some(item => item.id === product.id);
 

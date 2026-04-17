@@ -65,9 +65,9 @@ function App() {
       <Suspense fallback={<PageLoader />}>
 <Routes>
   {/* If admin tries to go home or to products, bounce them to admin */}
-  <Route path="/" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <WelcomePage />} />
-  <Route path="/products" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ProductPage />} />
-  <Route path="/products/:id" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ProductPage />} />
+<Route path="/" element={<WelcomePage />} />
+<Route path="/products" element={<ProductPage />} />
+<Route path="/products/:id" element={<ProductPage />} />
   
   <Route path="/cart" element={<CartPage />} />
   <Route path="/login" element={<LoginPage />} />

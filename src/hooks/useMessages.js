@@ -9,17 +9,14 @@ export const useActiveChats = () => {
 
   const buildChatList = (data) => {
     if (!data || data.length === 0) return [];
-    const uniqueUsers = Array.from(new Set(data.map(m => m.user_id))).map(id => {
-      const userMessages = data.filter(m => m.user_id === id);
-      const latestMsg = userMessages[0];
-      return {
-        id,
-        email: latestMsg.profiles?.email || `Customer ${id.substring(0, 6)}`,
-        displayName: latestMsg.profiles?.username || latestMsg.profiles?.email,
-        lastActive: latestMsg.created_at
-      };
-    });
-    return uniqueUsers.sort((a, b) => new Date(b.lastActive) - new Date(a.lastActive));
+    
+    // The SQL view already grouped these by user! We just map the clean data.
+    return data.map(msg => ({
+      id: msg.user_id,
+      email: msg.email || `Customer ${msg.user_id.substring(0, 6)}`,
+      displayName: msg.username || msg.email || 'Unknown User',
+      lastActive: msg.created_at
+    }));
   };
 
   useEffect(() => {
@@ -39,15 +36,12 @@ export const useActiveChats = () => {
 
     loadChats();
 
-    // ← was missing: subscribe to new messages so the sidebar updates without a page refresh.
-    //   When a first-time customer sends a message the admin sees them immediately.
     const subscription = supabase
       .channel('admin-active-chats')
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages' },
         async () => {
-          // Re-fetch the full list to get updated profiles join and sort order
           try {
             const data = await fetchActiveChatsAPI();
             if (isMounted) setActiveChats(buildChatList(data));
