@@ -1,13 +1,18 @@
+// src/pages/AdminDashboard.jsx  — add Settings tab
 import React, { useState } from 'react';
-import { LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X, Tag, ClipboardList, Users } from 'lucide-react';
+import {
+  LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X,
+  Tag, ClipboardList, Users, Settings,
+} from 'lucide-react';
 
-import AdminOverview from '../components/admin/AdminOverview';
-import AdminOrders from '../components/admin/AdminOrders';
-import AdminProducts from '../components/admin/AdminProducts';
-import AdminMessages from '../components/admin/AdminMessages';
-import AdminPromos from '../components/admin/AdminPromos';
-import AdminLogs from '../components/admin/AdminLogs';
-import AdminUsers from '../components/admin/AdminUsers';
+import AdminOverview  from '../components/admin/AdminOverview';
+import AdminOrders    from '../components/admin/AdminOrders';
+import AdminProducts  from '../components/admin/AdminProducts';
+import AdminMessages  from '../components/admin/AdminMessages';
+import AdminPromos    from '../components/admin/AdminPromos';
+import AdminLogs      from '../components/admin/AdminLogs';
+import AdminUsers     from '../components/admin/AdminUsers';
+import AdminSettings  from '../components/admin/AdminSettings';   // ← NEW
 
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
@@ -20,6 +25,7 @@ const NAV = [
   { id: 'promos',    icon: <Tag size={18} />,             label: 'Promo Codes' },
   { id: 'users',     icon: <Users size={18} />,           label: 'Accounts' },
   { id: 'logs',      icon: <ClipboardList size={18} />,   label: 'Activity Log' },
+  { id: 'settings',  icon: <Settings size={18} />,        label: 'Website Settings' },  // ← NEW
 ];
 
 const AdminDashboard = () => {
@@ -36,10 +42,8 @@ const AdminDashboard = () => {
     setIsMobileMenuOpen(false);
   };
 
-  // Logout takes you back to the login/welcome page
   const adminLogout = async () => {
     await handleLogout();
-    // Navigation handled by AuthContext + route guards in App.jsx
   };
 
   const tabLabel = NAV.find(n => n.id === activeTab)?.label || activeTab;
@@ -51,18 +55,12 @@ const AdminDashboard = () => {
       )}
 
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-rich-black border-r border-white/10 flex flex-col h-full transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        {/* Sidebar header — clicking logo just resets to overview, no customer navigation */}
         <div className="p-6 border-b border-white/10 flex justify-between items-center">
-          <button
-            onClick={() => handleTabClick('overview')}
-            className="text-left group"
-          >
+          <button onClick={() => handleTabClick('overview')} className="text-left group">
             <h1 className="text-xl font-bold tracking-widest text-white group-hover:text-gold-400 transition-colors">
               KL<span className="text-gold-400">SCENTS</span>
             </h1>
-            <span className="text-xs text-gray-500 block mt-0.5 group-hover:text-gray-300 transition-colors">
-              ADMIN PORTAL
-            </span>
+            <span className="text-xs text-gray-500 block mt-0.5 group-hover:text-gray-300 transition-colors">ADMIN PORTAL</span>
           </button>
           <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
             <X size={20} />
@@ -74,7 +72,11 @@ const AdminDashboard = () => {
             <button
               key={id}
               onClick={() => handleTabClick(id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${activeTab === id ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === id
+                  ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
             >
               {icon} {label}
             </button>
@@ -92,11 +94,11 @@ const AdminDashboard = () => {
             </div>
           </div>
           <button
-  onClick={() => window.location.href = '/products'}
-  className="w-full flex items-center gap-3 px-4 py-2 text-gold-400 hover:bg-gold-400/10 rounded-lg transition-colors mb-2"
->
-  <Package size={18} /> View Collection
-</button>
+            onClick={() => window.location.href = '/products'}
+            className="w-full flex items-center gap-3 px-4 py-2 text-gold-400 hover:bg-gold-400/10 rounded-lg transition-colors mb-2"
+          >
+            <Package size={18} /> View Collection
+          </button>
           <button
             onClick={adminLogout}
             className="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
@@ -127,6 +129,7 @@ const AdminDashboard = () => {
             {activeTab === 'promos'    && <AdminPromos />}
             {activeTab === 'users'     && <AdminUsers />}
             {activeTab === 'logs'      && <AdminLogs />}
+            {activeTab === 'settings'  && <AdminSettings />}  {/* ← NEW */}
           </div>
         </main>
       </div>
