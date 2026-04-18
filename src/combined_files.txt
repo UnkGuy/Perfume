@@ -1,0 +1,1665 @@
+
+
+========== components/admin/AdminUsers.jsx ==========
+
+import React, { useState, useEffect } from 'react';
+import { Loader2, Search, Ban, CheckCircle } from 'lucide-react';
+import { supabase } from '../../services/supabase';
+import { useShop } from '../../contexts/ShopContext';
+
+const AdminUsers = () => {
+  const { showToast } = useShop();
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');  
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    
+    try {
+      // 1. Fetch all profiles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+        
+      if (profilesError) throw profilesError;
+
+      // 2. Fetch all user roles
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('*');
+        
+      if (rolesError) throw rolesError;
+
+      // 3. Merge the two datasets together based on user_id / id
+      const mergedUsers = profilesData.map(profile => {
+        const userRoleMatch = rolesData.find(r => r.user_id === profile.id);
+        return {
+          ...profile,
+          // We wrap the role in an array so your existing JSX `u.user_roles?.[0]?.role` still works!
+          user_roles: userRoleMatch ? [userRoleMatch] : [] 
+        };
+      });
+
+      setUsers(mergedUsers);
+    } catch (error) {
+      console.error("Supabase Error fetching users:", error);
+      // This will now pop up a red toast box telling you exactly what went wrong
+      if (showToast) showToast('Database Error', error.message, 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleBan = async (userId, currentStatus) => {
+    const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', userId);
+    if (!error) {
+      setUsers(users.map(u => u.id === userId ? { ...u, is_banned: !currentStatus } : u));
+      showToast('Success', `Account ${!currentStatus ? 'banned' : 'unbanned'}.`);
+    }
+  };
+
+  const filtered = users.filter(u => {
+  const matchesSearch = (u.email || '').toLowerCase().includes(searchQuery.toLowerCase());
+  const role = u.user_roles?.[0]?.role || 'customer';
+  const matchesRole = roleFilter === 'all' || role === roleFilter;
+  return matchesSearch && matchesRole;
+});
+
+  return (
+    <div className="animate-fade-in space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-1">Accounts</h3>
+          <p className="text-gray-400 text-sm">Manage registered users and permissions.</p>
+        </div>
+        <div className="flex gap-3 items-center">
+  <select 
+    value={roleFilter} 
+    onChange={e => setRoleFilter(e.target.value)}
+    className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400"
+  >
+    <option value="all">All Roles</option>
+    <option value="customer">Customers</option>
+    <option value="admin">Admins</option>
+  </select>
+  <div className="relative w-64">
+    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+    <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+      className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400"
+    />
+  </div>
+</div>
+      </div>
+
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="bg-black/40 border-b border-white/10 text-xs uppercase text-gray-500">
+              <th className="p-4 font-medium">Email</th>
+              <th className="p-4 font-medium">Role</th>
+              <th className="p-4 font-medium">Status</th>
+              <th className="p-4 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-sm">
+            {isLoading ? <tr><td colSpan="4" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr> 
+            : filtered.map(u => (
+              <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                <td className="p-4 text-white font-medium">{u.email}</td>
+                <td className="p-4 text-gray-400 uppercase text-xs tracking-wider">{u.user_roles?.[0]?.role || 'customer'}</td>
+                <td className="p-4">
+                  {u.is_banned 
+                    ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold">Blocked</span>
+                    : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold">Active</span>}
+                </td>
+                <td className="p-4 text-right">
+                  <button onClick={() => handleToggleBan(u.id, u.is_banned)}
+                    className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${u.is_banned ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'}`}>
+                    {u.is_banned ? 'Unblock' : 'Block Account'}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+export default AdminUsers;
+
+========== services/userApi.js ==========
+
+import { supabase } from './supabase';
+
+
+export const fetchUserBanStatusAPI = async (userId) => {
+
+  if (!userId) return false;
+
+  const { data, error } = await supabase.from('profiles').select('is_banned').eq('id', userId).maybeSingle();
+
+  if (error) throw error;
+
+  return data?.is_banned || false;
+
+};
+
+
+export const toggleUserBanAPI = async (userId, isBanned) => {
+
+  const { data, error } = await supabase
+
+    .from('profiles')
+
+    .update({ is_banned: isBanned })
+
+    .eq('id', userId)
+
+    .select();
+
+
+  if (error) throw error;
+
+
+  if (data && data.length === 0) {
+
+    const { error: insertError } = await supabase
+
+      .from('profiles')
+
+      .insert([{ id: userId, is_banned: isBanned }]);
+
+    
+
+    if (insertError) throw insertError;
+
+  }
+
+};
+
+
+export const fetchUserProfileAPI = async (userId) => {
+
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+
+  if (error) throw error;
+
+  return data;
+
+};
+
+
+export const updateUserProfileAPI = async (userId, updates) => {
+
+  // ✨ CHANGED to .upsert() so it guarantees saving! ✨
+
+  const { error } = await supabase.from('profiles').upsert({ id: userId, ...updates });
+
+  if (error) throw error;
+
+};
+
+========== components/admin/AdminOrders.jsx ==========
+
+import React, { useState } from 'react';
+import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail } from 'lucide-react';
+import { useOrders } from '../../hooks/useOrders';
+import { useShop } from '../../contexts/ShopContext';
+
+const statusClass = (status) =>
+  status === 'pending'   ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' :
+  status === 'shipped'   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
+  status === 'canceled'  ? 'bg-red-500/10 text-red-400 border border-red-500/30' :
+                           'bg-green-500/10 text-green-400 border border-green-500/30';
+
+const AdminOrders = ({ onNavigateToMessages }) => {
+  const { showToast } = useShop();
+  const { orders, isLoading, changeOrderStatus } = useOrders(showToast);
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [idSearch, setIdSearch] = useState('');
+  const [emailSearch, setEmailSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  const filteredOrders = orders.filter(order => {
+    const matchesId = !idSearch.trim() || order.id.toString().includes(idSearch.trim());
+    const matchesEmail = !emailSearch.trim() ||
+      (order.profiles?.email || '').toLowerCase().includes(emailSearch.trim().toLowerCase());
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+    return matchesId && matchesEmail && matchesStatus;
+  });
+
+  if (isLoading) return <div className="flex justify-center items-center h-64 text-gold-400"><Loader2 className="animate-spin" size={32} /></div>;
+
+  return (
+    <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
+      <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20">
+        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          <div className="relative w-full sm:w-36">
+            <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Order ID…"
+              value={idSearch}
+              onChange={e => setIdSearch(e.target.value.replace(/\D/g, ''))}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+            />
+          </div>
+
+          <div className="relative flex-1 min-w-[180px]">
+            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search by email…"
+              value={emailSearch}
+              onChange={e => setEmailSearch(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+            />
+          </div>
+
+          <select
+            value={statusFilter}
+            onChange={e => setStatusFilter(e.target.value)}
+            className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+          >
+            <option value="all">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="shipped">Shipped</option>
+            <option value="completed">Completed</option>
+            <option value="canceled">Canceled</option>
+          </select>
+
+          <button
+            onClick={() => onNavigateToMessages?.()}
+            className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold"
+          >
+            <MessageCircle size={16} /> Open Messages Console
+          </button>
+        </div>
+
+        {(idSearch || emailSearch) && (
+          <p className="text-xs text-gray-500">
+            Showing {filteredOrders.length} of {orders.length} orders
+            {idSearch && <span> · ID contains "<span className="text-gold-400">{idSearch}</span>"</span>}
+            {emailSearch && <span> · Email contains "<span className="text-gold-400">{emailSearch}</span>"</span>}
+          </p>
+        )}
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full text-left border-collapse whitespace-nowrap">
+          <thead>
+            <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
+              {['Order ID','Date','Customer','Total','Status','Actions'].map(h => (
+                <th key={h} className={`p-4 font-medium ${h === 'Actions' ? 'text-right' : ''}`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5 text-sm text-gray-300">
+            {filteredOrders.length === 0 ? (
+              <tr><td colSpan="6" className="p-8 text-center text-gray-500">No orders found matching your filters.</td></tr>
+            ) : filteredOrders.map(order => (
+              <React.Fragment key={order.id}>
+                <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
+                  <td className="p-4 font-mono text-gold-400">#{order.id}</td>
+                  <td className="p-4">{new Date(order.created_at).toLocaleDateString()}</td>
+                  <td className="p-4">{order.profiles?.email || 'Unknown User'}</td>
+                  <td className="p-4 font-bold text-white">₱{Number(order.total_amount).toLocaleString()}</td>
+                  <td className="p-4">
+                    <select
+                      value={order.status}
+                      onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
+                      className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${statusClass(order.status)}`}
+                    >
+                      <option value="pending"   className="bg-rich-black text-white">Pending</option>
+                      <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
+                      <option value="completed" className="bg-rich-black text-white">Completed</option>
+                      <option value="canceled"  className="bg-rich-black text-white">Canceled</option>
+                    </select>
+                  </td>
+                  <td className="p-4 flex justify-end gap-2">
+                    <button
+                      onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                      className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}
+                    >
+                      {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                    <button
+                      onClick={() => onNavigateToMessages?.(order.user_id)}
+                      className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"
+                      title="Message this customer"
+                    >
+                      <MessageCircle size={16} />
+                    </button>
+                  </td>
+                </tr>
+                {expandedOrderId === order.id && (
+                  <tr className="bg-black/40 border-b border-white/10">
+                    <td colSpan="6" className="p-6">
+                      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <h4 className="text-xs uppercase tracking-widest text-gray-500 mb-3 font-bold">Order Items</h4>
+                        {order.order_items.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center text-sm mb-1">
+                            <div>
+                              <span className="text-gold-400 font-bold mr-2">{item.quantity}x</span>
+                              {/* ✨ FIXED: Show specific size variant requested ✨ */}
+                              <span className="text-white">
+                                {item.products?.name || 'Unknown'} 
+                                {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
+                              </span>
+                            </div>
+                            <span className="text-gray-400 font-mono">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Mobile */}
+      <div className="md:hidden flex flex-col divide-y divide-white/10">
+        {filteredOrders.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">No orders found.</div>
+        ) : filteredOrders.map(order => (
+          <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors">
+            <div className="flex justify-between items-start">
+              <div>
+                <span className="font-mono text-gold-400 font-bold text-lg">#{order.id}</span>
+                <p className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleDateString()}</p>
+              </div>
+              <p className="font-bold text-white text-lg">₱{Number(order.total_amount).toLocaleString()}</p>
+            </div>
+            <div className="bg-black/40 rounded p-2 border border-white/5">
+              <p className="text-sm text-gray-300 truncate">{order.profiles?.email || 'Unknown User'}</p>
+            </div>
+            <div className="flex justify-between items-center gap-3">
+              <select
+                value={order.status}
+                onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
+                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${statusClass(order.status)}`}
+              >
+                <option value="pending"   className="bg-rich-black text-white">Pending</option>
+                <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
+                <option value="completed" className="bg-rich-black text-white">Completed</option>
+                <option value="canceled"  className="bg-rich-black text-white">Canceled</option>
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
+                  className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}
+                >{expandedOrderId === order.id ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                <button
+                  onClick={() => onNavigateToMessages?.(order.user_id)}
+                  className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"
+                >
+                  <MessageCircle size={18} />
+                </button>
+              </div>
+            </div>
+            {expandedOrderId === order.id && (
+              <div className="bg-black/40 border border-white/10 rounded-lg p-3 animate-fade-in">
+                <h4 className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 font-bold border-b border-white/10 pb-2">Order Items</h4>
+                {order.order_items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between text-xs gap-3 mb-1.5">
+                    {/* ✨ FIXED: Show specific size variant requested ✨ */}
+                    <span className="flex-1 truncate">
+                      <span className="text-gold-400 font-bold mr-1.5">{item.quantity}x</span>
+                      {item.products?.name || 'Unknown'} 
+                      {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
+                    </span>
+                    <span className="text-gray-400 font-mono flex-shrink-0">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default AdminOrders;
+
+========== pages/ProfilePage.jsx ==========
+
+import React, { useState, useEffect } from 'react';
+import { Package, Clock, RefreshCw, LogOut, ArrowLeft, Settings, User, Phone, Lock, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; 
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
+import AddressEditor from '../components/profile/AddressEditor';
+import { useUserOrders } from '../hooks/useUserOrders';
+import { useProfile } from '../hooks/useProfile';
+import { usePSGC } from '../hooks/usePSGC';
+import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
+
+const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
+
+const ProfilePage = () => {
+  const { user, handleLogout } = useAuth();
+  const { addToCart, showToast } = useShop();
+  const { setCurrentPage, setIsCartOpen } = useUI();
+  const navigate = useNavigate(); 
+
+  const { orderHistory, isLoading: ordersLoading } = useUserOrders(user?.id);
+  const [activeTab, setActiveTab] = useState('history');
+  const [passwords, setPasswords] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+
+  const { profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors, hasPassword } = useProfile(activeTab);
+  
+  const { regions, provinces, cities, barangays, getProvinces, getCities, getBarangays, isFetchingLocation } = usePSGC();
+
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [addressCodes, setAddressCodes] = useState({ region: '', province: '', city: '', barangay: '' });
+
+  useEffect(() => {
+    if (!user) setCurrentPage('login');
+  }, [user, setCurrentPage]);
+
+  useEffect(() => {
+    if (!isProfileLoading && (!profileData.address || !profileData.address.region)) {
+      setIsEditingAddress(true);
+    }
+  }, [isProfileLoading, profileData.address]);
+
+  const handleReorder = (order) => {
+    order.order_items.forEach(item => { 
+      if (item.products) {
+        // Grab specific variant if it exists for reordering
+        const variant = item.product_variants || {};
+        addToCart({
+          ...item.products,
+          price: item.price_at_time, // Reorder at current catalog price or past price? Usually you want the active one, but addToCart overrides
+          size: variant.size || item.products.size || 'Standard',
+          variant_id: item.variant_id
+        }, 1, true);
+      } 
+    });
+    showToast('Cart Updated', `Items from Order #${order.id} added to your cart!`);
+    setIsCartOpen(true);
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    const success = await saveProfile(passwords);
+    if (success) {
+      setPasswords({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setIsEditingAddress(false);
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="min-h-screen bg-rich-black text-white font-sans flex flex-col">
+      <div className="relative z-50"><Header /></div>
+
+      <div className="flex-1 container mx-auto px-6 py-24 max-w-4xl animate-fade-in">
+
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-3xl font-bold uppercase">
+              {profileData.username ? profileData.username.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-1">{profileData.username || 'My Account'}</h1>
+              <p className="text-gray-400">{user.email}</p>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="flex items-center gap-2 px-6 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-lg transition-all">
+            <LogOut size={18} /> Sign Out
+          </button>
+        </div>
+
+        <div className="flex gap-4 border-b border-white/10 mb-8">
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`pb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'history' ? 'border-gold-400 text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+          >
+            <Clock size={16} /> Order History
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`pb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'settings' ? 'border-gold-400 text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+          >
+            <Settings size={16} /> Account Settings
+          </button>
+        </div>
+
+        {activeTab === 'history' && (
+          <div className="animate-fade-in">
+            {ordersLoading ? (
+              <div className="text-center py-12 text-gray-500">Loading your history...</div>
+            ) : orderHistory.length === 0 ? (
+              <div className="text-center py-16 bg-white/5 border border-white/5 rounded-2xl">
+                <Package size={48} className="mx-auto text-gray-600 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No past inquiries found</h3>
+                <p className="text-gray-400 mb-6">You haven't requested any perfumes yet.</p>
+                <button onClick={() => navigate('/products')} className="text-gold-400 hover:underline inline-flex items-center gap-2">
+                  <ArrowLeft size={16} /> Browse Collection
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {orderHistory.map(order => (
+                  <OrderHistoryCard key={order.id} order={order} onReorder={handleReorder} navigate={navigate} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 animate-fade-in">
+            {isProfileLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="animate-spin text-gold-400" size={32} />
+              </div>
+            ) : (
+              <form onSubmit={handleSaveSettings} className="space-y-8">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Personal Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <User size={14} className="text-gold-400" /> Username
+                      </label>
+                      <input
+                        type="text"
+                        value={profileData.username}
+                        onChange={e => setProfileData({ ...profileData, username: e.target.value })}
+                        className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <Phone size={14} className="text-gold-400" /> Phone Number (Optional)
+                      </label>
+                      <input
+                        type="tel"
+                        value={profileData.phone_number}
+                        onChange={e => {
+                          const sanitized = e.target.value.replace(/[^\d+]/g, '');
+                          setProfileData({ ...profileData, phone_number: sanitized });
+                        }}
+                        maxLength={13}
+                        className={`w-full bg-black/40 border rounded-lg p-3 text-white focus:outline-none transition-colors ${errors?.phone_number ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-gold-400'}`}
+                        placeholder="09123456789 or +639..."
+                      />
+                      {errors?.phone_number && <p className="text-red-400 text-xs mt-1.5">{errors.phone_number}</p>}
+                    </div>
+
+                    <AddressEditor
+                      profileData={profileData}
+                      setProfileData={setProfileData}
+                      errors={errors}
+                      isEditingAddress={isEditingAddress}
+                      setIsEditingAddress={setIsEditingAddress}
+                      regions={regions}
+                      provinces={provinces}
+                      cities={cities}
+                      barangays={barangays}
+                      getProvinces={getProvinces}
+                      getCities={getCities}
+                      getBarangays={getBarangays}
+                      isFetchingLocation={isFetchingLocation}
+                      addressCodes={addressCodes}
+                      setAddressCodes={setAddressCodes}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
+                  
+                  <p className="text-sm text-gray-500 mb-4">
+                    {hasPassword 
+                      ? "Leave these fields blank if you do not want to change your password." 
+                      : "You signed in with a social account. Set a password here to enable email login."}
+                  </p>
+                  
+                  <div className={`grid grid-cols-1 ${hasPassword ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-6`}>
+                    
+                    {hasPassword && (
+                      <div>
+                        <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Lock size={14} className="text-gold-400" /> Current Password</label>
+                        <input type="password" value={passwords.currentPassword} onChange={e => setPasswords({ ...passwords, currentPassword: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="••••••••" />
+                      </div>
+                    )}
+                    
+                    <div>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <Lock size={14} className="text-gold-400" /> 
+                        {hasPassword ? 'New Password' : 'Set Password'}
+                      </label>
+                      <input type="password" value={passwords.newPassword} onChange={e => setPasswords({ ...passwords, newPassword: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="••••••••" />
+                    </div>
+                    
+                    <div>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2"><Lock size={14} className="text-gold-400" /> Confirm Password</label>
+                      <input type="password" value={passwords.confirmPassword} onChange={e => setPasswords({ ...passwords, confirmPassword: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" placeholder="••••••••" />
+                    </div>
+                    
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-6 border-t border-white/10">
+                  <button
+                    type="submit"
+                    disabled={isSaving || isFetchingLocation}
+                    className="flex items-center gap-2 px-8 py-3 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold uppercase tracking-widest rounded transition-all shadow-lg disabled:opacity-70"
+                  >
+                    {isSaving ? <><Loader2 className="animate-spin" size={18} /> Saving...</> : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+const OrderHistoryCard = ({ order, onReorder, navigate }) => (
+  <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
+    <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
+      <div>
+        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Inquiry #{order.id}</p>
+        <p className="text-sm font-medium text-white">{new Date(order.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      </div>
+      <div className="flex items-center gap-6">
+        <div>
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Status</p>
+          <p className={`text-sm font-bold ${order.status === 'pending' ? 'text-orange-400' : 'text-green-400'}`}>
+            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Total</p>
+          <p className="text-sm font-bold text-gold-400">₱{order.total_amount.toLocaleString()}</p>
+        </div>
+      </div>
+    </div>
+    <div className="p-5">
+      <div className="space-y-4 mb-6">
+        {order.order_items.map((item, index) => {
+          const prod = item.products;
+          // ✨ FIXED: Supabase sometimes returns joins as arrays. We must safely unwrap it! ✨
+          const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
+          
+          if (!prod) return null;
+
+          const imageSource = variant?.image_url || prod.image_urls?.[0] || FALLBACK_IMAGE;
+          const displaySize = variant?.size || prod.size || 'Standard';
+
+          return (
+            <div key={index} className="flex items-center gap-4">
+              <div 
+                className="w-16 h-16 bg-white/10 rounded overflow-hidden flex-shrink-0 cursor-pointer"
+                onClick={() => navigate(`/products/${prod.id}`)}
+              >
+                <img src={imageSource} alt={prod.name} className="w-full h-full object-cover transition-transform hover:scale-110" />
+              </div>
+              <div className="flex-1">
+                <p 
+                  className="font-bold text-sm text-white cursor-pointer hover:text-gold-400 transition-colors"
+                  onClick={() => navigate(`/products/${prod.id}`)}
+                >
+                  {prod.name}
+                </p>
+                <p className="text-xs text-gray-500">{prod.brand} • {displaySize}</p>
+              </div>
+              <div className="text-right text-sm text-gray-400">
+                {item.quantity}x @ ₱{item.price_at_time}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex justify-end pt-4 border-t border-white/10">
+        <button onClick={() => onReorder(order)} className="flex items-center gap-2 px-5 py-2.5 bg-gold-400/10 text-gold-400 hover:bg-gold-400 hover:text-black border border-gold-400/30 rounded transition-all text-sm font-bold uppercase tracking-wider">
+          <RefreshCw size={16} /> Inquire Again
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+export default ProfilePage;
+
+========== services/orderApi.js ==========
+
+import { supabase } from './supabase';
+
+export const fetchOrdersAPI = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id, 
+      created_at, 
+      status, 
+      total_amount,
+      user_id,
+      profiles (email), 
+      order_items (
+        quantity, 
+        price_at_time,
+        product_id,
+        variant_id,
+        products (name),
+        product_variants (size)
+      )
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+export const updateOrderStatusAPI = async (orderId, newStatus, orderItems = []) => {
+  const { error } = await supabase
+    .from('orders')
+    .update({ status: newStatus })
+    .eq('id', orderId);
+
+  if (error) throw error;
+
+  // ✨ FIXED: Deduct stock from product_variants, not products! ✨
+  if (newStatus === 'completed' && orderItems.length > 0) {
+    for (const item of orderItems) {
+      if (!item.variant_id) continue; // Safety check
+      
+      try {
+        const { data: variant } = await supabase
+          .from('product_variants')
+          .select('stock_count')
+          .eq('id', item.variant_id)
+          .single();
+
+        if (variant?.stock_count != null) {
+          const newStock = Math.max(0, variant.stock_count - item.quantity);
+          await supabase
+            .from('product_variants')
+            .update({ stock_count: newStock })
+            .eq('id', item.variant_id);
+        }
+      } catch (err) {
+        console.error(`Stock update failed for variant ${item.variant_id}:`, err);
+      }
+    }
+  }
+};
+
+export const fetchUserOrdersAPI = async (userId) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id, created_at, status, total_amount,
+      order_items (
+        quantity, price_at_time, variant_id,
+        products (*),
+        product_variants (*)
+      )
+    `)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+========== hooks/useOrders.js ==========
+
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchOrdersAPI, updateOrderStatusAPI } from '../services/orderApi';
+import { sendMessageAPI } from '../services/messageApi';
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
+
+const STATUS_MESSAGES = {
+  shipped: (orderId) => `📦 Your order #${orderId} has been marked as shipped! We'll be in touch with delivery details shortly. Thank you for shopping with KL Scents! 🌟`,
+  completed: (orderId) => `✅ Your order #${orderId} has been completed. We hope you love your new scent! Feel free to leave a review. 💛`,
+  canceled: (orderId) => `❌ Your order #${orderId} has been canceled. If you have any questions or concerns regarding this cancellation, please reply to this message.`,
+};
+
+export const useOrders = (showToast) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: orders, isLoading } = useQuery({
+    queryKey: ['adminOrders'],
+    queryFn: fetchOrdersAPI,
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ orderId, newStatus, orderItems }) =>
+      updateOrderStatusAPI(orderId, newStatus, orderItems),
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+
+      if (showToast) showToast('Success', `Order #${variables.orderId} updated to ${variables.newStatus}`);
+
+      logAdminActionAPI(
+        user?.email,
+        `Updated Order Status to ${variables.newStatus}`,
+        `Order #${variables.orderId}`
+      );
+
+      // Auto-notify the customer via chat if status is a meaningful milestone
+      const messageTemplate = STATUS_MESSAGES[variables.newStatus];
+      if (messageTemplate && variables.orderUserId) {
+        try {
+          await sendMessageAPI({
+            sender_role: 'admin',
+            content: messageTemplate(variables.orderId),
+            user_id: variables.orderUserId,
+          });
+        } catch (err) {
+          console.warn('Status notification message failed:', err);
+        }
+      }
+    },
+    onError: () => {
+      if (showToast) showToast('Error', 'Failed to update status', 'error');
+    },
+  });
+
+  const changeOrderStatus = async (orderId, newStatus, orderUserId, orderItems = []) => {
+    await statusMutation.mutateAsync({ orderId, newStatus, orderUserId, orderItems });
+  };
+
+  return { orders: orders || [], isLoading, changeOrderStatus };
+};
+
+========== components/common/ChatWidget.jsx ==========
+
+import React, { useState, useRef, useEffect } from 'react';
+import { MessageCircle, X, Send, User, ShoppingBag, AlertCircle } from 'lucide-react';
+import { useMessageThread } from '../../hooks/useMessages';
+import { useUserBan } from '../../hooks/useUserBan';
+import { useAuth } from '../../contexts/AuthContext';
+
+const MAX_CHARS = 250;
+
+const ChatWidget = () => {
+  const { user } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null); 
+
+  const { messages, sendMessage } = useMessageThread(user?.id, 'user');
+  const { isBanned } = useUserBan(user?.id);
+
+  useEffect(() => {
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isOpen]);
+
+  const handleSend = async (e) => {
+    e?.preventDefault();
+    if (isBanned || newMessage.trim().length === 0 || newMessage.length > MAX_CHARS) return;
+    
+    const { success } = await sendMessage(newMessage);
+    if (success) {
+      setNewMessage('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    }
+  };
+
+  const handleInput = (e) => {
+    setNewMessage(e.target.value);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend(e);
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className={`fixed bottom-6 right-6 z-[40] p-4 bg-gold-400 text-rich-black rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:scale-110 hover:bg-gold-300 transition-all duration-300 ${isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'}`}
+      >
+        <MessageCircle size={28} />
+      </button>
+
+      <div className={`fixed bottom-6 right-6 z-[100] w-[350px] sm:w-[400px] h-[600px] max-h-[80vh] bg-rich-black border border-gold-400/30 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right ${isOpen ? 'scale-100 opacity-100' : 'scale-50 opacity-0 pointer-events-none'}`}>
+
+        <div className="p-4 border-b border-white/10 bg-white/5 flex justify-between items-center backdrop-blur-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/30">
+              <User size={20} />
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-sm tracking-wide">KL Scents Support</h3>
+              <div className="flex items-center gap-1.5">
+                <div className={`w-2 h-2 rounded-full ${isBanned ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`}></div>
+                <span className={`text-xs ${isBanned ? 'text-red-400' : 'text-green-400'}`}>
+                  {isBanned ? 'Unavailable' : 'Online'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-white transition-colors p-2">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-black/40">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-start animate-fade-in mb-6">
+              <div className="p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap break-words bg-white/10 text-white border border-white/5 rounded-tl-sm">
+                Hello! Welcome to KL Scents. How can I help you with your order today? 👋
+              </div>
+            </div>
+          )}
+
+          {messages.map((msg, index) => {
+            const isUser = msg.sender_role === 'user';
+            const isOrderInquiry = msg.metadata && msg.metadata.type === 'order_inquiry';
+
+            let showTimestampDivider = false;
+            let timeString = '';
+            if (index === 0) {
+              showTimestampDivider = true;
+            } else {
+              const prevTime = new Date(messages[index - 1].created_at).getTime();
+              const currTime = new Date(msg.created_at).getTime();
+              if (currTime - prevTime > 1800000) showTimestampDivider = true;
+            }
+            if (showTimestampDivider) {
+              timeString = new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+            }
+
+            return (
+              <React.Fragment key={msg.id}>
+                {showTimestampDivider && (
+                  <div className="w-full text-center my-6 animate-fade-in">
+                    <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold bg-white/5 px-4 py-1.5 rounded-full">
+                      {timeString}
+                    </span>
+                  </div>
+                )}
+
+                <div className={`flex flex-col mb-4 ${isUser ? 'items-end' : 'items-start'} animate-fade-in`}>
+                  {!isUser && (
+                    <div className="w-6 h-6 rounded-full bg-gold-400/20 flex items-center justify-center mb-1 border border-gold-400/30">
+                      <User size={12} className="text-gold-400" />
+                    </div>
+                  )}
+
+                  {isOrderInquiry ? (
+                    <div className="bg-white/5 border border-gold-400/30 p-4 rounded-2xl rounded-tr-sm w-full max-w-[90%] text-white text-sm shadow-lg shadow-gold-400/5">
+                      <div className="flex items-center gap-2 mb-3 text-gold-400 font-bold border-b border-white/10 pb-2">
+                        <ShoppingBag size={16} />
+                        <span>Order Inquiry #{msg.metadata.order_id}</span>
+                      </div>
+                      <div className="space-y-1 mb-3 bg-black/40 p-2 rounded">
+                        {msg.metadata.items?.map((item, idx) => (
+                          <div key={idx} className="flex justify-between gap-4">
+                            {/* ✨ FIXED: Append size here ✨ */}
+                            <span className="text-gray-300">{item.quantity}x {item.name} {item.size ? `(${item.size})` : ''}</span>
+                            <span className="text-gray-400">₱{item.price * item.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-1 gap-1 text-xs text-gray-400 mb-3 border-b border-white/10 pb-3">
+                        <div><span className="text-gray-500 font-medium">Method:</span> {msg.metadata.fulfillment}</div>
+                        <div><span className="text-gray-500 font-medium">Payment:</span> {msg.metadata.payment}</div>
+                        <div><span className="text-gray-500 font-medium">Contact:</span> {msg.metadata.contact}</div>
+                        {msg.metadata.location && (
+                          <div><span className="text-gray-500 font-medium">Location:</span> {msg.metadata.location}</div>
+                        )}
+                      </div>
+                      <div className="flex justify-between items-center pt-1 font-bold">
+                        <span className="text-gold-400">Total Estimate</span>
+                        <span className="text-gold-400 text-base">₱{msg.metadata.total?.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`p-3 rounded-2xl max-w-[85%] text-sm leading-relaxed whitespace-pre-wrap break-words ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
+                      {msg.content}
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
+            );
+          })}
+          <div ref={messagesEndRef} />
+        </div>
+
+        <form onSubmit={handleSend} className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
+          {isBanned ? (
+            <div className="flex items-center justify-center gap-2 p-3 text-sm text-red-400 bg-red-500/10 rounded-lg border border-red-500/20">
+              <AlertCircle size={16} />
+              <span>Your messaging privileges have been restricted.</span>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5 relative">
+              <div className="flex justify-end px-2">
+                <span className={`text-[10px] font-medium transition-colors ${
+                  newMessage.length >= MAX_CHARS ? 'text-red-400' : 
+                  newMessage.length >= MAX_CHARS * 0.8 ? 'text-gold-400' : 'text-gray-500'
+                }`}>
+                  {newMessage.length}/{MAX_CHARS}
+                </span>
+              </div>
+              <div className="relative flex items-end">
+                <textarea
+                  ref={textareaRef}
+                  maxLength={MAX_CHARS}
+                  value={newMessage}
+                  onChange={handleInput}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Type your message..."
+                  rows={1}
+                  className="w-full bg-black/50 border border-white/20 rounded-2xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors placeholder-gray-500 resize-none overflow-y-auto custom-scrollbar"
+                  style={{ minHeight: '44px' }}
+                />
+                <button
+                  type="submit"
+                  disabled={!newMessage.trim() || newMessage.length > MAX_CHARS}
+                  className="absolute right-2 bottom-2 p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </form>
+      </div>
+    </>
+  );
+};
+
+export default ChatWidget;
+
+========== components/admin/AdminMessages.jsx ==========
+
+import React, { useState, useRef, useEffect } from 'react';
+import { User, Send, ShoppingBag, Loader2, Ban, CheckCircle, Search, ArrowLeft, MessageSquare, Package } from 'lucide-react';
+import { useActiveChats, useMessageThread } from '../../hooks/useMessages';
+import { useUserBan } from '../../hooks/useUserBan';
+import { useShop } from '../../contexts/ShopContext';
+import { supabase } from '../../services/supabase';
+
+const STATUS_COLORS = {
+  pending:   'bg-orange-500/10 text-orange-400 border-orange-500/30',
+  shipped:   'bg-blue-500/10 text-blue-400 border-blue-500/30',
+  completed: 'bg-green-500/10 text-green-400 border-green-500/30',
+  canceled:  'bg-red-500/10 text-red-400 border-red-500/30',
+};
+
+const MAX_CHARS = 250;
+
+const AdminMessages = ({ defaultSelectedUser }) => {
+  const { showToast } = useShop();
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [reply, setReply] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [latestOrder, setLatestOrder] = useState(null);
+  
+  const messagesEndRef = useRef(null);
+
+  const { activeChats, isLoading: chatsLoading } = useActiveChats();
+  const { messages, sendMessage } = useMessageThread(selectedUser, 'admin');
+  const { isBanned, toggleBan } = useUserBan(selectedUser);
+
+  useEffect(() => {
+    if (defaultSelectedUser) {
+      setSelectedUser(defaultSelectedUser);
+    }
+  }, [defaultSelectedUser]);
+
+  useEffect(() => {
+    if (!selectedUser) { setLatestOrder(null); return; }
+    const fetchLatestOrder = async () => {
+      const { data } = await supabase
+        .from('orders')
+        .select('id, status, total_amount, created_at')
+        .eq('user_id', selectedUser)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setLatestOrder(data || null);
+    };
+    fetchLatestOrder();
+  }, [selectedUser, messages]); 
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleReply(e);
+    }
+  };
+
+  const handleReply = async (e) => {
+    e?.preventDefault();
+    if (!reply.trim() || reply.length > MAX_CHARS) return;
+    
+    const { success } = await sendMessage(reply);
+    if (success) {
+      setReply('');
+    } else {
+      showToast('Error', 'Failed to send message', 'error');
+    }
+  };
+
+  const selectedChatData = activeChats.find(c => c.id === selectedUser);
+  const filteredChats = activeChats.filter(chat => chat.email.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  return (
+    <div className="h-[600px] md:h-[70vh] w-full bg-rich-black border border-white/10 rounded-xl overflow-hidden flex animate-fade-in relative shadow-2xl">
+
+      <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-white/10 flex-col bg-black/40 min-w-0 flex-shrink-0`}>
+        <div className="p-4 border-b border-white/10 flex flex-col gap-3">
+          <h3 className="font-bold text-white tracking-widest uppercase text-sm">Active Inquiries</h3>
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          {chatsLoading ? (
+            <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gold-400" /></div>
+          ) : filteredChats.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 text-sm">No active chats found.</div>
+          ) : (
+            filteredChats.map(chat => (
+              <button
+                key={chat.id}
+                onClick={() => setSelectedUser(chat.id)}
+                className={`w-full p-4 flex items-center gap-3 text-left transition-colors border-b border-white/5 ${selectedUser === chat.id ? 'bg-gold-400/10' : 'hover:bg-white/5'}`}
+              >
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedUser === chat.id ? 'bg-gold-400 text-black' : 'bg-white/10 text-white'}`}>
+                  <User size={16} />
+                </div>
+                <div className="overflow-hidden flex-1">
+                  <div className="flex justify-between items-center mb-0.5">
+                    <p className={`text-sm truncate pr-2 ${selectedUser === chat.id ? 'text-gold-400 font-bold' : 'text-gray-300'}`}>
+                      {chat.email}
+                    </p>
+                    <p className="text-[10px] text-gray-500 flex-shrink-0">
+                      {new Date(chat.lastActive).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">Tap to view messages...</p>
+                </div>
+              </button>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className={`${!selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-2/3 flex-col relative min-w-0 overflow-hidden`}>
+        {!selectedUser ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-white/5">
+            <MessageSquare size={48} className="mb-4 opacity-20" />
+            <p>Select a customer on the left to view messages.</p>
+          </div>
+        ) : (
+          <>
+            <div className="p-3 md:p-4 border-b border-white/10 bg-black/20 sticky top-0 z-10 backdrop-blur-md">
+              <div className="flex justify-between items-start gap-2">
+                <div className="flex items-center gap-2 md:gap-3 overflow-hidden">
+                  <button onClick={() => setSelectedUser(null)} className="md:hidden p-1.5 -ml-1.5 text-gray-400 hover:text-white transition-colors">
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="font-bold text-white text-sm md:text-base truncate">{selectedChatData?.email}</span>
+                    {isBanned && <span className="text-[10px] text-red-400 font-bold tracking-widest">RESTRICTED USER</span>}
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => toggleBan(!isBanned)}
+                  className={`flex items-center gap-1.5 md:gap-2 px-2.5 py-1.5 rounded text-[10px] md:text-xs font-bold transition-colors flex-shrink-0 ${
+                    isBanned ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white'
+                  }`}
+                >
+                  {isBanned ? <><CheckCircle size={14} className="hidden sm:block"/> Unblock</> : <><Ban size={14} className="hidden sm:block"/> Block</>}
+                </button>
+              </div>
+
+              {latestOrder && (
+                <div className={`mt-2 flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium w-fit max-w-full overflow-hidden ${STATUS_COLORS[latestOrder.status] || STATUS_COLORS.pending}`}>
+                  <Package size={12} className="flex-shrink-0" />
+                  <span className="truncate">Latest Order #{latestOrder.id}:</span>
+                  <span className="font-bold uppercase tracking-wider flex-shrink-0">{latestOrder.status}</span>
+                  <span className="text-inherit opacity-60 flex-shrink-0">· ₱{Number(latestOrder.total_amount).toLocaleString()}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-black/10 min-w-0">
+              {messages.map((msg, index) => {
+                const isAdmin = msg.sender_role === 'admin';
+                const isOrder = msg.metadata?.type === 'order_inquiry';
+
+                let showTimestampDivider = false;
+                let timeString = '';
+
+                if (index === 0) {
+                  showTimestampDivider = true;
+                } else {
+                  const prevTime = new Date(messages[index - 1].created_at).getTime();
+                  const currTime = new Date(msg.created_at).getTime();
+                  if (currTime - prevTime > 1800000) showTimestampDivider = true;
+                }
+
+                if (showTimestampDivider) {
+                  timeString = new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                }
+
+                return (
+                  <React.Fragment key={msg.id}>
+                    {showTimestampDivider && (
+                      <div className="w-full text-center my-4 md:my-6 animate-fade-in">
+                        <span className="text-[9px] md:text-[10px] uppercase tracking-widest text-gray-500 font-bold bg-white/5 px-3 py-1 rounded-full">
+                          {timeString}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* ✨ FIXED: Added w-full to the wrapper so it strictly obeys bounds ✨ */}
+                    <div className={`flex flex-col mb-4 w-full min-w-0 ${isAdmin ? 'items-end' : 'items-start'}`}>
+                      {isOrder ? (
+                        <div className="bg-black/60 border border-gold-400/30 p-3 md:p-4 rounded-xl w-full max-w-[95%] md:max-w-[90%] text-sm shadow-lg overflow-hidden">
+                          <div className="flex flex-wrap items-center gap-2 mb-3 text-gold-400 font-bold border-b border-white/10 pb-2">
+                            <ShoppingBag size={16} /> Order #{msg.metadata.order_id}
+                          </div>
+                          <div className="space-y-1 mb-3 bg-white/5 p-2 md:p-3 rounded text-xs md:text-sm">
+                            {msg.metadata.items?.map((item, idx) => (
+                              <div key={idx} className="flex justify-between gap-4">
+                                <span className="text-gray-300 truncate">{item.quantity}x {item.name} {item.size ? `(${item.size})` : ''}</span>
+                                <span className="text-gray-400 flex-shrink-0">₱{item.price * item.quantity}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] md:text-xs text-gray-400 mb-3 break-all">
+                            <div className="truncate"><span className="text-gray-500">Method:</span> {msg.metadata.fulfillment}</div>
+                            <div className="truncate"><span className="text-gray-500">Payment:</span> {msg.metadata.payment}</div>
+                            <div className="truncate"><span className="text-gray-500">Contact:</span> {msg.metadata.contact}</div>
+                            <div className="sm:col-span-2 truncate"><span className="text-gray-500">Location:</span> {msg.metadata.location || 'N/A'}</div>
+                          </div>
+                          <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                            <span className="text-gold-400 font-bold text-xs md:text-sm">Total</span>
+                            <span className="text-gold-400 font-bold text-base md:text-lg">₱{msg.metadata.total?.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ✨ FIXED: Changed break-words to break-all ✨ */
+                        <div className={`p-2.5 md:p-3 rounded-2xl max-w-[85%] md:max-w-[75%] text-xs md:text-sm whitespace-pre-wrap break-all overflow-hidden ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
+                          {msg.content}
+                        </div>
+                      )}
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <form onSubmit={handleReply} className="p-3 md:p-4 border-t border-white/10 bg-black/40 flex flex-col gap-1.5 relative w-full min-w-0">
+              <div className="flex justify-end px-2">
+                <span className={`text-[10px] font-medium transition-colors ${
+                  reply.length >= MAX_CHARS ? 'text-red-400' : 
+                  reply.length >= MAX_CHARS * 0.8 ? 'text-gold-400' : 'text-gray-500'
+                }`}>
+                  {reply.length}/{MAX_CHARS}
+                </span>
+              </div>
+              
+              <div className="relative w-full min-w-0 overflow-hidden">
+                <div className="grid w-full min-w-0">
+                  <div 
+                    aria-hidden="true" 
+                    className="invisible whitespace-pre-wrap break-all col-start-1 col-end-2 row-start-1 row-end-2 py-3 pl-4 pr-12 text-sm leading-relaxed border border-transparent min-h-[3rem] max-h-[25vh] overflow-hidden w-full"
+                  >
+                    {reply + ' '}
+                  </div>
+                  
+                  <textarea
+                    maxLength={MAX_CHARS}
+                    value={reply}
+                    onChange={(e) => setReply(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder="Type a reply... (Shift+Enter for new line)"
+                    className="w-full h-full resize-none col-start-1 col-end-2 row-start-1 row-end-2 bg-black/50 border border-white/20 rounded-2xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors custom-scrollbar break-all leading-relaxed overflow-y-auto"
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={!reply.trim() || reply.length > MAX_CHARS}
+                  className="absolute right-1.5 md:right-2 bottom-1.5 md:bottom-2 p-1.5 md:p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 transition-all z-10"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AdminMessages;
+
+========== services/messageApi.js ==========
+
+import { supabase } from './supabase';
+
+export const fetchActiveChatsAPI = async () => {
+  // Query the VIEW, not the raw messages table!
+  const { data, error } = await supabase
+    .from('latest_messages_per_user') 
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+export const fetchMessagesByUserAPI = async (userId) => {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+
+  if (error) throw error;
+  return data;
+};
+
+export const sendMessageAPI = async (payload) => {
+  if (!payload.content || !payload.content.trim()) throw new Error('Message cannot be empty.');
+  if (payload.content.length > 2000) throw new Error('Message is too long (max 2000 characters).');
+
+  const { error } = await supabase.from('messages').insert([{
+    ...payload,
+    content: payload.content.trim(),
+  }]);
+  if (error) throw error;
+};
+
+========== hooks/useMessages.js ==========
+
+import { useState, useEffect } from 'react';
+import { supabase } from '../services/supabase';
+import { fetchActiveChatsAPI, fetchMessagesByUserAPI, sendMessageAPI } from '../services/messageApi';
+
+// ─── Hook 1: Admin sidebar chat list ────────────────────────────────────────
+export const useActiveChats = () => {
+  const [activeChats, setActiveChats] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const buildChatList = (data) => {
+    if (!data || data.length === 0) return [];
+    
+    // The SQL view already grouped these by user! We just map the clean data.
+    return data.map(msg => ({
+      id: msg.user_id,
+      email: msg.email || `Customer ${msg.user_id.substring(0, 6)}`,
+      displayName: msg.username || msg.email || 'Unknown User',
+      lastActive: msg.created_at
+    }));
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadChats = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchActiveChatsAPI();
+        if (isMounted) setActiveChats(buildChatList(data));
+      } catch (error) {
+        console.error("Failed to load active chats", error);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadChats();
+
+    const subscription = supabase
+      .channel('admin-active-chats')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        async () => {
+          try {
+            const data = await fetchActiveChatsAPI();
+            if (isMounted) setActiveChats(buildChatList(data));
+          } catch (err) {
+            console.error("Failed to refresh active chats", err);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  return { activeChats, isLoading };
+};
+
+// ─── Hook 2: Shared realtime thread for admin and customer ───────────────────
+export const useMessageThread = (userId, role) => {
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => {
+    if (!userId) {
+      setMessages([]);
+      return;
+    }
+
+    const loadMessages = async () => {
+      try {
+        const data = await fetchMessagesByUserAPI(userId);
+        setMessages(data || []);
+      } catch (error) {
+        console.error("Failed to load messages", error);
+      }
+    };
+
+    loadMessages();
+
+    const channelName = role === 'admin'
+      ? `admin-messages-${userId}`
+      : `public:messages:user_id=eq.${userId}`;
+
+    const subscription = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${userId}` },
+        (payload) => setMessages(current => [...current, payload.new])
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(subscription);
+  }, [userId, role]);
+
+  const sendMessage = async (content) => {
+    if (!content.trim() || !userId) return { success: false };
+    try {
+      await sendMessageAPI({ sender_role: role, content, user_id: userId });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error };
+    }
+  };
+
+  return { messages, sendMessage };
+};
+
+========== components/common/ImageUploader.jsx ==========
+
+import React, { useState } from 'react';
+import { Loader2, UploadCloud, AlertCircle } from 'lucide-react';
+import { supabase } from '../../services/supabase';
+
+const ImageUploader = ({ onUploadSuccess, onError, bucketName = 'product-images' }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+
+  const processAndUploadFile = (file) => {
+    // 1. STRICT FILE CHECK: Make sure it's actually an image
+    if (!file.type.startsWith('image/')) {
+      if (onError) onError('Invalid file type. Please upload a JPG, PNG, or WEBP image.');
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        // --- COMPRESSION LOGIC ---
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800; 
+        const scaleSize = MAX_WIDTH / img.width;
+        
+        // Only scale down if the image is wider than 800px
+        if (scaleSize < 1) {
+          canvas.width = MAX_WIDTH;
+          canvas.height = img.height * scaleSize;
+        } else {
+          canvas.width = img.width;
+          canvas.height = img.height;
+        }
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Convert canvas to a compressed JPEG blob
+        canvas.toBlob(async (blob) => {
+          const fileName = `perfume_${Date.now()}.jpg`;
+          
+          // --- SUPABASE UPLOAD ---
+          const { data, error } = await supabase.storage
+            .from(bucketName)
+            .upload(fileName, blob, { 
+              contentType: 'image/jpeg',
+              upsert: true // Allows overwriting if a file with the same name exists
+            });
+
+          if (error) {
+            console.error("Storage Error:", error);
+            setIsUploading(false);
+            if (onError) onError(`Upload failed: ${error.message}`); 
+          } else {
+            // Use data.path to guarantee we are getting the exact file we just uploaded
+            const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
+            setIsUploading(false);
+            onUploadSuccess(publicUrlData.publicUrl); 
+          }
+        }, 'image/jpeg', 0.85);
+      };
+    };
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      processAndUploadFile(e.target.files[0]);
+    }
+  };
+
+  return (
+    <div 
+      className="relative"
+      onDragEnter={(e) => { e.preventDefault(); setDragActive(true); }}
+      onDragLeave={(e) => { e.preventDefault(); setDragActive(false); }}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragActive(false);
+        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+          processAndUploadFile(e.dataTransfer.files[0]);
+        }
+      }}
+    >
+      <input 
+        type="file" 
+        accept="image/png, image/jpeg, image/webp"
+        onChange={handleFileChange}
+        disabled={isUploading}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
+      />
+      <div className={`w-full bg-black/50 border-2 border-dashed rounded-lg p-6 text-center transition-all flex flex-col items-center justify-center gap-3 
+        ${isUploading ? 'border-gray-600 text-gray-500 bg-black/80' : 
+          dragActive ? 'border-gold-400 bg-gold-400/10 text-gold-400' : 'border-white/20 text-gray-400 hover:border-gold-400/50 hover:text-gold-400'}`}
+      >
+        {isUploading ? (
+          <>
+            <Loader2 className="animate-spin text-gold-400" size={28} />
+            <div>
+              <p className="text-sm font-bold text-white mb-1">Processing Image...</p>
+              <p className="text-xs">Compressing and uploading to server</p>
+            </div>
+          </>
+        ) : (
+          <>
+            <UploadCloud size={28} />
+            <div>
+              <p className="text-sm font-bold text-white mb-1">Click or drag image here</p>
+              <p className="text-xs">Supports JPG, PNG, WEBP (Max 800px width)</p>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ImageUploader;

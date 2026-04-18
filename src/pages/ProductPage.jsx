@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, LayoutGrid, List, ChevronDown, SlidersHorizontal, ArrowUp } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom'; // <-- REMOVED useLocation, ADDED useParams
+import { useNavigate, useParams } from 'react-router-dom';
 
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
@@ -23,24 +23,36 @@ const ProductPage = () => {
   const { searchQuery, setSearchQuery } = useUI();
   const { products, isLoading } = useStoreProducts();
   const navigate = useNavigate();
-  const { id } = useParams(); // ✨ NEW: Reads the ID directly from the URL!
+  const { id } = useParams();
 
- const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
-// Collect sizes from base product AND all variants
-const dynamicSizes = useMemo(() => {
-  const sizeSet = new Set();
-  products.forEach(p => {
-    (p.product_variants || []).forEach(v => { if (v.size) sizeSet.add(v.size); });
-  });
-  return [...sizeSet].sort();
-}, [products]);
-const dynamicNotes = useMemo(() => [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort(), [products]);
+  const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
 
-// helper – lowest price for a product (variants or base)
-const getEffectivePrice = (p) => {
-  if (!p.product_variants || p.product_variants.length === 0) return 0;
-  return Math.min(...p.product_variants.map(v => Number(v.price)));
-};
+  // ✨ FIXED: Smart Numeric Sorting for Sizes ✨
+  const dynamicSizes = useMemo(() => {
+    const sizeSet = new Set();
+    products.forEach(p => {
+      (p.product_variants || []).forEach(v => { if (v.size) sizeSet.add(v.size); });
+    });
+    
+    return [...sizeSet].sort((a, b) => {
+      // Extract numbers from the strings. If no number (e.g., "Tester"), assign Infinity so it goes to the bottom.
+      const numA = parseInt(a.match(/\d+/)?.[0]) || Infinity;
+      const numB = parseInt(b.match(/\d+/)?.[0]) || Infinity;
+      
+      // Sort numerically
+      if (numA !== numB) return numA - numB;
+      
+      // If the numbers are the same (or both are Infinity), sort alphabetically
+      return a.localeCompare(b);
+    });
+  }, [products]);
+
+  const dynamicNotes = useMemo(() => [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort(), [products]);
+
+  const getEffectivePrice = (p) => {
+    if (!p.product_variants || p.product_variants.length === 0) return 0;
+    return Math.min(...p.product_variants.map(v => Number(v.price)));
+  };
 
   const [activePage, setActivePage]         = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -58,10 +70,7 @@ const getEffectivePrice = (p) => {
   const [isFiltersOpen, setIsFiltersOpen]   = useState(false);
   const [showBackToTop, setShowBackToTop]   = useState(false);
 
-  // ✨ NEW: The URL drives the app state!
-  // ✨ NEW: Route State Listener for proper resets and details targeting
   useEffect(() => {
-    // Prevent overriding if data is still fetching
     if (isLoading || products.length === 0) return;
 
     if (location.state?.reset) {
@@ -72,16 +81,13 @@ const getEffectivePrice = (p) => {
       setSelectedProduct(location.state.selectedProduct);
       navigate(location.pathname, { replace: true, state: {} });
     } else if (id) {
-      // Find product by URL ID
       const found = products.find(p => p.id.toString() === id);
       if (found) {
         setSelectedProduct(found);
       } else {
-        // ✨ FIXED: Send invalid product IDs to the 404 page ✨
         navigate('/not-found', { replace: true });
       }
     } else {
-      // No ID in URL, clear selection and show collection
       setSelectedProduct(null);
     }
   }, [id, products, isLoading, navigate, location.state, location.pathname]);
@@ -146,13 +152,11 @@ const processedProducts = useMemo(() => {
     }
     if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
 
-    // Price filter uses lowest available price (variant or base)
     const effectivePrice = getEffectivePrice(product);
     if (effectivePrice < priceRange.min || effectivePrice > priceRange.max) return false;
 
     if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
 
-    // Size filter checks base size + all variant sizes
     if (selectedSizes.length > 0) {
       const allSizes = [product.size, ...(product.product_variants || []).map(v => v.size)].filter(Boolean);
       if (!allSizes.some(s => selectedSizes.includes(s))) return false;
@@ -240,8 +244,8 @@ const processedProducts = useMemo(() => {
             ) : selectedProduct ? (
               <ProductDetails
                 product={selectedProduct}
-                onBack={() => navigate('/products')} // ✨ Simply removes ID from URL
-                onSelect={(p) => navigate(`/products/${p.id}`)} // ✨ Drives directly to URL
+                onBack={() => navigate('/products')} 
+                onSelect={(p) => navigate(`/products/${p.id}`)}
                 onQuickView={setQuickViewProduct}
               />
             ) : (
@@ -253,17 +257,17 @@ const processedProducts = useMemo(() => {
                   </div>
 
                   <div className="relative w-full md:w-auto flex flex-wrap items-center justify-start md:justify-end gap-3">
-<button
-  onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-  className={`border text-sm rounded px-4 py-2 outline-none cursor-pointer flex items-center gap-2 transition-colors ${
-    isFiltersOpen 
-      ? 'bg-gold-400 border-gold-400 text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
-      : 'bg-black/40 border-gold-400/30 text-gold-400 hover:bg-gold-400 hover:text-black'
-  }`}
->
-  <SlidersHorizontal size={16} />
-  <span className="hidden sm:inline">Filters</span>
-</button>
+                    <button
+                      onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                      className={`border text-sm rounded px-4 py-2 outline-none cursor-pointer flex items-center gap-2 transition-colors ${
+                        isFiltersOpen 
+                          ? 'bg-gold-400 border-gold-400 text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
+                          : 'bg-black/40 border-gold-400/30 text-gold-400 hover:bg-gold-400 hover:text-black'
+                      }`}
+                    >
+                      <SlidersHorizontal size={16} />
+                      <span className="hidden sm:inline">Filters</span>
+                    </button>
 
                     <div className="flex items-center bg-black/40 border border-gold-400/30 rounded-lg p-1">
                       <button onClick={() => setViewMode('large')} className={`p-1.5 rounded transition-colors ${viewMode === 'large' ? 'bg-gold-400 text-black' : 'text-gray-500 hover:text-white'}`} title="Large Grid View">

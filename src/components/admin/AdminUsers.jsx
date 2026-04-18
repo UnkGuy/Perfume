@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Loader2, Search, Ban, CheckCircle } from 'lucide-react';
 import { supabase } from '../../services/supabase';
 import { useShop } from '../../contexts/ShopContext';
+import { updateUserRoleAPI } from '../../services/userApi';
 
 const AdminUsers = () => {
   const { showToast } = useShop();
@@ -10,42 +11,23 @@ const AdminUsers = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');  
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(); }, []);
 
   const fetchUsers = async () => {
     setIsLoading(true);
-    
     try {
-      // 1. Fetch all profiles
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
-        
+      const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
       if (profilesError) throw profilesError;
 
-      // 2. Fetch all user roles
-      const { data: rolesData, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*');
-        
+      const { data: rolesData, error: rolesError } = await supabase.from('user_roles').select('*');
       if (rolesError) throw rolesError;
 
-      // 3. Merge the two datasets together based on user_id / id
       const mergedUsers = profilesData.map(profile => {
         const userRoleMatch = rolesData.find(r => r.user_id === profile.id);
-        return {
-          ...profile,
-          // We wrap the role in an array so your existing JSX `u.user_roles?.[0]?.role` still works!
-          user_roles: userRoleMatch ? [userRoleMatch] : [] 
-        };
+        return { ...profile, user_roles: userRoleMatch ? [userRoleMatch] : [] };
       });
-
       setUsers(mergedUsers);
     } catch (error) {
-      console.error("Supabase Error fetching users:", error);
-      // This will now pop up a red toast box telling you exactly what went wrong
       if (showToast) showToast('Database Error', error.message, 'error');
     } finally {
       setIsLoading(false);
@@ -60,12 +42,23 @@ const AdminUsers = () => {
     }
   };
 
+  // ✨ NEW: Change Role Handler
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      await updateUserRoleAPI(userId, newRole);
+      setUsers(users.map(u => u.id === userId ? { ...u, user_roles: [{ role: newRole }] } : u));
+      showToast('Success', `User role updated to ${newRole}.`);
+    } catch (error) {
+      showToast('Error', 'Failed to update role.', 'error');
+    }
+  };
+
   const filtered = users.filter(u => {
-  const matchesSearch = (u.email || '').toLowerCase().includes(searchQuery.toLowerCase());
-  const role = u.user_roles?.[0]?.role || 'customer';
-  const matchesRole = roleFilter === 'all' || role === roleFilter;
-  return matchesSearch && matchesRole;
-});
+    const matchesSearch = (u.email || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const role = u.user_roles?.[0]?.role || 'customer';
+    const matchesRole = roleFilter === 'all' || role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -75,22 +68,22 @@ const AdminUsers = () => {
           <p className="text-gray-400 text-sm">Manage registered users and permissions.</p>
         </div>
         <div className="flex gap-3 items-center">
-  <select 
-    value={roleFilter} 
-    onChange={e => setRoleFilter(e.target.value)}
-    className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400"
-  >
-    <option value="all">All Roles</option>
-    <option value="customer">Customers</option>
-    <option value="admin">Admins</option>
-  </select>
-  <div className="relative w-64">
-    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-    <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-      className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400"
-    />
-  </div>
-</div>
+          <select 
+            value={roleFilter} 
+            onChange={e => setRoleFilter(e.target.value)}
+            className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400"
+          >
+            <option value="all">All Roles</option>
+            <option value="customer">Customers</option>
+            <option value="admin">Admins</option>
+          </select>
+          <div className="relative w-64">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400"
+            />
+          </div>
+        </div>
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
@@ -105,23 +98,36 @@ const AdminUsers = () => {
           </thead>
           <tbody className="divide-y divide-white/5 text-sm">
             {isLoading ? <tr><td colSpan="4" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr> 
-            : filtered.map(u => (
-              <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                <td className="p-4 text-white font-medium">{u.email}</td>
-                <td className="p-4 text-gray-400 uppercase text-xs tracking-wider">{u.user_roles?.[0]?.role || 'customer'}</td>
-                <td className="p-4">
-                  {u.is_banned 
-                    ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold">Blocked</span>
-                    : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold">Active</span>}
-                </td>
-                <td className="p-4 text-right">
-                  <button onClick={() => handleToggleBan(u.id, u.is_banned)}
-                    className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${u.is_banned ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'}`}>
-                    {u.is_banned ? 'Unblock' : 'Block Account'}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            : filtered.map(u => {
+              const currentRole = u.user_roles?.[0]?.role || 'customer';
+              return (
+                <tr key={u.id} className="hover:bg-white/5 transition-colors">
+                  <td className="p-4 text-white font-medium">{u.email}</td>
+                  <td className="p-4">
+                    {/* ✨ NEW: Role Dropdown ✨ */}
+                    <select 
+                      value={currentRole}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-gray-300 uppercase tracking-wider focus:outline-none focus:border-gold-400 cursor-pointer"
+                    >
+                      <option value="customer">Customer</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </td>
+                  <td className="p-4">
+                    {u.is_banned 
+                      ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold">Blocked</span>
+                      : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold">Active</span>}
+                  </td>
+                  <td className="p-4 text-right">
+                    <button onClick={() => handleToggleBan(u.id, u.is_banned)}
+                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${u.is_banned ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'}`}>
+                      {u.is_banned ? 'Unblock' : 'Block Account'}
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
