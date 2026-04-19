@@ -2,8 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2,
-  Store, CreditCard, Truck, Megaphone, Settings,
-  CheckCircle,
+  Store, CreditCard, Truck, Settings, CheckCircle,
 } from 'lucide-react';
 import { saveSettingsAPI } from '../../services/settingsApi';
 import { logAdminActionAPI } from '../../services/logApi';
@@ -127,7 +126,6 @@ const AdminSettings = () => {
   const setFeature  = (key, val) => setDraft(d => ({ ...d, features: { ...d.features, [key]: val } }));
   const setCheckout = (key, val) => setDraft(d => ({ ...d, checkout: { ...d.checkout, [key]: val } }));
   const setStore    = (key, val) => setDraft(d => ({ ...d, storeInfo: { ...d.storeInfo, [key]: val } }));
-  const setAnnounc  = (key, val) => setDraft(d => ({ ...d, announcement: { ...d.announcement, [key]: val } }));
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -291,67 +289,6 @@ const AdminSettings = () => {
             </div>
           ))}
         </div>
-      </Section>
-
-      {/* ── Announcement Banner ── */}
-      <Section
-        icon={<Megaphone size={16} />}
-        title="Announcement Banner"
-        description="The scrolling marquee strip shown on the homepage."
-      >
-        <Toggle
-          checked={draft.announcement.enabled}
-          onChange={val => setAnnounc('enabled', val)}
-          label="Show Announcement Banner"
-        />
-        {draft.announcement.enabled && (
-          <div className="mt-4 space-y-4">
-            <div>
-              <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Banner Text</label>
-              <input
-                type="text"
-                value={draft.announcement.text}
-                onChange={e => setAnnounc('text', e.target.value)}
-                maxLength={200}
-                placeholder="Free Shipping • New Arrivals…"
-                className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold-400"
-              />
-            </div>
-            <div className="flex gap-6">
-              <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Background Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={draft.announcement.bgColor}
-                    onChange={e => setAnnounc('bgColor', e.target.value)}
-                    className="w-10 h-9 rounded cursor-pointer bg-transparent border-0"
-                  />
-                  <span className="text-xs text-gray-400 font-mono">{draft.announcement.bgColor}</span>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Text Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={draft.announcement.textColor}
-                    onChange={e => setAnnounc('textColor', e.target.value)}
-                    className="w-10 h-9 rounded cursor-pointer bg-transparent border-0"
-                  />
-                  <span className="text-xs text-gray-400 font-mono">{draft.announcement.textColor}</span>
-                </div>
-              </div>
-            </div>
-            {/* Live preview */}
-            <div
-              className="py-2 px-4 rounded text-center text-xs font-bold uppercase tracking-widest truncate"
-              style={{ backgroundColor: draft.announcement.bgColor, color: draft.announcement.textColor }}
-            >
-              {draft.announcement.text || 'Preview text here…'}
-            </div>
-          </div>
-        )}
       </Section>
 
       {/* Bottom save bar */}
