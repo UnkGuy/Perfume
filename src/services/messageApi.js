@@ -20,7 +20,6 @@ export const fetchMessagesByUserAPI = async (userId) => {
 };
 
 export const sendMessageAPI = async (payload) => {
-  // Relax the text requirement IF an image is attached
   const hasImage = payload.metadata?.image_url;
   const hasText = payload.content && payload.content.trim();
 
@@ -29,7 +28,9 @@ export const sendMessageAPI = async (payload) => {
 
   const { error } = await supabase.from('messages').insert([{
     ...payload,
-    content: payload.content ? payload.content.trim() : null,
+    // ← If image-only, store empty string instead of null
+    //   (guards against DB NOT NULL constraint as a fallback)
+    content: hasText ? payload.content.trim() : '',
   }]);
   if (error) throw error;
 };

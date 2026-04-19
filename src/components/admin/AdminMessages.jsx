@@ -1,5 +1,9 @@
+// src/components/admin/AdminMessages.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Send, ShoppingBag, Loader2, Ban, CheckCircle, Search, ArrowLeft, MessageSquare, Package } from 'lucide-react';
+import {
+  User, Send, ShoppingBag, Loader2, Ban, CheckCircle,
+  Search, ArrowLeft, MessageSquare, Package, ImageIcon, X,
+} from 'lucide-react';
 import { useActiveChats, useMessageThread } from '../../hooks/useMessages';
 import { useUserBan } from '../../hooks/useUserBan';
 import { useShop } from '../../contexts/ShopContext';
@@ -20,17 +24,18 @@ const AdminMessages = ({ defaultSelectedUser }) => {
   const [reply, setReply] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [latestOrder, setLatestOrder] = useState(null);
-  
+  const [isUploading, setIsUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState(null); // { file, localUrl }
+
   const messagesEndRef = useRef(null);
+  const fileInputRef   = useRef(null);
 
   const { activeChats, isLoading: chatsLoading } = useActiveChats();
-  const { messages, sendMessage } = useMessageThread(selectedUser, 'admin');
+  const { messages, sendMessage, uploadChatImage } = useMessageThread(selectedUser, 'admin');
   const { isBanned, toggleBan } = useUserBan(selectedUser);
 
   useEffect(() => {
-    if (defaultSelectedUser) {
-      setSelectedUser(defaultSelectedUser);
-    }
+    if (defaultSelectedUser) setSelectedUser(defaultSelectedUser);
   }, [defaultSelectedUser]);
 
   useEffect(() => {
@@ -46,11 +51,57 @@ const AdminMessages = ({ defaultSelectedUser }) => {
       setLatestOrder(data || null);
     };
     fetchLatestOrder();
-  }, [selectedUser, messages]); 
+  }, [selectedUser, messages]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // ── Image selection ────────────────────────────────────────────────────────
+  const handleImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Error', 'Please select a valid image file.', 'error');
+      return;
+    }
+    const localUrl = URL.createObjectURL(file);
+    setImagePreview({ file, localUrl });
+    e.target.value = '';
+  };
+
+  const clearImagePreview = () => {
+    if (imagePreview?.localUrl) URL.revokeObjectURL(imagePreview.localUrl);
+    setImagePreview(null);
+  };
+
+  // ── Send ───────────────────────────────────────────────────────────────────
+  const handleReply = async (e) => {
+    e?.preventDefault();
+    const hasText  = reply.trim().length > 0;
+    const hasImage = !!imagePreview;
+    if ((!hasText && !hasImage) || reply.length > MAX_CHARS || isUploading) return;
+
+    setIsUploading(true);
+    try {
+      let imageUrl = null;
+      if (hasImage) {
+        imageUrl = await uploadChatImage(imagePreview.file);
+        clearImagePreview();
+      }
+      const { success } = await sendMessage(reply, imageUrl);
+      if (success) {
+        setReply('');
+      } else {
+        showToast('Error', 'Failed to send message.', 'error');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Error', 'Image upload failed.', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -59,24 +110,19 @@ const AdminMessages = ({ defaultSelectedUser }) => {
     }
   };
 
-  const handleReply = async (e) => {
-    e?.preventDefault();
-    if (!reply.trim() || reply.length > MAX_CHARS) return;
-    
-    const { success } = await sendMessage(reply);
-    if (success) {
-      setReply('');
-    } else {
-      showToast('Error', 'Failed to send message', 'error');
-    }
-  };
-
   const selectedChatData = activeChats.find(c => c.id === selectedUser);
-  const filteredChats = activeChats.filter(chat => chat.email.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredChats    = activeChats.filter(chat =>
+    chat.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const canSend = (reply.trim().length > 0 || !!imagePreview) &&
+                  reply.length <= MAX_CHARS &&
+                  !isUploading;
 
   return (
     <div className="h-[600px] md:h-[70vh] w-full bg-rich-black border border-white/10 rounded-xl overflow-hidden flex animate-fade-in relative shadow-2xl">
 
+      {/* ── Left panel: chat list ── */}
       <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-white/10 flex-col bg-black/40 min-w-0 flex-shrink-0`}>
         <div className="p-4 border-b border-white/10 flex flex-col gap-3">
           <h3 className="font-bold text-white tracking-widest uppercase text-sm">Active Inquiries</h3>
@@ -86,7 +132,7 @@ const AdminMessages = ({ defaultSelectedUser }) => {
               type="text"
               placeholder="Search email..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
             />
           </div>
@@ -97,33 +143,32 @@ const AdminMessages = ({ defaultSelectedUser }) => {
             <div className="flex justify-center p-8"><Loader2 className="animate-spin text-gold-400" /></div>
           ) : filteredChats.length === 0 ? (
             <div className="p-8 text-center text-gray-500 text-sm">No active chats found.</div>
-          ) : (
-            filteredChats.map(chat => (
-              <button
-                key={chat.id}
-                onClick={() => setSelectedUser(chat.id)}
-                className={`w-full p-4 flex items-center gap-3 text-left transition-colors border-b border-white/5 ${selectedUser === chat.id ? 'bg-gold-400/10' : 'hover:bg-white/5'}`}
-              >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedUser === chat.id ? 'bg-gold-400 text-black' : 'bg-white/10 text-white'}`}>
-                  <User size={16} />
+          ) : filteredChats.map(chat => (
+            <button
+              key={chat.id}
+              onClick={() => setSelectedUser(chat.id)}
+              className={`w-full p-4 flex items-center gap-3 text-left transition-colors border-b border-white/5 ${selectedUser === chat.id ? 'bg-gold-400/10' : 'hover:bg-white/5'}`}
+            >
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedUser === chat.id ? 'bg-gold-400 text-black' : 'bg-white/10 text-white'}`}>
+                <User size={16} />
+              </div>
+              <div className="overflow-hidden flex-1">
+                <div className="flex justify-between items-center mb-0.5">
+                  <p className={`text-sm truncate pr-2 ${selectedUser === chat.id ? 'text-gold-400 font-bold' : 'text-gray-300'}`}>
+                    {chat.email}
+                  </p>
+                  <p className="text-[10px] text-gray-500 flex-shrink-0">
+                    {new Date(chat.lastActive).toLocaleDateString()}
+                  </p>
                 </div>
-                <div className="overflow-hidden flex-1">
-                  <div className="flex justify-between items-center mb-0.5">
-                    <p className={`text-sm truncate pr-2 ${selectedUser === chat.id ? 'text-gold-400 font-bold' : 'text-gray-300'}`}>
-                      {chat.email}
-                    </p>
-                    <p className="text-[10px] text-gray-500 flex-shrink-0">
-                      {new Date(chat.lastActive).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <p className="text-xs text-gray-500 truncate">Tap to view messages...</p>
-                </div>
-              </button>
-            ))
-          )}
+                <p className="text-xs text-gray-500 truncate">Tap to view messages...</p>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
 
+      {/* ── Right panel: message thread ── */}
       <div className={`${!selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-2/3 flex-col relative min-w-0 overflow-hidden`}>
         {!selectedUser ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-white/5">
@@ -132,10 +177,14 @@ const AdminMessages = ({ defaultSelectedUser }) => {
           </div>
         ) : (
           <>
+            {/* Header */}
             <div className="p-3 md:p-4 border-b border-white/10 bg-black/20 sticky top-0 z-10 backdrop-blur-md">
               <div className="flex justify-between items-start gap-2">
                 <div className="flex items-center gap-2 md:gap-3 overflow-hidden">
-                  <button onClick={() => setSelectedUser(null)} className="md:hidden p-1.5 -ml-1.5 text-gray-400 hover:text-white transition-colors">
+                  <button
+                    onClick={() => setSelectedUser(null)}
+                    className="md:hidden p-1.5 -ml-1.5 text-gray-400 hover:text-white transition-colors"
+                  >
                     <ArrowLeft size={20} />
                   </button>
                   <div className="flex flex-col overflow-hidden">
@@ -147,10 +196,14 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                 <button
                   onClick={() => toggleBan(!isBanned)}
                   className={`flex items-center gap-1.5 md:gap-2 px-2.5 py-1.5 rounded text-[10px] md:text-xs font-bold transition-colors flex-shrink-0 ${
-                    isBanned ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white'
+                    isBanned
+                      ? 'bg-white/10 text-white hover:bg-white/20'
+                      : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white'
                   }`}
                 >
-                  {isBanned ? <><CheckCircle size={14} className="hidden sm:block"/> Unblock</> : <><Ban size={14} className="hidden sm:block"/> Block</>}
+                  {isBanned
+                    ? <><CheckCircle size={14} className="hidden sm:block" /> Unblock</>
+                    : <><Ban size={14} className="hidden sm:block" /> Block</>}
                 </button>
               </div>
 
@@ -164,14 +217,16 @@ const AdminMessages = ({ defaultSelectedUser }) => {
               )}
             </div>
 
+            {/* Messages */}
             <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-black/10 min-w-0">
               {messages.map((msg, index) => {
                 const isAdmin = msg.sender_role === 'admin';
                 const isOrder = msg.metadata?.type === 'order_inquiry';
+                const hasImage = msg.metadata?.image_url;
+                const isOptimistic = !!msg._optimistic;
 
                 let showTimestampDivider = false;
                 let timeString = '';
-
                 if (index === 0) {
                   showTimestampDivider = true;
                 } else {
@@ -179,9 +234,10 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                   const currTime = new Date(msg.created_at).getTime();
                   if (currTime - prevTime > 1800000) showTimestampDivider = true;
                 }
-
                 if (showTimestampDivider) {
-                  timeString = new Date(msg.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+                  timeString = new Date(msg.created_at).toLocaleDateString('en-US', {
+                    month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+                  });
                 }
 
                 return (
@@ -194,7 +250,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                       </div>
                     )}
 
-                    {/* ✨ FIXED: Added w-full to the wrapper so it strictly obeys bounds ✨ */}
                     <div className={`flex flex-col mb-4 w-full min-w-0 ${isAdmin ? 'items-end' : 'items-start'}`}>
                       {isOrder ? (
                         <div className="bg-black/60 border border-gold-400/30 p-3 md:p-4 rounded-xl w-full max-w-[95%] md:max-w-[90%] text-sm shadow-lg overflow-hidden">
@@ -221,9 +276,20 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                           </div>
                         </div>
                       ) : (
-                        /* ✨ FIXED: Changed break-words to break-all ✨ */
-                        <div className={`p-2.5 md:p-3 rounded-2xl max-w-[85%] md:max-w-[75%] text-xs md:text-sm whitespace-pre-wrap break-all overflow-hidden ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
-                          {msg.content}
+                        <div className={`p-2.5 md:p-3 rounded-2xl max-w-[85%] md:max-w-[75%] text-xs md:text-sm whitespace-pre-wrap break-all overflow-hidden flex flex-col gap-2 transition-opacity ${
+                          isOptimistic ? 'opacity-60' : 'opacity-100'
+                        } ${isAdmin ? 'bg-gold-400 text-black rounded-tr-sm' : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'}`}>
+                          {hasImage && (
+                            <img
+                              src={msg.metadata.image_url}
+                              alt="Attachment"
+                              className="rounded-lg max-w-full h-auto max-h-48 object-cover border border-white/10"
+                            />
+                          )}
+                          {msg.content && <span>{msg.content}</span>}
+                          {isOptimistic && (
+                            <span className="text-[9px] opacity-50 self-end">Sending…</span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -233,41 +299,87 @@ const AdminMessages = ({ defaultSelectedUser }) => {
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleReply} className="p-3 md:p-4 border-t border-white/10 bg-black/40 flex flex-col gap-1.5 relative w-full min-w-0">
-              <div className="flex justify-end px-2">
+            {/* Compose area */}
+            <form
+              onSubmit={handleReply}
+              className="p-3 md:p-4 border-t border-white/10 bg-black/40 flex flex-col gap-2 relative w-full min-w-0"
+            >
+              {/* Image preview */}
+              {imagePreview && (
+                <div className="relative w-fit">
+                  <img
+                    src={imagePreview.localUrl}
+                    alt="Preview"
+                    className="h-20 rounded-lg object-cover border border-white/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImagePreview}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-400 transition-colors"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between px-1">
+                {/* Image upload button */}
+                <div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="text-gray-400 hover:text-gold-400 transition-colors disabled:opacity-50"
+                    title="Attach Image"
+                  >
+                    <ImageIcon size={16} />
+                  </button>
+                </div>
+
+                {/* Character count */}
                 <span className={`text-[10px] font-medium transition-colors ${
-                  reply.length >= MAX_CHARS ? 'text-red-400' : 
+                  reply.length >= MAX_CHARS       ? 'text-red-400' :
                   reply.length >= MAX_CHARS * 0.8 ? 'text-gold-400' : 'text-gray-500'
                 }`}>
                   {reply.length}/{MAX_CHARS}
                 </span>
               </div>
-              
+
               <div className="relative w-full min-w-0 overflow-hidden">
                 <div className="grid w-full min-w-0">
-                  <div 
-                    aria-hidden="true" 
+                  {/* Ghost div for auto-height */}
+                  <div
+                    aria-hidden="true"
                     className="invisible whitespace-pre-wrap break-all col-start-1 col-end-2 row-start-1 row-end-2 py-3 pl-4 pr-12 text-sm leading-relaxed border border-transparent min-h-[3rem] max-h-[25vh] overflow-hidden w-full"
                   >
                     {reply + ' '}
                   </div>
-                  
+
                   <textarea
                     maxLength={MAX_CHARS}
                     value={reply}
-                    onChange={(e) => setReply(e.target.value)}
+                    onChange={e => setReply(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a reply... (Shift+Enter for new line)"
+                    placeholder="Type a reply… (Shift+Enter for new line)"
                     className="w-full h-full resize-none col-start-1 col-end-2 row-start-1 row-end-2 bg-black/50 border border-white/20 rounded-2xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors custom-scrollbar break-all leading-relaxed overflow-y-auto"
                   />
                 </div>
-                
+
                 <button
                   type="submit"
-                  disabled={!reply.trim() || reply.length > MAX_CHARS}
+                  disabled={!canSend}
                   className="absolute right-1.5 md:right-2 bottom-1.5 md:bottom-2 p-1.5 md:p-2 bg-gold-400 text-black rounded-full hover:bg-gold-300 disabled:opacity-50 transition-all z-10"
                 >
-                  <Send size={16} />
+                  {isUploading
+                    ? <Loader2 size={16} className="animate-spin" />
+                    : <Send size={16} />}
                 </button>
               </div>
             </form>
