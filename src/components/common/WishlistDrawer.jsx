@@ -1,5 +1,6 @@
+// src/components/common/WishlistDrawer.jsx
 import React from 'react';
-import { X, Trash2, Heart, ShoppingCart } from 'lucide-react';
+import { X, Trash2, Heart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 import { useShop } from '../../contexts/ShopContext'; 
 import { useUI } from '../../contexts/UIContext';
@@ -7,7 +8,7 @@ import { useUI } from '../../contexts/UIContext';
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const WishlistDrawer = () => {
-  const { wishlistItems, toggleWishlist, addToCart, showToast } = useShop();
+  const { wishlistItems, toggleWishlist } = useShop();
   const { isWishlistOpen, setIsWishlistOpen } = useUI();
   const navigate = useNavigate(); 
 
@@ -51,10 +52,7 @@ const WishlistDrawer = () => {
             ) : (
               items.map((item, index) => {
                 const imageSource = item.image_urls && item.image_urls.length > 0 ? item.image_urls[0] : FALLBACK_IMAGE;
-                
-                // ✨ NEW: Extract from variants for wishlist display
                 const variants = item.product_variants || [];
-                const defaultVariant = variants[0] || {};
                 const displayPrice = variants.length > 0 ? Math.min(...variants.map(v => v.price)) : 0;
 
                 return (
@@ -76,27 +74,7 @@ const WishlistDrawer = () => {
                       <p className="text-gold-400 font-medium mb-3">₱{displayPrice}</p>
                       
                       <div className="flex items-center gap-3">
-                        <button 
-                          onClick={() => {
-                            if(item.available) {
-                              // ✨ NEW: Map the variant properties!
-                              addToCart({
-                                ...item,
-                                price: defaultVariant.price,
-                                size: defaultVariant.size,
-                                variant_id: defaultVariant.id,
-                                stock_count: defaultVariant.stock_count,
-                                image_urls: defaultVariant.image_url ? [defaultVariant.image_url] : item.image_urls
-                              }, 1, true);
-                              toggleWishlist(item, true); 
-                              showToast('Moved to Cart', `${item.name} moved to cart.`, 'success');
-                            }
-                          }}
-                          disabled={!item.available}
-                          className={`text-xs flex items-center gap-1 px-3 py-1.5 rounded transition-colors ${item.available ? 'bg-gold-400 text-black hover:bg-gold-300' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
-                        >
-                          <ShoppingCart size={14} /> Add to Cart
-                        </button>
+                        {/* Add to Cart button was completely removed from here as requested */}
                         <button 
                           onClick={() => toggleWishlist(item)}
                           className="text-gray-500 hover:text-red-400 transition-colors p-1"
@@ -117,4 +95,4 @@ const WishlistDrawer = () => {
   );
 };
 
-export default WishlistDrawer; 
+export default WishlistDrawer;

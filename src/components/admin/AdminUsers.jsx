@@ -102,7 +102,7 @@ const AdminUsers = () => {
               const currentRole = u.user_roles?.[0]?.role || 'customer';
               return (
                 <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 text-white font-medium">{u.email}</td>
+                  <td className="p-4 text-white font-medium break-long-text max-w-[200px]">{u.email}</td>
                   <td className="p-4">
                     {/* ✨ NEW: Role Dropdown ✨ */}
                     <select 

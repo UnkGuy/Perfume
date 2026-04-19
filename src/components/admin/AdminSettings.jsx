@@ -192,21 +192,6 @@ const AdminSettings = () => {
         </div>
       )}
 
-      {/* ── Customer Features ── */}
-      <Section
-        icon={<ToggleRight size={16} />}
-        title="Customer Features"
-        description="Toggle individual features on or off for your shoppers."
-      >
-        <Toggle checked={draft.features.chatWidget}     onChange={v => setFeature('chatWidget', v)}     label="Live Chat Widget"       description="The floating chat bubble on the storefront." />
-        <Toggle checked={draft.features.wishlist}       onChange={v => setFeature('wishlist', v)}       label="Wishlist"               description="Heart button + wishlist drawer for customers." />
-        <Toggle checked={draft.features.reviews}        onChange={v => setFeature('reviews', v)}        label="Product Reviews"        description="Allow verified buyers to leave star reviews." />
-        <Toggle checked={draft.features.ratingsDisplay} onChange={v => setFeature('ratingsDisplay', v)} label="Display Ratings"        description="Show star ratings and scores on product cards." />
-        <Toggle checked={draft.features.promoCodes}     onChange={v => setFeature('promoCodes', v)}     label="Promo / Discount Codes" description="Show the promo code field at checkout." />
-        <Toggle checked={draft.features.guestCheckout}  onChange={v => setFeature('guestCheckout', v)}  label="Guest Browsing"         description="Allow non-logged-in visitors to browse (not checkout)." />
-        <Toggle checked={draft.features.reorderButton}  onChange={v => setFeature('reorderButton', v)}  label="Re-Order Button"        description="Let customers quickly reorder from their history." />
-      </Section>
-
       {/* ── Payment Methods ── */}
       <Section
         icon={<CreditCard size={16} />}

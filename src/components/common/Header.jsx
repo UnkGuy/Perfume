@@ -134,15 +134,6 @@ const Header = () => {
                 </button>
               )}
 
-              {/* Theme toggle */}
-              <button
-                onClick={toggleTheme}
-                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-                className="text-gray-300 hover:text-gold-400 transition-colors p-1"
-              >
-                {isDark ? <Sun size={18} /> : <Moon size={18} />}
-              </button>
-
               {/* Wishlist — customer only */}
               {!isAdmin && (
                 <button className="relative text-gray-300 hover:text-gold-400 transition-colors" onClick={() => setIsWishlistOpen(true)}>
@@ -235,10 +226,6 @@ const Header = () => {
               {link.label}
             </button>
           ))}
-          <button onClick={toggleTheme} className="flex items-center gap-2 text-gray-400 hover:text-gold-400 text-sm uppercase tracking-widest">
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
-            {isDark ? 'Light Mode' : 'Dark Mode'}
-          </button>
         </div>
       )}
     </>

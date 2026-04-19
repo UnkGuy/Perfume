@@ -1,5 +1,6 @@
+// src/hooks/useReviews.js
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchReviewsAPI, submitReviewAPI, checkUserPurchasedAPI } from '../services/reviewApi';
+import { fetchReviewsAPI, submitReviewAPI } from '../services/reviewApi';
 import { useAuth } from '../contexts/AuthContext';
 
 export const useReviews = (productId, fallbackRating) => {
@@ -10,14 +11,6 @@ export const useReviews = (productId, fallbackRating) => {
     queryKey: ['reviews', productId],
     queryFn: () => fetchReviewsAPI(productId),
     enabled: !!productId,
-  });
-
-  // ← NEW: check whether this user has actually bought the product
-  const { data: hasPurchased } = useQuery({
-    queryKey: ['userPurchased', user?.id, productId],
-    queryFn: () => checkUserPurchasedAPI(user.id, productId),
-    enabled: !!user && !!productId,
-    staleTime: 1000 * 60 * 10, // stable for 10 min — purchases don't change often
   });
 
   const reviewList = reviews || [];
@@ -35,20 +28,18 @@ export const useReviews = (productId, fallbackRating) => {
 
   const submitNewReview = async (rating, comment) => {
     if (!user) throw new Error("Must be logged in to review.");
-    if (!hasPurchased) throw new Error("You can only review products you've purchased.");
     await submitMutation.mutateAsync({ rating, comment });
   };
 
   const hasReviewed = user ? reviewList.some(r => r.user_id === user.id) : false;
 
-  // canReview: logged in + bought the product + hasn't already reviewed it
-  const canReview = !!user && !!hasPurchased && !hasReviewed;
+  // canReview: logged in + hasn't already reviewed it
+  const canReview = !!user && !hasReviewed;
 
   return {
     reviews: reviewList,
     averageRating,
     canReview,
-    hasPurchased: !!hasPurchased,
     submitNewReview,
   };
 };

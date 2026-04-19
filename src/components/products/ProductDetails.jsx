@@ -100,7 +100,7 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
               <span className="text-sm text-gray-400 hover:text-gold-400 transition-colors cursor-pointer" onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}>{averageRating} ({reviews.length} Reviews)</span>
             </div>
             {canReview && <button onClick={() => setIsReviewModalOpen(true)} className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-gold-400/10 text-gold-400 border border-gold-400/20 rounded-md hover:bg-gold-400 hover:text-black transition-all mt-2 font-medium"><Edit3 size={14} /> Write a Review</button>}
-            {user && !hasPurchased && !canReview && <p className="text-xs text-gray-500 mt-2">Purchase this product to leave a review.</p>}
+            {/* The paragraph that warned users they had to buy to review has been removed completely! */}
           </div>
 
           <div className="mb-8">

@@ -1,25 +1,27 @@
+// src/components/products/ProductCard.jsx
 import React from 'react';
 import { Star, Eye, Heart } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useUI } from '../../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
-  const { user, userRole } = useAuth();
-  const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
-  const { setCurrentPage } = useUI();
+  const { userRole } = useAuth();
+  const { toggleWishlist, wishlistItems } = useShop();
   
   const isAdmin = userRole === 'admin'; 
   const isInWishlist = wishlistItems?.some(item => item.id === product.id);
   const imageSource = product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE;
 
-  // ✨ NEW: Variant-only logic
   const variants = product.product_variants || [];
-  const defaultVariant = variants[0] || {};
-  const minPrice = variants.length > 0 ? Math.min(...variants.map(v => v.price)) : 0;
+  const prices = variants.map(v => Number(v.price));
+  const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
   const isDiscounted = variants.some(v => v.compare_at_price && v.compare_at_price > v.price);
+  
+  // Check if there's an actual price difference among variants
+  const hasPriceVariation = variants.length > 1 && minPrice !== maxPrice;
   
   return (
     <div className={`group bg-rich-black border border-white/10 rounded-xl overflow-hidden hover:border-gold-400/50 transition-all duration-300 hover:-translate-y-1 relative flex ${!product.available ? 'opacity-80' : ''} ${isCompact ? 'flex-row min-h-[12rem] items-stretch' : 'flex-col h-full'}`}>
@@ -47,10 +49,12 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
             <h3 className={`font-bold text-white group-hover:text-gold-400 transition-colors cursor-pointer truncate pr-2 ${isCompact ? 'text-sm md:text-base' : 'text-lg'}`} onClick={() => onSelect(product)}>
               {product.name}
             </h3>
-            <div className={`flex items-center gap-1 flex-shrink-0 ml-2 ${isCompact ? 'hidden sm:flex' : ''}`}>
-              <Star size={12} className="fill-gold-400 text-gold-400" />
-              <span className="text-xs text-gray-400">{product.rating}</span>
-            </div>
+ <div className={`flex items-center gap-1 flex-shrink-0 ml-2 ${isCompact ? 'hidden sm:flex' : ''}`}>
+  <Star size={12} className={Number(product.rating) > 0 ? "fill-gold-400 text-gold-400" : "text-gray-600"} />
+  <span className="text-xs text-gray-400">
+    {Number(product.rating) > 0 ? product.rating : "No reviews"}
+  </span>
+</div>
         </div>
         
        <p className={`text-gray-500 uppercase tracking-wide truncate flex-shrink-0 ${isCompact ? 'text-[10px] mb-1' : 'text-xs mb-3'}`}>
@@ -70,36 +74,11 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
           <div className="flex flex-col min-w-0">
             <div className="flex items-end gap-2 truncate">
               <span className={`font-medium text-white ${isCompact ? 'text-sm md:text-base' : 'text-xl'}`}>
-                {variants.length > 1 && <span className="text-xs text-gray-400 mr-1">From</span>}
-                ₱{minPrice}
+                {hasPriceVariation ? `₱${minPrice} - ₱${maxPrice}` : `₱${minPrice}`}
               </span>
             </div>
           </div>
-
-          <button 
-            disabled={!product.available || isAdmin}
-            onClick={(e) => { 
-              e.stopPropagation(); 
-              if (!user) {
-                if (showToast) showToast("Login Required", "Please sign in to add items.", "error");
-                setCurrentPage('login');
-                return;
-              }
-              // ✨ NEW: Map the default variant properties to the cart item
-              addToCart({
-                ...product,
-                price: defaultVariant.price,
-                size: defaultVariant.size,
-                variant_id: defaultVariant.id,
-                stock_count: defaultVariant.stock_count,
-                image_urls: defaultVariant.image_url ? [defaultVariant.image_url] : product.image_urls
-              }); 
-            }}
-            className={`rounded-full transition-colors flex items-center justify-center flex-shrink-0 ${isCompact ? 'p-2' : 'p-2.5'} ${product.available && !isAdmin ? 'bg-gold-400 text-black hover:bg-gold-300 shadow-md' : 'bg-gray-800 text-gray-600 cursor-not-allowed'}`}
-          >
-            <span className="sr-only">Add</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width={isCompact ? "14" : "18"} height={isCompact ? "14" : "18"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-          </button>
+          {/* Add to Cart button was completely removed from here as requested */}
         </div>
       </div>
     </div>

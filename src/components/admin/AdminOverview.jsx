@@ -33,8 +33,8 @@ const AdminOverview = () => {
         <div className="bg-white/5 border border-white/10 p-4 md:p-6 rounded-xl md:rounded-2xl lg:col-span-2">
           <h3 className="text-sm md:text-lg font-bold text-white mb-4 md:mb-6 uppercase tracking-widest">Revenue (Last 30 Days)</h3>
           {stats.chartData && stats.chartData.length > 0 ? (
-            <div className="h-60 md:h-80 w-full">
-              <ResponsiveContainer width="99%" height="100%" minHeight={250}>
+            <div className="h-60 md:h-80 w-full" style={{ minHeight: 250, minWidth: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={250} minWidth={0}>
                 <AreaChart data={stats.chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -65,8 +65,8 @@ const AdminOverview = () => {
           <h3 className="text-sm md:text-lg font-bold text-white mb-1 uppercase tracking-widest">Top Best Sellers</h3>
           <p className="text-xs text-gray-500 mb-4">Most → least sold</p>
           {stats.bestSellers && stats.bestSellers.length > 0 ? (
-            <div className="h-64 md:h-72 w-full flex-1">
-              <ResponsiveContainer width="99%" height="100%" minHeight={250}>
+            <div className="h-64 md:h-72 w-full flex-1" style={{ minHeight: 250, minWidth: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%" minHeight={250} minWidth={0}>
                 <PieChart>
                   <Pie data={stats.bestSellers} cx="50%" cy="40%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" stroke="none">
                     {stats.bestSellers.map((_, index) => (
@@ -94,7 +94,6 @@ const AdminOverview = () => {
         </div>
       </div>
 
-      {/* ✨ FIXED: Low Stock Alert now correctly reads the product_variants data ✨ */}
       {stats.lowStockProducts && stats.lowStockProducts.length > 0 && (
         <div className="bg-orange-500/5 border border-orange-500/20 rounded-xl p-4 md:p-6">
           <div className="flex items-center gap-2 mb-4">

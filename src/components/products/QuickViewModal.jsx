@@ -1,17 +1,15 @@
+// src/components/products/QuickViewModal.jsx
 import React, { useState, useEffect } from 'react';
 import { Star, X, Heart } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useShop } from '../../contexts/ShopContext';
-import { useUI } from '../../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const QuickViewModal = ({ product, onClose }) => {
-  const { user } = useAuth();
-  const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
-  const { setCurrentPage } = useUI();
+  const { toggleWishlist, wishlistItems } = useShop();
+  const navigate = useNavigate();
 
-  // ✨ NEW: Manage variant selection locally in the modal
   const variants = product?.product_variants || [];
   const [selectedVariant, setSelectedVariant] = useState(variants[0]);
 
@@ -23,7 +21,6 @@ const QuickViewModal = ({ product, onClose }) => {
 
   const isInWishlist = wishlistItems?.some(item => item.id === product.id);
   
-  // Update display values based on selection
   const displayPrice = selectedVariant?.price || 0;
   const displaySize = selectedVariant?.size || '';
   const imageSource = selectedVariant?.image_url || (product.image_urls && product.image_urls.length > 0 ? product.image_urls[0] : FALLBACK_IMAGE);
@@ -36,9 +33,14 @@ const QuickViewModal = ({ product, onClose }) => {
           <X size={24} />
         </button>
 
-        <div className="w-full md:w-1/2 h-64 md:h-auto bg-white/5 relative">
-          <img src={imageSource} alt={product.name} loading="lazy" className="w-full h-full object-cover" />
-        </div>
+<div className="w-full md:w-1/2 h-64 md:h-[500px] bg-neutral-900 flex items-center justify-center relative">
+  <img 
+    src={imageSource} 
+    alt={product.name} 
+    loading="lazy" 
+    className="max-w-full max-h-full object-contain" // Changed from object-cover
+  />
+</div>
 
         <div className="w-full md:w-1/2 p-8 flex flex-col">
           <div className="flex items-center gap-2 mb-2">
@@ -60,7 +62,6 @@ const QuickViewModal = ({ product, onClose }) => {
 
           <p className="text-2xl font-light text-white mb-4">₱{displayPrice}</p>
 
-          {/* ✨ NEW: Variant Size Buttons for Quick View */}
           {variants.length > 1 && (
             <div className="mb-4">
               <p className="text-xs font-bold text-white uppercase tracking-wider mb-2">Select Size</p>
@@ -87,28 +88,13 @@ const QuickViewModal = ({ product, onClose }) => {
 
           <div className="flex gap-4 mt-auto">
             <button 
-              disabled={!product.available}
               onClick={() => { 
-                if (!user) {
-                  if (showToast) showToast("Login Required", "Please sign in to add to cart.", "error");
-                  setCurrentPage('login');
-                  onClose();
-                  return;
-                }
-                // ✨ Map flattened variant data
-                addToCart({
-                  ...product,
-                  price: displayPrice,
-                  size: displaySize,
-                  variant_id: selectedVariant?.id,
-                  stock_count: selectedVariant?.stock_count,
-                  image_urls: [imageSource]
-                }); 
                 onClose(); 
+                navigate(`/products/${product.id}`); 
               }}
-              className={`flex-1 py-3 font-bold rounded transition-colors ${product.available ? 'bg-gold-400 hover:bg-gold-300 text-rich-black' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
+              className="flex-1 py-3 font-bold rounded transition-colors bg-gold-400 hover:bg-gold-300 text-rich-black"
             >
-              {product.available ? 'Add to Cart' : 'Out of Stock'}
+              View Full Details
             </button>
             <button 
               onClick={() => toggleWishlist(product)}

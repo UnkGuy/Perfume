@@ -6,3 +6,33 @@ html, body {
   overflow-x: hidden;
   max-width: 100vw;
 }
+
+@media print {
+  /* Hide everything except the invoice modal */
+  body * {
+    visibility: hidden;
+  }
+  /* Show the modal and its children */
+  .print-container, .print-container * {
+    visibility: visible;
+  }
+  .print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+  }
+  /* Explicitly hide the chat widget and header even if they are children of a visible parent */
+  .fixed, .chat-widget, header, footer, button:not(.print-btn) {
+    display: none !important;
+  }
+}
+
+/* Add this to index.css */
+.break-long-text {
+  word-break: break-all;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}

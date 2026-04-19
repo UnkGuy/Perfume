@@ -231,7 +231,7 @@ const InvoiceModal = ({ order, onClose }) => {
   const baseTotal = order.order_items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm print:static print:bg-white print:p-0 print:block [print-color-adjust:exact]">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm print:static print:bg-white print:p-0 print:block [print-color-adjust:exact] print-container">
       
       {/* ✨ The Magic CSS Fix to force a white background over the app when printing ✨ */}
       <style type="text/css" media="print">

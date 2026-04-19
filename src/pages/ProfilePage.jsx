@@ -77,9 +77,9 @@ const ProfilePage = () => {
               {profileData.username ? profileData.username.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white mb-1">{profileData.username || 'My Account'}</h1>
-              <p className="text-gray-400">{user.email}</p>
-            </div>
+  <h1 className="text-2xl font-bold text-white mb-1 truncate max-w-[250px]">{profileData.username || 'My Account'}</h1>
+  <p className="text-gray-400 break-long-text">{user.email}</p>
+</div>
           </div>
           <button onClick={handleLogout} className="flex items-center gap-2 px-6 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-lg transition-all">
             <LogOut size={18} /> Sign Out
@@ -202,7 +202,8 @@ const ProfilePage = () => {
   );
 };
 
-const OrderHistoryCard = ({ order, onReorder, onViewInvoice, navigate }) => (
+// snippet to replace in src/pages/ProfilePage.jsx
+const OrderHistoryCard = ({ order, onViewInvoice, navigate }) => (
   <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
     <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
       <div>
@@ -265,12 +266,7 @@ const OrderHistoryCard = ({ order, onReorder, onViewInvoice, navigate }) => (
         >
           <FileText size={16} /> View Invoice
         </button>
-        <button 
-          onClick={() => onReorder(order)} 
-          className="flex items-center gap-2 px-5 py-2.5 bg-gold-400/10 text-gold-400 hover:bg-gold-400 hover:text-black border border-gold-400/30 rounded transition-all text-sm font-bold uppercase tracking-wider"
-        >
-          <RefreshCw size={16} /> Inquire Again
-        </button>
+        {/* Inquire Again button completely removed */}
       </div>
     </div>
   </div>
