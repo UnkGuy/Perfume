@@ -117,4 +117,4 @@ const WishlistDrawer = () => {
   );
 };
 
-export default WishlistDrawer;
+export default WishlistDrawer; 

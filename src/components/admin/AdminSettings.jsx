@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2,
-  Store, CreditCard, Truck, Megaphone, Settings, ShieldAlert,
+  Store, CreditCard, Truck, Megaphone, Settings,
   CheckCircle,
 } from 'lucide-react';
 import { saveSettingsAPI } from '../../services/settingsApi';
@@ -30,7 +30,7 @@ const Toggle = ({ checked, onChange, label, description }) => (
   </div>
 );
 
-// ─── Reusable List Editor (for payment/fulfillment methods) ──────────────────
+// ─── Reusable List Editor ─────────────────────────────────────────────────────
 const ListEditor = ({ items, onChange, placeholder, label }) => {
   const [inputVal, setInputVal] = useState('');
 
@@ -42,7 +42,7 @@ const ListEditor = ({ items, onChange, placeholder, label }) => {
   };
 
   const handleRemove = (item) => {
-    if (items.length <= 1) return; // Keep at least one option
+    if (items.length <= 1) return;
     onChange(items.filter(i => i !== item));
   };
 
@@ -106,7 +106,7 @@ const Section = ({ icon, title, description, children }) => (
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const AdminSettings = () => {
-  const { settings, setSettings, refreshSettings } = useSettings();
+  const { settings, setSettings } = useSettings();
   const { user } = useAuth();
   const { showToast } = useShop();
 
@@ -114,7 +114,6 @@ const AdminSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
 
-  // Initialize draft from live settings
   useEffect(() => {
     setDraft(JSON.parse(JSON.stringify(settings)));
   }, [settings]);
@@ -125,14 +124,11 @@ const AdminSettings = () => {
     </div>
   );
 
-  // ── Draft updaters ──────────────────────────────────────────────────────────
   const setFeature  = (key, val) => setDraft(d => ({ ...d, features: { ...d.features, [key]: val } }));
   const setCheckout = (key, val) => setDraft(d => ({ ...d, checkout: { ...d.checkout, [key]: val } }));
   const setStore    = (key, val) => setDraft(d => ({ ...d, storeInfo: { ...d.storeInfo, [key]: val } }));
   const setAnnounc  = (key, val) => setDraft(d => ({ ...d, announcement: { ...d.announcement, [key]: val } }));
-  const setMaint    = (key, val) => setDraft(d => ({ ...d, maintenance: { ...d.maintenance, [key]: val } }));
 
-  // ── Save ────────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -183,7 +179,9 @@ const AdminSettings = () => {
             disabled={isSaving || !hasChanges}
             className="flex items-center gap-2 px-5 py-2.5 bg-gold-400 hover:bg-gold-300 text-black font-bold rounded-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSaving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : <><Save size={16} /> Save Changes</>}
+            {isSaving
+              ? <><Loader2 size={16} className="animate-spin" /> Saving…</>
+              : <><Save size={16} /> Save Changes</>}
           </button>
         </div>
       </div>
@@ -196,45 +194,19 @@ const AdminSettings = () => {
         </div>
       )}
 
-      {/* ── Maintenance Mode ── */}
-      <Section
-        icon={<ShieldAlert size={16} />}
-        title="Maintenance Mode"
-        description="Temporarily take the storefront offline. Customers will see your message instead."
-      >
-        <Toggle
-          checked={draft.maintenance.enabled}
-          onChange={val => setMaint('enabled', val)}
-          label="Enable Maintenance Mode"
-          description="Blocks all customer-facing pages with a notice."
-        />
-        {draft.maintenance.enabled && (
-          <div className="mt-3">
-            <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Maintenance Message</label>
-            <textarea
-              value={draft.maintenance.message}
-              onChange={e => setMaint('message', e.target.value)}
-              maxLength={300}
-              rows={2}
-              className="w-full bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold-400 resize-none"
-            />
-          </div>
-        )}
-      </Section>
-
-      {/* ── Feature Flags ── */}
+      {/* ── Customer Features ── */}
       <Section
         icon={<ToggleRight size={16} />}
         title="Customer Features"
         description="Toggle individual features on or off for your shoppers."
       >
-        <Toggle checked={draft.features.chatWidget}    onChange={v => setFeature('chatWidget', v)}    label="Live Chat Widget"      description="The floating chat bubble on the storefront." />
-        <Toggle checked={draft.features.wishlist}      onChange={v => setFeature('wishlist', v)}      label="Wishlist"              description="Heart button + wishlist drawer for customers." />
-        <Toggle checked={draft.features.reviews}       onChange={v => setFeature('reviews', v)}       label="Product Reviews"       description="Allow verified buyers to leave star reviews." />
-        <Toggle checked={draft.features.ratingsDisplay} onChange={v => setFeature('ratingsDisplay', v)} label="Display Ratings"    description="Show star ratings and scores on product cards." />
-        <Toggle checked={draft.features.promoCodes}    onChange={v => setFeature('promoCodes', v)}    label="Promo / Discount Codes" description="Show the promo code field at checkout." />
-        <Toggle checked={draft.features.guestCheckout} onChange={v => setFeature('guestCheckout', v)} label="Guest Browsing"       description="Allow non-logged-in visitors to browse (not checkout)." />
-        <Toggle checked={draft.features.reorderButton} onChange={v => setFeature('reorderButton', v)} label="Re-Order Button"      description="Let customers quickly reorder from their history." />
+        <Toggle checked={draft.features.chatWidget}     onChange={v => setFeature('chatWidget', v)}     label="Live Chat Widget"       description="The floating chat bubble on the storefront." />
+        <Toggle checked={draft.features.wishlist}       onChange={v => setFeature('wishlist', v)}       label="Wishlist"               description="Heart button + wishlist drawer for customers." />
+        <Toggle checked={draft.features.reviews}        onChange={v => setFeature('reviews', v)}        label="Product Reviews"        description="Allow verified buyers to leave star reviews." />
+        <Toggle checked={draft.features.ratingsDisplay} onChange={v => setFeature('ratingsDisplay', v)} label="Display Ratings"        description="Show star ratings and scores on product cards." />
+        <Toggle checked={draft.features.promoCodes}     onChange={v => setFeature('promoCodes', v)}     label="Promo / Discount Codes" description="Show the promo code field at checkout." />
+        <Toggle checked={draft.features.guestCheckout}  onChange={v => setFeature('guestCheckout', v)}  label="Guest Browsing"         description="Allow non-logged-in visitors to browse (not checkout)." />
+        <Toggle checked={draft.features.reorderButton}  onChange={v => setFeature('reorderButton', v)}  label="Re-Order Button"        description="Let customers quickly reorder from their history." />
       </Section>
 
       {/* ── Payment Methods ── */}
@@ -273,12 +245,12 @@ const AdminSettings = () => {
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { key: 'name',          label: 'Store Name',       placeholder: 'KL Scents' },
-            { key: 'tagline',       label: 'Tagline',          placeholder: 'Experience luxury…' },
-            { key: 'contactEmail',  label: 'Contact Email',    placeholder: 'hello@klscents.com' },
-            { key: 'contactPhone',  label: 'Contact Phone',    placeholder: '09xxxxxxxxx' },
-            { key: 'instagramUrl',  label: 'Instagram URL',    placeholder: 'https://instagram.com/…' },
-            { key: 'facebookUrl',   label: 'Facebook URL',     placeholder: 'https://facebook.com/…' },
+            { key: 'name',         label: 'Store Name',    placeholder: 'KL Scents' },
+            { key: 'tagline',      label: 'Tagline',       placeholder: 'Experience luxury…' },
+            { key: 'contactEmail', label: 'Contact Email', placeholder: 'hello@klscents.com' },
+            { key: 'contactPhone', label: 'Contact Phone', placeholder: '09xxxxxxxxx' },
+            { key: 'instagramUrl', label: 'Instagram URL', placeholder: 'https://instagram.com/…' },
+            { key: 'facebookUrl',  label: 'Facebook URL',  placeholder: 'https://facebook.com/…' },
           ].map(({ key, label, placeholder }) => (
             <div key={key}>
               <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">{label}</label>
@@ -294,7 +266,7 @@ const AdminSettings = () => {
         </div>
       </Section>
 
-      {/* ── Checkout Settings ── */}
+      {/* ── Checkout Behaviour ── */}
       <Section
         icon={<Settings size={16} />}
         title="Checkout Behaviour"
@@ -302,9 +274,9 @@ const AdminSettings = () => {
       >
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { key: 'minOrderAmount',   label: 'Min. Order Amount (₱)', min: 0,  placeholder: '0 = no minimum' },
-            { key: 'maxCartItems',     label: 'Max Cart Items',         min: 1,  placeholder: '20' },
-            { key: 'spamLimitSeconds', label: 'Order Cooldown (secs)',  min: 0,  placeholder: '60' },
+            { key: 'minOrderAmount',   label: 'Min. Order Amount (₱)', min: 0, placeholder: '0 = no minimum' },
+            { key: 'maxCartItems',     label: 'Max Cart Items',         min: 1, placeholder: '20' },
+            { key: 'spamLimitSeconds', label: 'Order Cooldown (secs)',  min: 0, placeholder: '60' },
           ].map(({ key, label, min, placeholder }) => (
             <div key={key}>
               <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">{label}</label>
@@ -325,7 +297,7 @@ const AdminSettings = () => {
       <Section
         icon={<Megaphone size={16} />}
         title="Announcement Banner"
-        description="The scrolling marquee strip shown on the homepage and product pages."
+        description="The scrolling marquee strip shown on the homepage."
       >
         <Toggle
           checked={draft.announcement.enabled}
@@ -371,7 +343,7 @@ const AdminSettings = () => {
                 </div>
               </div>
             </div>
-            {/* Preview */}
+            {/* Live preview */}
             <div
               className="py-2 px-4 rounded text-center text-xs font-bold uppercase tracking-widest truncate"
               style={{ backgroundColor: draft.announcement.bgColor, color: draft.announcement.textColor }}
@@ -389,7 +361,9 @@ const AdminSettings = () => {
           disabled={isSaving || !hasChanges}
           className="flex items-center gap-2 px-8 py-3 bg-gold-400 hover:bg-gold-300 text-black font-bold rounded-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSaving ? <><Loader2 size={18} className="animate-spin" /> Saving…</> : <><Save size={18} /> Save Changes</>}
+          {isSaving
+            ? <><Loader2 size={18} className="animate-spin" /> Saving…</>
+            : <><Save size={18} /> Save Changes</>}
         </button>
       </div>
     </div>

@@ -1,4 +1,4 @@
-// src/App.jsx  — respects settings.features flags
+// src/App.jsx
 import React, { useEffect, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from './services/supabase';
@@ -12,15 +12,15 @@ import ChatWidget from './components/common/ChatWidget';
 
 import { useAuth } from './contexts/AuthContext';
 import { useShop } from './contexts/ShopContext';
-import { useSettings } from './contexts/SettingsContext';   // ← NEW
+import { useSettings } from './contexts/SettingsContext';
 
-const LoginPage          = lazy(() => import('./pages/LoginPage'));
-const ProductPage        = lazy(() => import('./pages/ProductPage'));
-const CartPage           = lazy(() => import('./pages/CartPage'));
-const ProfilePage        = lazy(() => import('./pages/ProfilePage'));
-const AdminDashboard     = lazy(() => import('./pages/AdminDashboard'));
-const ResetPasswordPage  = lazy(() => import('./pages/ResetPasswordPage'));
-const NotFoundPage       = lazy(() => import('./pages/NotFoundPage'));
+const LoginPage         = lazy(() => import('./pages/LoginPage'));
+const ProductPage       = lazy(() => import('./pages/ProductPage'));
+const CartPage          = lazy(() => import('./pages/CartPage'));
+const ProfilePage       = lazy(() => import('./pages/ProfilePage'));
+const AdminDashboard    = lazy(() => import('./pages/AdminDashboard'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 
 const PageLoader = () => (
   <div className="min-h-screen bg-rich-black flex items-center justify-center">
@@ -28,25 +28,13 @@ const PageLoader = () => (
   </div>
 );
 
-// Shown to customers when maintenance mode is on
-const MaintenancePage = ({ message }) => (
-  <div className="min-h-screen bg-rich-black flex flex-col items-center justify-center text-white text-center px-6">
-    <img
-      src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
-      alt="KL Scents" className="w-24 h-24 rounded-full object-cover mb-8 border border-white/10 shadow-2xl"
-    />
-    <h1 className="text-3xl font-bold mb-4">Be Right Back</h1>
-    <p className="text-gray-400 max-w-md text-lg leading-relaxed">{message || 'We are down for maintenance. Please check back soon!'}</p>
-  </div>
-);
-
 function App() {
   const { userRole } = useAuth();
   const { toasts, removeToast } = useShop();
-  const { settings } = useSettings();  // ← NEW
+  const { settings } = useSettings();
 
-  const location  = useLocation();
-  const navigate  = useNavigate();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const hash = window.location.hash;
@@ -64,37 +52,30 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [location.pathname]);
 
-  // Maintenance mode — block customers but not admins
-  const isMaintenanceMode = settings.maintenance?.enabled && userRole !== 'admin';
-
   return (
     <div className="min-h-screen bg-rich-black text-white font-sans">
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      {!isMaintenanceMode && <CartDrawer />}
-      {!isMaintenanceMode && settings.features?.wishlist !== false && <WishlistDrawer />}
-      {userRole !== 'admin' && settings.features?.chatWidget !== false && !isMaintenanceMode && <ChatWidget />}
+      <CartDrawer />
+      {settings.features?.wishlist !== false && <WishlistDrawer />}
+      {userRole !== 'admin' && settings.features?.chatWidget !== false && <ChatWidget />}
 
-      {isMaintenanceMode ? (
-        <MaintenancePage message={settings.maintenance?.message} />
-      ) : (
-        <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/"               element={<WelcomePage />} />
-            <Route path="/products"       element={<ProductPage />} />
-            <Route path="/products/:id"   element={<ProductPage />} />
-            <Route path="/cart"           element={<CartPage />} />
-            <Route path="/login"          element={<LoginPage />} />
-            <Route path="/profile"        element={<ProfilePage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route
-              path="/admin"
-              element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />}
-            />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Suspense>
-      )}
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/"               element={<WelcomePage />} />
+          <Route path="/products"       element={<ProductPage />} />
+          <Route path="/products/:id"   element={<ProductPage />} />
+          <Route path="/cart"           element={<CartPage />} />
+          <Route path="/login"          element={<LoginPage />} />
+          <Route path="/profile"        element={<ProfilePage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route
+            path="/admin"
+            element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />}
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
     </div>
   );
 }

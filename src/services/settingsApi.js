@@ -32,10 +32,6 @@ export const DEFAULT_SETTINGS = {
     bgColor: '#d4af37',
     textColor: '#000000',
   },
-  maintenance: {
-    enabled: false,
-    message: 'We are currently down for maintenance. Please check back soon!',
-  },
 };
 
 function deepMerge(defaults, overrides) {

@@ -13,7 +13,6 @@ export const saveProductAPI = async (payload, id = null) => {
   const { variants, ...productData } = payload;
   let productId = id;
 
-  // 1. Save Base Product
   if (id) {
     const { error } = await supabase.from('products').update(productData).eq('id', id);
     if (error) throw error;
@@ -23,7 +22,6 @@ export const saveProductAPI = async (payload, id = null) => {
     productId = data.id;
   }
 
-  // 2. Manage Variants (Safe Upsert to preserve UUIDs for active carts)
   // Get existing variants
   const { data: existingVariants } = await supabase.from('product_variants').select('id').eq('product_id', productId);
   const existingIds = existingVariants?.map(v => v.id) || [];
