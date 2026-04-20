@@ -1,35 +1,35 @@
-// src/hooks/useMessages.js
-import { useState, useEffect } from 'react';
-import { supabase } from '../services/supabase';
+// src/hooks/useMessages.js 
+import { useState, useEffect } from 'react'; 
+import { supabase } from '../services/supabase'; 
 import { fetchActiveChatsAPI, fetchMessagesByUserAPI, sendMessageAPI } from '../services/messageApi';
 
-export const useActiveChats = () => {
-  const [activeChats, setActiveChats] = useState([]);
+export const useActiveChats = () => { 
+  const [activeChats, setActiveChats] = useState([]); 
   const [isLoading, setIsLoading] = useState(true);
 
-  const buildChatList = (data) => {
-    if (!data || data.length === 0) return [];
-    return data.map(msg => ({
-      id: msg.user_id,
-      email: msg.email || `Customer ${msg.user_id.substring(0, 6)}`,
-      displayName: msg.username || msg.email || 'Unknown User',
-      lastActive: msg.created_at,
-    }));
+  const buildChatList = (data) => { 
+    if (!data || data.length === 0) return []; 
+    return data.map(msg => ({ 
+      id: msg.user_id, 
+      email: msg.email || `Customer ${msg.user_id.substring(0, 6)}`, 
+      displayName: msg.username || msg.email || 'Unknown User', 
+      lastActive: msg.created_at, 
+    })); 
   };
 
-  useEffect(() => {
-    let isMounted = true;
-    const loadChats = async () => {
-      setIsLoading(true);
-      try {
-        const data = await fetchActiveChatsAPI();
-        if (isMounted) setActiveChats(buildChatList(data));
-      } catch (error) {
-        console.error('Failed to load active chats', error);
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
+  useEffect(() => { 
+    let isMounted = true; 
+    const loadChats = async () => { 
+      setIsLoading(true); 
+      try { 
+        const data = await fetchActiveChatsAPI(); 
+        if (isMounted) setActiveChats(buildChatList(data)); 
+      } catch (error) { 
+        console.error('Failed to load active chats', error); 
+      } finally { 
+        if (isMounted) setIsLoading(false); 
+      } 
+    }; 
     loadChats();
 
     const subscription = supabase
@@ -50,13 +50,13 @@ export const useActiveChats = () => {
     };
   }, []);
 
-  return { activeChats, isLoading };
+  return { activeChats, isLoading }; 
 };
 
-export const useMessageThread = (userId, role) => {
+export const useMessageThread = (userId, role) => { 
   const [messages, setMessages] = useState([]);
 
-  useEffect(() => {
+  useEffect(() => { 
     if (!userId) { setMessages([]); return; }
 
     const loadMessages = async () => {
@@ -80,7 +80,6 @@ export const useMessageThread = (userId, role) => {
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${userId}` },
         (payload) => {
           setMessages(current => {
-            // If this real message matches an optimistic one, replace it
             const optimisticIndex = current.findIndex(
               m => m._optimistic &&
                    m.sender_role === payload.new.sender_role &&
@@ -89,10 +88,9 @@ export const useMessageThread = (userId, role) => {
             );
             if (optimisticIndex !== -1) {
               const updated = [...current];
-              updated[optimisticIndex] = payload.new; // swap optimistic → real
+              updated[optimisticIndex] = payload.new; 
               return updated;
             }
-            // Otherwise just append if not already present
             const exists = current.some(m => m.id === payload.new.id);
             return exists ? current : [...current, payload.new];
           });
@@ -103,19 +101,19 @@ export const useMessageThread = (userId, role) => {
     return () => supabase.removeChannel(subscription);
   }, [userId, role]);
 
-  const sendMessage = async (content, imageUrl = null) => {
-    const trimmedContent = content?.trim() || null;
-    if (!trimmedContent && !imageUrl) return { success: false };
+  const sendMessage = async (content, imageUrl = null) => { 
+    const trimmedContent = content?.trim() || null; 
+    if (!trimmedContent && !imageUrl) return { success: false }; 
     if (!userId) return { success: false };
 
     const optimisticId = `optimistic-${Date.now()}`;
 
-    // 1. Show message instantly as optimistic
+    // Fix: Match exact fallback structure of DB inserted content (`''` instead of null if empty)
     const optimisticMsg = {
       id: optimisticId,
       _optimistic: true,
       sender_role: role,
-      content: trimmedContent,
+      content: trimmedContent || '', 
       user_id: userId,
       created_at: new Date().toISOString(),
       metadata: imageUrl ? { image_url: imageUrl } : null,
@@ -130,9 +128,6 @@ export const useMessageThread = (userId, role) => {
         metadata: imageUrl ? { image_url: imageUrl } : null,
       });
 
-      // 2. API succeeded — mark it as confirmed so it stops showing "Sending…"
-      //    Realtime will eventually replace it with the real DB row, but this
-      //    makes it look confirmed immediately regardless.
       setMessages(current =>
         current.map(m =>
           m.id === optimisticId ? { ...m, _optimistic: false } : m
@@ -141,14 +136,13 @@ export const useMessageThread = (userId, role) => {
 
       return { success: true };
     } catch (error) {
-      // Roll back on failure
       setMessages(current => current.filter(m => m.id !== optimisticId));
       return { success: false, error };
     }
   };
 
-  const uploadChatImage = async (file) => {
-    if (!file.type.startsWith('image/')) throw new Error('File must be an image.');
+  const uploadChatImage = async (file) => { 
+    if (!file.type.startsWith('image/')) throw new Error('File must be an image.'); 
     const fileName = `${userId}_${Date.now()}.jpg`;
 
     const { data, error } = await supabase.storage
@@ -160,5 +154,5 @@ export const useMessageThread = (userId, role) => {
     return publicUrlData.publicUrl;
   };
 
-  return { messages, sendMessage, uploadChatImage };
+  return { messages, sendMessage, uploadChatImage }; 
 };

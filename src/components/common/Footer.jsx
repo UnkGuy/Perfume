@@ -1,29 +1,30 @@
-import React from 'react';
-import { Instagram, Facebook } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useUI } from '../../contexts/UIContext';
+import React from 'react'; 
+import { Instagram, Facebook } from 'lucide-react'; 
+import { useNavigate } from 'react-router-dom'; 
+import { useUI } from '../../contexts/UIContext'; 
 import { useAuth } from '../../contexts/AuthContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
-const Footer = () => {
-  const { setCurrentPage } = useUI();
-  const { userRole } = useAuth();
+const Footer = () => { 
+  const { setCurrentPage } = useUI(); 
+  const { userRole } = useAuth(); 
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const isAdmin = userRole === 'admin';
+  const storeInfo = settings?.storeInfo || {};
 
-  const handleLogoClick = () => {
-    if (isAdmin) {
-      navigate('/admin');
-    } else {
-      setCurrentPage('welcome');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  const handleLogoClick = () => { 
+    if (isAdmin) { 
+      navigate('/admin'); 
+    } else { 
+      setCurrentPage('welcome'); 
+      window.scrollTo({ top: 0, behavior: 'smooth' }); 
+    } 
   };
 
   return (
-    <footer className="bg-rich-black border-t border-gold-400/20 pt-16 pb-8 relative overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg h-1 bg-gold-400/30 blur-[50px] pointer-events-none" />
-
+    <footer className="w-full bg-rich-black border-t border-white/10 py-12 relative z-10 overflow-hidden">
       <div className="container mx-auto px-6 max-w-7xl flex flex-col items-center text-center">
         <div
           className="flex items-center gap-4 mb-6 group cursor-pointer"
@@ -31,41 +32,36 @@ const Footer = () => {
         >
           <img
             src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
-            alt="KL Scents"
+            alt={storeInfo.name || "KL Scents"}
             className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:border-gold-400/50 transition-colors shadow-lg"
           />
           <div className="flex flex-col items-center">
-            <span className="text-2xl font-bold tracking-[0.2em] text-white group-hover:text-gold-400 transition-colors">KL SCENTS</span>
+            <span className="text-2xl font-bold tracking-[0.2em] text-white group-hover:text-gold-400 transition-colors uppercase">{storeInfo.name || 'KL SCENTS'}</span>
             <span className="text-xs tracking-[0.5em] text-gold-400/80">PHILIPPINES</span>
           </div>
         </div>
 
         <p className="text-gold-200/80 font-serif italic text-lg mb-8 max-w-md">
-          "Experience luxury in every drop."
+          "{storeInfo.tagline || 'Experience luxury in every drop.'}"
         </p>
 
         <div className="flex gap-6 mb-10">
-          <SocialIcon href="https://www.instagram.com/klscentsph" icon={<Instagram size={20} />} />
-          <SocialIcon href="https://www.facebook.com/profile.php?id=61568097239499" icon={<Facebook size={20} />} />
+          {storeInfo.instagramUrl && <SocialIcon href={storeInfo.instagramUrl} icon={<Instagram size={20} />} />}
+          {storeInfo.facebookUrl && <SocialIcon href={storeInfo.facebookUrl} icon={<Facebook size={20} />} />}
         </div>
 
         <div className="w-full max-w-xs h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8" />
 
         <p className="text-gray-500 text-sm tracking-wide">
-          © {new Date().getFullYear()} KL Scents PH. All rights reserved.
+          © {new Date().getFullYear()} {storeInfo.name || 'KL Scents'} PH. All rights reserved.
         </p>
       </div>
     </footer>
-  );
+  ); 
 };
 
-const SocialIcon = ({ icon, href }) => (
-  <a
-    href={href}
-    target="_blank"
-    rel="noreferrer"
-    className="text-gray-400 hover:text-gold-400 hover:scale-110 transition-all duration-300"
-  >
+const SocialIcon = ({ icon, href }) => ( 
+  <a href={href} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-gold-400 hover:scale-110 transition-all duration-300">
     {icon}
   </a>
 );

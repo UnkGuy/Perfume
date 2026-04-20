@@ -1,22 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { Loader2, Search, Ban, CheckCircle } from 'lucide-react';
-import { supabase } from '../../services/supabase';
-import { useShop } from '../../contexts/ShopContext';
+import React, { useState, useEffect } from 'react'; 
+import { Loader2, Search, Ban, CheckCircle } from 'lucide-react'; 
+import { supabase } from '../../services/supabase'; 
+import { useShop } from '../../contexts/ShopContext'; 
 import { updateUserRoleAPI } from '../../services/userApi';
+import { useAuth } from '../../contexts/AuthContext';
+import { logAdminActionAPI } from '../../services/logApi';
 
-const AdminUsers = () => {
-  const { showToast } = useShop();
-  const [users, setUsers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');  
+const AdminUsers = () => { 
+  const { showToast } = useShop(); 
+  const { user: adminUser } = useAuth();
+  const [users, setUsers] = useState([]); 
+  const [isLoading, setIsLoading] = useState(true); 
+  const [searchQuery, setSearchQuery] = useState(''); 
+  const [roleFilter, setRoleFilter] = useState('all');
 
   useEffect(() => { fetchUsers(); }, []);
 
-  const fetchUsers = async () => {
-    setIsLoading(true);
-    try {
-      const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
+  const fetchUsers = async () => { 
+    setIsLoading(true); 
+    try { 
+      const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*'); 
       if (profilesError) throw profilesError;
 
       const { data: rolesData, error: rolesError } = await supabase.from('user_roles').select('*');
@@ -34,53 +37,53 @@ const AdminUsers = () => {
     }
   };
 
-  const handleToggleBan = async (userId, currentStatus) => {
-    const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', userId);
-    if (!error) {
-      setUsers(users.map(u => u.id === userId ? { ...u, is_banned: !currentStatus } : u));
-      showToast('Success', `Account ${!currentStatus ? 'banned' : 'unbanned'}.`);
-    }
+  const handleToggleBan = async (userId, currentStatus) => { 
+    const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', userId); 
+    if (!error) { 
+      setUsers(users.map(u => u.id === userId ? { ...u, is_banned: !currentStatus } : u)); 
+      showToast('Success', `Account ${!currentStatus ? 'banned' : 'unbanned'}.`); 
+      
+      // Admin Log is handled inside useUserBan usually, but since this triggers separately we log it here too:
+      logAdminActionAPI(adminUser?.email, !currentStatus ? 'Blocked User' : 'Unblocked User', `User ID: ${userId}`);
+    } 
   };
 
-  const handleRoleChange = async (userId, newRole) => {
-    try {
-      await updateUserRoleAPI(userId, newRole);
-      setUsers(users.map(u => u.id === userId ? { ...u, user_roles: [{ role: newRole }] } : u));
-      showToast('Success', `User role updated to ${newRole}.`);
-    } catch (error) {
-      showToast('Error', 'Failed to update role.', 'error');
-    }
+  const handleRoleChange = async (userId, newRole) => { 
+    try { 
+      await updateUserRoleAPI(userId, newRole); 
+      setUsers(users.map(u => u.id === userId ? { ...u, user_roles: [{ role: newRole }] } : u)); 
+      showToast('Success', `User role updated to ${newRole}.`); 
+      
+      // Admin Log for Role Change
+      logAdminActionAPI(adminUser?.email, 'Changed User Role', `User ID: ${userId} to ${newRole}`);
+    } catch (error) { 
+      showToast('Error', 'Failed to update role.', 'error'); 
+    } 
   };
 
-  const filtered = users.filter(u => {
-    const matchesSearch = (u.email || '').toLowerCase().includes(searchQuery.toLowerCase());
-    const role = u.user_roles?.[0]?.role || 'customer';
-    const matchesRole = roleFilter === 'all' || role === roleFilter;
-    return matchesSearch && matchesRole;
+  const filtered = users.filter(u => { 
+    const matchesSearch = (u.email || '').toLowerCase().includes(searchQuery.toLowerCase()); 
+    const role = u.user_roles?.[0]?.role || 'customer'; 
+    const matchesRole = roleFilter === 'all' || role === roleFilter; 
+    return matchesSearch && matchesRole; 
   });
 
   return (
-    <div className="animate-fade-in space-y-6 w-full overflow-hidden">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h3 className="text-2xl font-bold text-white mb-1">Accounts</h3>
           <p className="text-gray-400 text-sm">Manage registered users and permissions.</p>
         </div>
-        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full md:w-auto">
-          <select 
-            value={roleFilter} 
-            onChange={e => setRoleFilter(e.target.value)}
-            className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400 w-full sm:w-auto"
-          >
+        <div className="flex flex-col sm:flex-row gap-3">
+          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400 w-full sm:w-auto" > 
             <option value="all">All Roles</option>
             <option value="customer">Customers</option>
             <option value="admin">Admins</option>
           </select>
-          <div className="relative w-full sm:w-64">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400"
-            />
+          <div className="relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400" />
           </div>
         </div>
       </div>
@@ -134,6 +137,7 @@ const AdminUsers = () => {
         </table>
       </div>
     </div>
-  );
-};
+  ); 
+}; 
+
 export default AdminUsers;

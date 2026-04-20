@@ -1,52 +1,46 @@
-import React, { useState } from 'react';
-import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2, Plus, Trash2 } from 'lucide-react';
-import { useOrders } from '../../hooks/useOrders';
+import React, { useState } from 'react'; 
+import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2, Plus, Trash2 } from 'lucide-react'; 
+import { useOrders } from '../../hooks/useOrders'; 
 import { useShop } from '../../contexts/ShopContext';
+import { useSettings } from '../../contexts/SettingsContext'; // Import Settings Context
 
-const statusClass = (status) =>
-  status === 'pending'   ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' :
-  status === 'shipped'   ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' :
-  status === 'canceled'  ? 'bg-red-500/10 text-red-400 border border-red-500/30' :
-                           'bg-green-500/10 text-green-400 border border-green-500/30';
+const statusClass = (status) => status === 'pending' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' : status === 'shipped' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : status === 'canceled' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-green-500/10 text-green-400 border border-green-500/30';
 
-const AdminOrders = ({ onNavigateToMessages }) => {
-  const { showToast } = useShop();
+const AdminOrders = ({ onNavigateToMessages }) => { 
+  const { showToast } = useShop(); 
+  const { settings } = useSettings(); // Use context for invoice data
   const { orders, isLoading, changeOrderStatus, modifyOrder } = useOrders(showToast);
-  
-  const [expandedOrderId, setExpandedOrderId] = useState(null);
-  const [idSearch, setIdSearch] = useState('');
-  const [emailSearch, setEmailSearch] = useState('');
+
+  const [expandedOrderId, setExpandedOrderId] = useState(null); 
+  const [idSearch, setIdSearch] = useState(''); 
+  const [emailSearch, setEmailSearch] = useState(''); 
   const [statusFilter, setStatusFilter] = useState('all');
 
   const [invoiceOrder, setInvoiceOrder] = useState(null);
 
-  const filteredOrders = orders.filter(order => {
-    const matchesId = !idSearch.trim() || order.id.toString().includes(idSearch.trim());
-    const matchesEmail = !emailSearch.trim() ||
-      (order.profiles?.email || '').toLowerCase().includes(emailSearch.trim().toLowerCase());
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    return matchesId && matchesEmail && matchesStatus;
+  const filteredOrders = orders.filter(order => { 
+    const matchesId = !idSearch.trim() || order.id.toString().includes(idSearch.trim()); 
+    const matchesEmail = !emailSearch.trim() || (order.profiles?.email || '').toLowerCase().includes(emailSearch.trim().toLowerCase()); 
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter; 
+    return matchesId && matchesEmail && matchesStatus; 
   });
 
-  if (isLoading) return <div className="flex justify-center items-center h-64 text-gold-400"><Loader2 className="animate-spin" size={32} /></div>;
+  if (isLoading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-gold-400" /></div>;
 
-  return (
+  return ( 
     <>
-      <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden w-full">
-        <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20 w-full">
-          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-            <div className="relative w-full sm:w-36">
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-bold text-white mb-1">Orders Dashboard</h3>
+            <p className="text-gray-400 text-sm">Manage fulfillment, invoicing, and messages.</p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="relative flex-1 min-w-[120px]">
               <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                inputMode="numeric"
-                placeholder="Order ID…"
-                value={idSearch}
-                onChange={e => setIdSearch(e.target.value.replace(/\D/g, ''))}
-                className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
-              />
+              <input type="text" inputMode="numeric" placeholder="Order ID…" value={idSearch} onChange={e => setIdSearch(e.target.value.replace(/\D/g, ''))} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors" />
             </div>
-
             <div className="relative flex-1 min-w-[180px]">
               <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               <input
@@ -189,95 +183,81 @@ const AdminOrders = ({ onNavigateToMessages }) => {
         </div>
       </div>
 
-      {invoiceOrder && <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} modifyOrder={modifyOrder} />}
+      {/* Pass settings directly to the invoice modal */}
+      {invoiceOrder && <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} modifyOrder={modifyOrder} settings={settings} />}
     </>
-  );
+  ); 
 };
 
-/* Rest of the InvoiceModal code remains the same... */
-const InvoiceModal = ({ order, onClose, modifyOrder }) => {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({
-    address: order.metadata?.address || order.metadata?.location || '',
-    contact: order.metadata?.contact || '',
-    promo_code: order.metadata?.promo_code || '',
-    fulfillment_method: order.metadata?.fulfillment_method || '',
-    payment_preference: order.metadata?.payment_preference || '',
-    custom_fees: order.metadata?.custom_fees || []
+const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => { 
+  const [isEditing, setIsEditing] = useState(false); 
+  const [editData, setEditData] = useState({ 
+    address: order.metadata?.address || order.metadata?.location || '', 
+    contact: order.metadata?.contact || '', 
+    promo_code: order.metadata?.promo_code || '', 
+    fulfillment_method: order.metadata?.fulfillment_method || '', 
+    payment_preference: order.metadata?.payment_preference || '', 
+    custom_fees: order.metadata?.custom_fees || [] 
   });
 
-  const [newFeeName, setNewFeeName] = useState('');
+  const storeInfo = settings?.storeInfo || {};
+
+  const [newFeeName, setNewFeeName] = useState(''); 
   const [newFeeAmount, setNewFeeAmount] = useState('');
 
-  const handlePrint = () => {
-    const printContent = document.getElementById('printable-invoice-area').innerHTML;
-    const printWindow = window.open('', '_blank');
+  const handlePrint = () => { 
+    const printContent = document.getElementById('printable-invoice-area').innerHTML; 
+    const printWindow = window.open('', '_blank'); 
     printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice #${order.id}</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <style>
-            @page { size: auto; margin: 15mm; }
-            body { font-family: sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; color: black; }
-          </style>
-        </head>
-        <body class="bg-white">
-          <div class="max-w-3xl mx-auto py-8">
-            ${printContent}
-          </div>
-          <script>
-            setTimeout(() => { window.print(); window.close(); }, 750);
-          </script>
-        </body>
+      <html> 
+        <head> 
+          <title>Invoice #${order.id} - ${storeInfo.name || 'KL Scents'}</title> 
+          <script src="https://cdn.tailwindcss.com"></script> 
+          <style> @page { size: auto; margin: 15mm; } body { font-family: sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; color: black; } </style> 
+        </head> 
+        <body class="bg-white"> 
+          <div class="max-w-3xl mx-auto py-8"> 
+            ${printContent} 
+          </div> 
+          <script> setTimeout(() => { window.print(); window.close(); }, 750); </script> 
+        </body> 
       </html>
-    `);
-    printWindow.document.close();
+    `); 
+    printWindow.document.close(); 
   };
 
-  const baseTotal = order.order_items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0);
-  const feesTotal = editData.custom_fees.reduce((sum, fee) => sum + Number(fee.amount), 0);
+  const baseTotal = order.order_items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0); 
+  const feesTotal = editData.custom_fees.reduce((sum, fee) => sum + Number(fee.amount), 0); 
   const grandTotal = baseTotal + feesTotal;
 
   const handleFieldChange = (field, value) => setEditData({ ...editData, [field]: value });
 
-  const handleAddFee = () => {
-    if (!newFeeName || !newFeeAmount) return;
-    setEditData({
-      ...editData,
-      custom_fees: [...editData.custom_fees, { name: newFeeName, amount: Number(newFeeAmount) }]
-    });
-    setNewFeeName('');
-    setNewFeeAmount('');
+  const handleAddFee = () => { 
+    if (!newFeeName || !newFeeAmount) return; 
+    setEditData({ ...editData, custom_fees: [...editData.custom_fees, { name: newFeeName, amount: Number(newFeeAmount) }] }); 
+    setNewFeeName(''); 
+    setNewFeeAmount(''); 
   };
 
-  const handleRemoveFee = (index) => {
-    setEditData({
-      ...editData,
-      custom_fees: editData.custom_fees.filter((_, i) => i !== index)
-    });
+  const handleRemoveFee = (index) => { 
+    setEditData({ ...editData, custom_fees: editData.custom_fees.filter((_, i) => i !== index) }); 
   };
 
-  const handleSave = () => {
-    modifyOrder(order.id, grandTotal, editData);
-    setIsEditing(false);
+  const handleSave = () => { 
+    modifyOrder(order.id, grandTotal, editData); 
+    setIsEditing(false); 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm w-full">
-      <div className="absolute top-6 right-6 flex gap-3">
-        {order.status === 'pending' && (
-          <button 
-            onClick={() => setIsEditing(!isEditing)} 
-            className={`flex items-center gap-2 px-4 py-2 rounded font-bold shadow-lg transition-colors ${isEditing ? 'bg-red-500 text-white' : 'bg-blue-500 text-white hover:bg-blue-400'}`}
-          >
-            <Edit2 size={16} /> {isEditing ? 'Cancel Edit' : 'Edit Invoice'}
-          </button>
-        )}
-        <button onClick={handlePrint} className="flex items-center gap-2 bg-gold-400 text-black px-4 py-2 rounded font-bold shadow-lg hover:bg-gold-300">
-          <Printer size={16} /> Print PDF
-        </button>
-        <button onClick={onClose} className="bg-white/10 text-white px-4 py-2 rounded hover:bg-white/20 border border-white/20">Close</button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="absolute top-4 right-4 flex gap-2">
+        {order.status === 'pending' && ( 
+          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-4 py-2 rounded font-bold shadow-lg transition-colors ${isEditing ? 'bg-red-500 text-white' : 'bg-blue-500 text-white hover:bg-blue-400'}`} > 
+            {isEditing ? 'Cancel Edit' : 'Edit Invoice'} 
+          </button> 
+        )} 
+        <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded font-bold shadow-lg transition-colors"><Printer size={18}/> Print PDF</button>
+        <button onClick={onClose} className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded font-bold transition-colors">Close</button>
       </div>
 
       <div className="bg-gray-100 w-full max-w-4xl rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col md:flex-row">
@@ -285,8 +265,8 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
         <div className="flex-1 bg-white p-10 text-black min-w-0" id="printable-invoice-area">
           <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-widest text-gray-900">KL SCENTS</h1>
-              <p className="text-sm text-gray-500 mt-1">Premium Fragrance Collection</p>
+              <h1 className="text-3xl font-extrabold tracking-widest text-gray-900 uppercase">{storeInfo.name || 'KL SCENTS'}</h1>
+              <p className="text-sm text-gray-500 mt-1">{storeInfo.tagline || 'Premium Fragrance Collection'}</p>
             </div>
             <div className="text-right">
               <h2 className="text-xl font-bold text-gray-800">INVOICE</h2>
@@ -363,8 +343,8 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
           </div>
 
           <div className="mt-16 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
-            <p>Thank you for shopping with KL Scents.</p>
-            <p className="mt-1">If you have any questions concerning this invoice, please message us.</p>
+            <p>Thank you for shopping with {storeInfo.name || 'KL Scents'}.</p>
+            <p className="mt-1">If you have any questions concerning this invoice, please message us at {storeInfo.contactEmail || 'our support page'}.</p>
           </div>
         </div>
 
@@ -415,7 +395,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
 
       </div>
     </div>
-  );
+  ); 
 };
 
 export default AdminOrders;

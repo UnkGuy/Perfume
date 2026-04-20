@@ -1,80 +1,89 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, User, ShoppingBag, AlertCircle, ImageIcon, Loader2 } from 'lucide-react';
-import { useMessageThread } from '../../hooks/useMessages';
-import { useUserBan } from '../../hooks/useUserBan';
+import React, { useState, useRef, useEffect } from 'react'; 
+import { MessageCircle, X, Send, User, ShoppingBag, AlertCircle, ImageIcon, Loader2 } from 'lucide-react'; 
+import { useMessageThread } from '../../hooks/useMessages'; 
+import { useUserBan } from '../../hooks/useUserBan'; 
 import { useAuth } from '../../contexts/AuthContext';
 
 const MAX_CHARS = 250;
 
-const ChatWidget = () => {
-  const { user } = useAuth();
-  const [isOpen, setIsOpen] = useState(false);
-  const [newMessage, setNewMessage] = useState('');
-  const [isUploading, setIsUploading] = useState(false); 
-  
-  const messagesEndRef = useRef(null);
-  const textareaRef = useRef(null); 
-  const fileInputRef = useRef(null); 
+const ChatWidget = () => { 
+  const { user } = useAuth(); 
+  const [isOpen, setIsOpen] = useState(false); 
+  const [newMessage, setNewMessage] = useState(''); 
+  const [isUploading, setIsUploading] = useState(false);
 
-  const { messages, sendMessage, uploadChatImage } = useMessageThread(user?.id, 'user');
+  const messagesEndRef = useRef(null); 
+  const textareaRef = useRef(null); 
+  const fileInputRef = useRef(null);
+
+  const { messages, sendMessage, uploadChatImage } = useMessageThread(user?.id, 'user'); 
   const { isBanned } = useUserBan(user?.id);
 
-  useEffect(() => {
-    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  useEffect(() => { 
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); 
   }, [messages, isOpen]);
 
-  const handleSend = async (e) => {
-    e?.preventDefault();
-    if (isBanned || isUploading) return;
-    if (!newMessage.trim() && !isUploading) return;
+  const handleSend = async (e) => { 
+    e?.preventDefault(); 
+    if (isBanned || isUploading) return; 
     
-    const { success } = await sendMessage(newMessage);
-    if (success) {
-      setNewMessage('');
-      if (textareaRef.current) textareaRef.current.style.height = '44px';
+    // Capture and clear immediately to prevent double-send race conditions
+    const textToSend = newMessage;
+    if (!textToSend.trim() && !isUploading) return;
+    
+    setNewMessage('');
+    if (textareaRef.current) textareaRef.current.style.height = '44px';
+
+    const { success } = await sendMessage(textToSend);
+    if (!success) {
+      setNewMessage(textToSend); // Restore if failed
     }
   };
 
-  const handleImageSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploading(true);
-    try {
-      const url = await uploadChatImage(file);
-      await sendMessage(newMessage, url); 
-      setNewMessage('');
-      if (textareaRef.current) textareaRef.current.style.height = '44px';
-    } catch (err) {
-      console.error(err);
-      alert("Failed to upload image. Please ensure it's a valid JPG/PNG.");
-    } finally {
-      setIsUploading(false);
+  const handleImageSelect = async (e) => { 
+    const file = e.target.files?.[0]; 
+    if (!file) return; 
+    setIsUploading(true); 
+    
+    const textToSend = newMessage;
+    setNewMessage('');
+    if (textareaRef.current) textareaRef.current.style.height = '44px';
+
+    try { 
+      const url = await uploadChatImage(file); 
+      await sendMessage(textToSend, url); 
+    } catch (err) { 
+      console.error(err); 
+      alert("Failed to upload image. Please ensure it's a valid JPG/PNG."); 
+      setNewMessage(textToSend); // Restore text if upload failed
+    } finally { 
+      setIsUploading(false); 
       e.target.value = ''; 
-    }
+    } 
   };
 
-  const handleInput = (e) => {
-    setNewMessage(e.target.value);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = '44px';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
+  const handleInput = (e) => { 
+    setNewMessage(e.target.value); 
+    if (textareaRef.current) { 
+      textareaRef.current.style.height = '44px'; 
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`; 
+    } 
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend(e);
-    }
+  const handleKeyDown = (e) => { 
+    if (e.key === 'Enter' && !e.shiftKey) { 
+      e.preventDefault(); 
+      handleSend(e); 
+    } 
   };
 
   if (!user) return null;
 
-  return (
-    <>
-      <button
-        onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-[40] p-4 bg-gold-400 text-rich-black rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:scale-110 hover:bg-gold-300 transition-all duration-300 ${isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'}`}
+  return ( 
+    <> 
+      <button 
+        onClick={() => setIsOpen(true)} 
+        className={`fixed bottom-6 right-6 z-[40] p-4 bg-gold-400 text-rich-black rounded-full shadow-[0_0_20px_rgba(212,175,55,0.4)] hover:scale-110 hover:bg-gold-300 transition-all duration-300 ${isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'}`} 
       >
         <MessageCircle size={28} />
       </button>
@@ -167,7 +176,9 @@ const ChatWidget = () => {
                   ) : (
                     <div className={`p-2.5 sm:p-3 rounded-2xl max-w-[85%] text-xs sm:text-sm leading-relaxed break-words sm:break-all flex flex-col gap-2 ${isUser ? 'bg-gold-400 text-rich-black rounded-tr-sm font-medium' : 'bg-white/10 text-white border border-white/5 rounded-tl-sm'}`}>
                       {hasImage && (
-                        <img src={msg.metadata.image_url} alt="Attachment" className="rounded-lg max-w-full h-auto max-h-48 object-cover border border-white/10" />
+                        <div className="overflow-hidden rounded-lg w-full max-w-full">
+                          <img src={msg.metadata.image_url} alt="Attachment" className="w-full h-auto max-h-48 object-cover border border-white/10" />
+                        </div>
                       )}
                       {msg.content && <span className="whitespace-pre-wrap">{msg.content}</span>}
                     </div>
@@ -219,6 +230,7 @@ const ChatWidget = () => {
         </form>
       </div>
     </>
-  );
-};
+  ); 
+}; 
+
 export default ChatWidget;

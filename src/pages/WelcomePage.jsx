@@ -5,6 +5,7 @@ import Footer from '../components/common/Footer';
 import { ArrowRight, Sparkles, Droplets, Wind, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
 import { useStoreProducts } from '../hooks/useStoreProducts';
+import { useSettings } from '../contexts/SettingsContext'; // Added Settings Context
 
 const HERO_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
@@ -42,14 +43,25 @@ const FeatureCard = ({ icon, title, description, delay }) => {
 const WelcomePage = () => {
   const { setCurrentPage } = useUI(); 
   const { products } = useStoreProducts();
+  const { settings } = useSettings(); // Hook into settings for admin images
   const [heroImgIdx, setHeroImgIdx] = useState(0);
 
   const heroImages = useMemo(() => {
+    // 1. Check if admin has set custom hero images in settings
+    const adminHeroes = settings?.welcomeImages?.hero;
+    if (adminHeroes && adminHeroes.length > 0) {
+      return adminHeroes;
+    }
+
+    // 2. Fallback to the original logic (product images)
     const imgs = (products || [])
       .filter(p => p.available && p.image_urls?.length > 0)
       .map(p => p.image_urls[0]);
     return imgs.length > 0 ? imgs : [HERO_IMAGE];
-  }, [products]);
+  }, [products, settings?.welcomeImages?.hero]);
+
+  // Admin configurable secondary/story image
+  const storyImage = settings?.welcomeImages?.secondary?.[0] || HERO_IMAGE;
 
   useEffect(() => {
     if (heroImages.length <= 1) return;
@@ -261,7 +273,11 @@ const WelcomePage = () => {
           <div className="container mx-auto px-6 max-w-7xl">
             <div className="flex flex-col md:flex-row items-center gap-16">
               <div ref={storyImageRef} className="story-image-wrap w-full md:w-1/2 relative aspect-square md:aspect-[4/5] rounded-2xl overflow-hidden">
-                <img src={HERO_IMAGE} alt="Crafting Perfume" className="w-full h-full object-cover grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-700" />
+                <img 
+                  src={storyImage} // Now dynamically uses Admin Settings image
+                  alt="Crafting Perfume" 
+                  className="w-full h-full object-cover grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-700" 
+                />
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
                 <div ref={storyHeadingRef} className="reveal-fade" style={{ '--delay': '0.1s' }}>
