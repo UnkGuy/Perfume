@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer } from 'lucide-react';
+import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2 } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import { useShop } from '../../contexts/ShopContext';
 
@@ -11,7 +11,8 @@ const statusClass = (status) =>
 
 const AdminOrders = ({ onNavigateToMessages }) => {
   const { showToast } = useShop();
-  const { orders, isLoading, changeOrderStatus } = useOrders(showToast);
+  // ✨ Pass modifyOrder into our destructure!
+  const { orders, isLoading, changeOrderStatus, modifyOrder } = useOrders(showToast);
   
   const [expandedOrderId, setExpandedOrderId] = useState(null);
   const [idSearch, setIdSearch] = useState('');
@@ -32,7 +33,6 @@ const AdminOrders = ({ onNavigateToMessages }) => {
 
   return (
     <>
-      {/* ✨ Notice: We only hide the dashboard when an invoice is open! ✨ */}
       <div className={`animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden ${invoiceOrder ? 'print:hidden' : ''}`}>
         <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20">
           <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
@@ -219,21 +219,45 @@ const AdminOrders = ({ onNavigateToMessages }) => {
         </div>
       </div>
 
-      {/* ✨ The Modal renders OUTSIDE the hidden parent container ✨ */}
-      {invoiceOrder && <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} />}
+      {/* ✨ Pass modifyOrder to InvoiceModal ✨ */}
+      {invoiceOrder && <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} modifyOrder={modifyOrder} />}
     </>
   );
 };
 
-// ─── ✨ INVOICE MODAL ✨ ──────────────────────────────────────────────
-const InvoiceModal = ({ order, onClose }) => {
+// ─── ✨ UPGRADED INVOICE MODAL (Now Editable & Detailed) ✨ ─────────────────
+const InvoiceModal = ({ order, onClose, modifyOrder }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [customFees, setCustomFees] = useState(order.metadata?.custom_fees || []);
+  const [newFeeName, setNewFeeName] = useState('');
+  const [newFeeAmount, setNewFeeAmount] = useState('');
+
   const handlePrint = () => window.print();
+
+  // Calculations
   const baseTotal = order.order_items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0);
+  const feesTotal = customFees.reduce((sum, fee) => sum + Number(fee.amount), 0);
+  const grandTotal = baseTotal + feesTotal;
+
+  const handleAddFee = () => {
+    if (!newFeeName || !newFeeAmount) return;
+    setCustomFees([...customFees, { name: newFeeName, amount: Number(newFeeAmount) }]);
+    setNewFeeName('');
+    setNewFeeAmount('');
+  };
+
+  const handleRemoveFee = (index) => {
+    setCustomFees(customFees.filter((_, i) => i !== index));
+  };
+
+  const handleSave = () => {
+    modifyOrder(order.id, grandTotal, customFees);
+    setIsEditing(false);
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm print:static print:bg-white print:p-0 print:block [print-color-adjust:exact] print-container">
       
-      {/* ✨ The Magic CSS Fix to force a white background over the app when printing ✨ */}
       <style type="text/css" media="print">
         {`
           @page { size: auto; margin: 0mm; }
@@ -243,16 +267,22 @@ const InvoiceModal = ({ order, onClose }) => {
 
       {/* Non-printable overlay buttons */}
       <div className="absolute top-6 right-6 flex gap-3 print:hidden">
+        {order.status === 'pending' && (
+          <button 
+            onClick={() => setIsEditing(!isEditing)} 
+            className={`flex items-center gap-2 px-4 py-2 rounded font-bold shadow-lg transition-colors ${isEditing ? 'bg-red-500 text-white' : 'bg-blue-500 text-white hover:bg-blue-400'}`}
+          >
+            <Edit2 size={16} /> {isEditing ? 'Cancel Edit' : 'Edit Invoice'}
+          </button>
+        )}
         <button onClick={handlePrint} className="flex items-center gap-2 bg-gold-400 text-black px-4 py-2 rounded font-bold shadow-lg hover:bg-gold-300">
           <Printer size={16} /> Print PDF
         </button>
         <button onClick={onClose} className="bg-white/10 text-white px-4 py-2 rounded hover:bg-white/20 border border-white/20">Close</button>
       </div>
 
-      {/* The Printable Document */}
       <div className="bg-white text-black w-full max-w-2xl p-10 md:p-12 rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none print:w-full print:m-0 print:p-8">
         
-        {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
           <div>
             <h1 className="text-3xl font-extrabold tracking-widest text-gray-900">KL SCENTS</h1>
@@ -262,18 +292,29 @@ const InvoiceModal = ({ order, onClose }) => {
             <h2 className="text-xl font-bold text-gray-800">INVOICE</h2>
             <p className="text-sm text-gray-500 font-mono mt-1">#{order.id}</p>
             <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
+            <span className={`inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase rounded ${order.status === 'pending' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
+              {order.status}
+            </span>
           </div>
         </div>
 
-        {/* Customer Info */}
-        <div className="mb-8">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed To</h3>
-          <p className="text-sm font-medium text-gray-800">{order.profiles?.email}</p>
-          {order.metadata?.location && <p className="text-sm text-gray-600 mt-1 max-w-xs">{order.metadata.location}</p>}
-          {order.metadata?.contact && <p className="text-sm text-gray-600 mt-1">{order.metadata.contact}</p>}
+        {/* ✨ NEW: Detailed Customer & Order Info Grid ✨ */}
+        <div className="grid grid-cols-2 gap-6 mb-8">
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed & Shipped To</h3>
+            <p className="text-sm font-bold text-gray-800">{order.profiles?.email}</p>
+            {order.metadata?.address && <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed">{order.metadata.address}</p>}
+            {order.metadata?.location && !order.metadata?.address && <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed">{order.metadata.location}</p>}
+            {order.metadata?.contact && <p className="text-sm text-gray-600 mt-1">{order.metadata.contact}</p>}
+          </div>
+          <div className="text-right">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Order Specifics</h3>
+            {order.metadata?.promo_code && <p className="text-sm text-gray-600 mt-1">Promo: <span className="font-bold text-gold-600">{order.metadata.promo_code}</span></p>}
+            {order.metadata?.fulfillment_method && <p className="text-sm text-gray-600 mt-1">Fulfillment: <span className="font-bold capitalize">{order.metadata.fulfillment_method}</span></p>}
+            {order.metadata?.payment_preference && <p className="text-sm text-gray-600 mt-1">Payment: <span className="font-bold capitalize">{order.metadata.payment_preference}</span></p>}
+          </div>
         </div>
 
-        {/* Items Table */}
         <table className="w-full text-left border-collapse mb-6">
           <thead>
             <tr className="border-b-2 border-gray-200 text-xs uppercase tracking-wider text-gray-500">
@@ -309,14 +350,54 @@ const InvoiceModal = ({ order, onClose }) => {
               <span>₱{baseTotal.toLocaleString()}</span>
             </div>
 
+            {customFees.map((fee, idx) => (
+              <div key={idx} className="flex justify-between text-sm text-gray-600 group">
+                <span className="flex items-center">
+                  {fee.name} 
+                  {isEditing && <button onClick={() => handleRemoveFee(idx)} className="text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block">Remove</button>}
+                </span>
+                <span>{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
+              </div>
+            ))}
+
             <div className="flex justify-between text-lg font-bold text-gray-900 border-t-2 border-gray-200 pt-3 mt-3">
               <span>Total</span>
-              <span>₱{Number(order.total_amount).toLocaleString()}</span>
+              <span>₱{grandTotal.toLocaleString()}</span>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
+        {/* ✨ Admin Edit Controls (Visible Only When isEditing = true) ✨ */}
+        {isEditing && (
+          <div className="mt-8 border-2 border-blue-100 bg-blue-50 p-6 rounded-lg print:hidden animate-fade-in">
+            <h4 className="font-bold mb-4 text-blue-900 flex items-center gap-2">
+              <Edit2 size={18} /> Modify Invoice Fees
+            </h4>
+            <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <input 
+                type="text" 
+                placeholder="Fee Name (e.g. Shipping, Discount)" 
+                value={newFeeName} 
+                onChange={e => setNewFeeName(e.target.value)} 
+                className="border border-blue-200 p-2.5 rounded flex-1 text-sm bg-white focus:outline-none focus:border-blue-500" 
+              />
+              <input 
+                type="number" 
+                placeholder="Amount (use - for discount)" 
+                value={newFeeAmount} 
+                onChange={e => setNewFeeAmount(e.target.value)} 
+                className="border border-blue-200 p-2.5 rounded w-full sm:w-48 text-sm bg-white focus:outline-none focus:border-blue-500" 
+              />
+              <button onClick={handleAddFee} className="bg-blue-600 text-white px-6 py-2.5 rounded text-sm font-bold hover:bg-blue-700 transition-colors">
+                Add
+              </button>
+            </div>
+            <button onClick={handleSave} className="w-full bg-green-600 text-white font-bold py-3 rounded mt-2 shadow-lg hover:bg-green-700 transition-colors uppercase tracking-widest text-sm">
+              Save Invoice Changes
+            </button>
+          </div>
+        )}
+
         <div className="mt-16 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
           <p>Thank you for shopping with KL Scents.</p>
           <p className="mt-1">If you have any questions concerning this invoice, please message us via the support widget.</p>

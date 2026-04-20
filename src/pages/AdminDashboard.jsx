@@ -1,8 +1,7 @@
-// src/pages/AdminDashboard.jsx  — add Settings tab
 import React, { useState } from 'react';
 import {
   LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X,
-  Tag, ClipboardList, Users, Settings,
+  Tag, ClipboardList, Users, Settings, Star
 } from 'lucide-react';
 
 import AdminOverview  from '../components/admin/AdminOverview';
@@ -12,7 +11,8 @@ import AdminMessages  from '../components/admin/AdminMessages';
 import AdminPromos    from '../components/admin/AdminPromos';
 import AdminLogs      from '../components/admin/AdminLogs';
 import AdminUsers     from '../components/admin/AdminUsers';
-import AdminSettings  from '../components/admin/AdminSettings';   // ← NEW
+import AdminSettings  from '../components/admin/AdminSettings';
+import AdminReviews   from '../components/admin/AdminReviews'; // NEW
 
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
@@ -24,8 +24,9 @@ const NAV = [
   { id: 'products',  icon: <Package size={18} />,         label: 'Inventory' },
   { id: 'promos',    icon: <Tag size={18} />,             label: 'Promo Codes' },
   { id: 'users',     icon: <Users size={18} />,           label: 'Accounts' },
+  { id: 'reviews',   icon: <Star size={18} />,            label: 'Moderate Reviews' }, // NEW
   { id: 'logs',      icon: <ClipboardList size={18} />,   label: 'Activity Log' },
-  { id: 'settings',  icon: <Settings size={18} />,        label: 'Website Settings' },  // ← NEW
+  { id: 'settings',  icon: <Settings size={18} />,        label: 'Website Settings' }, 
 ];
 
 const AdminDashboard = () => {
@@ -128,8 +129,9 @@ const AdminDashboard = () => {
             {activeTab === 'products'  && <AdminProducts />}
             {activeTab === 'promos'    && <AdminPromos />}
             {activeTab === 'users'     && <AdminUsers />}
+            {activeTab === 'reviews'   && <AdminReviews />}
             {activeTab === 'logs'      && <AdminLogs />}
-            {activeTab === 'settings'  && <AdminSettings />}  {/* ← NEW */}
+            {activeTab === 'settings'  && <AdminSettings />}
           </div>
         </main>
       </div>

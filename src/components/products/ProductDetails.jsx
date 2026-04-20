@@ -14,7 +14,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
   const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
   const { setCurrentPage } = useUI();
 
-  // Strict Variant Approach: Product data is fetched strictly from the variants
   const variants = product?.product_variants || [];
   const [selectedVariant, setSelectedVariant] = useState(variants.length > 0 ? variants[0] : null);
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
@@ -23,7 +22,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
   const { reviews, averageRating, canReview, hasPurchased, submitNewReview } = useReviews(product?.id, product?.rating);
   const isInWishlist = wishlistItems?.some(item => item.id === product?.id);
 
-  // Safely fallback if somehow selectedVariant is missing (should never happen in new arch)
   const displayPrice = selectedVariant?.price || 0;
   const displayCompare = selectedVariant?.compare_at_price;
   const displaySize = selectedVariant?.size || 'Standard';
@@ -79,6 +77,16 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
             <span className="text-xs text-gray-400 uppercase tracking-wider">{product.gender || 'Unisex'}</span>
           </div>
 
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{product.name}</h1>
+
+          <div className="mb-6">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="flex gap-1">{[...Array(5)].map((_, i) => ( <Star key={i} size={16} className={i < Math.floor(averageRating) ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} /> ))}</div>
+              <span className="text-sm text-gray-400 hover:text-gold-400 transition-colors cursor-pointer" onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}>{averageRating} ({reviews.length} Reviews)</span>
+            </div>
+          </div>
+
+          {/* Size selection moved HERE, right below the rating */}
           {variants.length > 1 && (
             <div className="mb-6">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-3">Select Size</h3>
@@ -91,17 +99,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
               </div>
             </div>
           )}
-
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{product.name}</h1>
-
-          <div className="mb-6">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="flex gap-1">{[...Array(5)].map((_, i) => ( <Star key={i} size={16} className={i < Math.floor(averageRating) ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} /> ))}</div>
-              <span className="text-sm text-gray-400 hover:text-gold-400 transition-colors cursor-pointer" onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}>{averageRating} ({reviews.length} Reviews)</span>
-            </div>
-            {canReview && <button onClick={() => setIsReviewModalOpen(true)} className="text-xs flex items-center gap-1.5 px-3 py-1.5 bg-gold-400/10 text-gold-400 border border-gold-400/20 rounded-md hover:bg-gold-400 hover:text-black transition-all mt-2 font-medium"><Edit3 size={14} /> Write a Review</button>}
-            {/* The paragraph that warned users they had to buy to review has been removed completely! */}
-          </div>
 
           <div className="mb-8">
             <div className="flex items-center gap-4">
@@ -138,7 +135,6 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
                 setCurrentPage('login');
                 return;
               }
-              // STRICT MAPPING: Force the cart to use the variant's details
               addToCart({ 
                 ...product, 
                 price: displayPrice, 
@@ -155,7 +151,50 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
         </div>
       </div>
       
-      {/* ... Reviews and SuggestedProducts components unchanged ... */}
+      {/* Reviews Section Now Fully Mapped at the Bottom */}
+      <div id="reviews-section" className="mt-16 pt-16 border-t border-white/10">
+        <h2 className="text-3xl font-bold text-white mb-8 text-center">Customer Reviews</h2>
+        
+        {reviews.length === 0 ? (
+          <div className="text-center py-12 bg-white/5 rounded-2xl border border-white/10 max-w-3xl mx-auto">
+            <Star size={48} className="text-gray-600 mx-auto mb-4" />
+            <h3 className="text-xl text-white font-medium mb-2">No reviews yet</h3>
+            <p className="text-gray-400">Be the first to share your thoughts on {product.name}.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            {reviews.map(review => (
+              <div key={review.id} className="bg-white/5 p-6 rounded-xl border border-white/10">
+                <div className="flex gap-1 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={16} className={i < review.rating ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} />
+                  ))}
+                </div>
+                <p className="text-gray-300 text-sm leading-relaxed">{review.comment}</p>
+                <div className="mt-4 pt-4 border-t border-white/10 text-xs text-gray-500">
+                  Posted on {new Date(review.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Large Review Button */}
+        {canReview && (
+          <div className="flex justify-center mt-12">
+            <button 
+              onClick={() => setIsReviewModalOpen(true)} 
+              className="px-10 py-5 bg-gold-400 text-black font-bold text-lg tracking-wider uppercase rounded hover:bg-gold-300 transition-colors shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] flex items-center gap-3"
+            >
+              <Edit3 size={24} /> Write a Review
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-24">
+        <SuggestedProducts currentProductId={product.id} />
+      </div>
     </div>
   );
 };

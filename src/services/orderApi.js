@@ -27,13 +27,18 @@ export const updateOrderStatusAPI = async (orderId, newStatus, orderItems = []) 
   }
 };
 
-// ✨ NEW: Edit Order Details API
+// ✨ NEW: Edit Order Details API (Merges Metadata to prevent data loss!)
 export const updateOrderDetailsAPI = async (orderId, newTotal, customFees) => {
+  // 1. Fetch current metadata so we don't delete promo codes / addresses
+  const { data: currentOrder } = await supabase.from('orders').select('metadata').eq('id', orderId).single();
+  const currentMeta = currentOrder?.metadata || {};
+
+  // 2. Perform the update
   const { error } = await supabase
     .from('orders')
     .update({ 
       total_amount: newTotal,
-      metadata: { custom_fees: customFees } // Stores the array of fees!
+      metadata: { ...currentMeta, custom_fees: customFees }
     })
     .eq('id', orderId);
 

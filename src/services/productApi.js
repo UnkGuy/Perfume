@@ -3,10 +3,24 @@ import { supabase } from './supabase';
 export const fetchProductsAPI = async () => {
   const { data, error } = await supabase
     .from('products')
-    .select('*, product_variants(*)')
+    // We now fetch the reviews alongside the products to dynamically calculate ratings
+    .select('*, product_variants(*), reviews(*)')
     .order('created_at', { ascending: false });
+    
   if (error) throw error;
-  return data;
+
+  // Process the rating on the fly so it's always accurate across the whole app!
+  return data.map(product => {
+    const approvedReviews = (product.reviews || []).filter(r => r.status === 'approved');
+    const avgRating = approvedReviews.length > 0
+      ? (approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length).toFixed(1)
+      : 0;
+
+    return {
+      ...product,
+      rating: avgRating, 
+    };
+  });
 };
 
 export const saveProductAPI = async (payload, id = null) => {
@@ -22,23 +36,19 @@ export const saveProductAPI = async (payload, id = null) => {
     productId = data.id;
   }
 
-  // Get existing variants
   const { data: existingVariants } = await supabase.from('product_variants').select('id').eq('product_id', productId);
   const existingIds = existingVariants?.map(v => v.id) || [];
   
-  // Find which ones to keep vs delete
   const incomingIds = variants.map(v => v.id).filter(Boolean);
   const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
 
-  // Delete removed variants
   if (idsToDelete.length > 0) {
     await supabase.from('product_variants').delete().in('id', idsToDelete);
   }
 
-  // Upsert (Update existing, Insert new)
   if (variants && variants.length > 0) {
     const variantsToUpsert = variants.map(v => ({
-      ...(v.id ? { id: v.id } : {}), // Preserve UUID if it already exists
+      ...(v.id ? { id: v.id } : {}),
       product_id: productId,
       size: v.size,
       price: v.price,

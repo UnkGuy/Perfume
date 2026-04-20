@@ -5,13 +5,44 @@ export const fetchReviewsAPI = async (productId) => {
     .from('reviews')
     .select('*')
     .eq('product_id', productId)
+    .eq('status', 'approved') // Only fetch approved reviews for the frontend
     .order('created_at', { ascending: false });
 
   if (error) throw error;
   return data;
 };
 
-// Check whether the user has bought this product (appears in any of their order_items)
+// Admin specific fetcher for pending reviews
+export const fetchPendingReviewsAPI = async () => {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, products(name)') // Join product name to easily identify what is being reviewed
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+// Admin specific update status function
+// Admin specific update status function
+export const updateReviewStatusAPI = async (reviewId, status) => {
+  const { data, error } = await supabase
+    .from('reviews')
+    .update({ status })
+    .eq('id', reviewId)
+    .select(); // Force Supabase to return the updated row
+
+  if (error) throw error;
+  
+  // If RLS blocks the update, no error is thrown but data will be empty
+  if (!data || data.length === 0) {
+    throw new Error('Action blocked: You do not have permission to update this review.');
+  }
+
+  return data;
+};
+
 export const checkUserPurchasedAPI = async (userId, productId) => {
   if (!userId || !productId) return false;
 
@@ -24,17 +55,15 @@ export const checkUserPurchasedAPI = async (userId, productId) => {
 
   if (error) {
     console.error('Purchase check error:', error);
-    return false; // fail open — don't block the review button on a query error
+    return false; 
   }
   return data && data.length > 0;
 };
 
 export const submitReviewAPI = async (productId, userId, rating, comment) => {
-  // Validate rating range (mirrors DB integer column)
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     throw new Error('Rating must be between 1 and 5.');
   }
-  // Guard comment length (reviews.comment is text — set a sensible UI cap)
   if (comment && comment.length > 1000) {
     throw new Error('Review comment is too long (max 1000 characters).');
   }
@@ -46,6 +75,7 @@ export const submitReviewAPI = async (productId, userId, rating, comment) => {
       user_id: userId,
       rating,
       comment: comment?.trim() || null,
+      status: 'pending' // Force new reviews to pending
     }]);
 
   if (error) throw error;

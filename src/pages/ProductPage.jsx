@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, LayoutGrid, List, ChevronDown, SlidersHorizontal, ArrowUp } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 
 import Header from '../components/common/Header';
 import Footer from '../components/common/Footer';
@@ -23,11 +23,12 @@ const ProductPage = () => {
   const { searchQuery, setSearchQuery } = useUI();
   const { products, isLoading } = useStoreProducts();
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
 
   const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
 
-  // ✨ FIXED: Smart Numeric Sorting for Sizes ✨
+  // ✨ FIXED: Added String() wrappers to prevent regex crashing if size data gets weird ✨
   const dynamicSizes = useMemo(() => {
     const sizeSet = new Set();
     products.forEach(p => {
@@ -35,15 +36,13 @@ const ProductPage = () => {
     });
     
     return [...sizeSet].sort((a, b) => {
-      // Extract numbers from the strings. If no number (e.g., "Tester"), assign Infinity so it goes to the bottom.
-      const numA = parseInt(a.match(/\d+/)?.[0]) || Infinity;
-      const numB = parseInt(b.match(/\d+/)?.[0]) || Infinity;
+      const strA = String(a || '');
+      const strB = String(b || '');
+      const numA = parseInt(strA.match(/\d+/)?.[0]) || Infinity;
+      const numB = parseInt(strB.match(/\d+/)?.[0]) || Infinity;
       
-      // Sort numerically
       if (numA !== numB) return numA - numB;
-      
-      // If the numbers are the same (or both are Infinity), sort alphabetically
-      return a.localeCompare(b);
+      return strA.localeCompare(strB);
     });
   }, [products]);
 
@@ -143,37 +142,37 @@ const ProductPage = () => {
     setShowOutOfStock(false);
   }, [setSearchQuery]);
 
-const processedProducts = useMemo(() => {
-  let filtered = products.filter(product => {
-    if (!showOutOfStock && !product.available) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      if (!product.name.toLowerCase().includes(q) && !product.brand?.toLowerCase().includes(q)) return false;
-    }
-    if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
+  const processedProducts = useMemo(() => {
+    let filtered = products.filter(product => {
+      if (!showOutOfStock && !product.available) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!product.name.toLowerCase().includes(q) && !product.brand?.toLowerCase().includes(q)) return false;
+      }
+      if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
 
-    const effectivePrice = getEffectivePrice(product);
-    if (effectivePrice < priceRange.min || effectivePrice > priceRange.max) return false;
+      const effectivePrice = getEffectivePrice(product);
+      if (effectivePrice < priceRange.min || effectivePrice > priceRange.max) return false;
 
-    if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
+      if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
 
-    if (selectedSizes.length > 0) {
-      const allSizes = [product.size, ...(product.product_variants || []).map(v => v.size)].filter(Boolean);
-      if (!allSizes.some(s => selectedSizes.includes(s))) return false;
-    }
+      if (selectedSizes.length > 0) {
+        const allSizes = [product.size, ...(product.product_variants || []).map(v => v.size)].filter(Boolean);
+        if (!allSizes.some(s => selectedSizes.includes(s))) return false;
+      }
 
-    if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
-    if (selectedGender.length > 0 && product.gender && !selectedGender.includes(product.gender)) return false;
-    return true;
-  });
+      if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
+      if (selectedGender.length > 0 && product.gender && !selectedGender.includes(product.gender)) return false;
+      return true;
+    });
 
-  return filtered.sort((a, b) => {
-    if (sortOption === 'price-asc') return getEffectivePrice(a) - getEffectivePrice(b);
-    if (sortOption === 'price-desc') return getEffectivePrice(b) - getEffectivePrice(a);
-    if (sortOption === 'rating-desc') return b.rating - a.rating;
-    return 0;
-  });
-}, [products, showOutOfStock, searchQuery, ratingFilter, priceRange, selectedNotes, selectedSizes, selectedBrands, selectedGender, sortOption]);
+    return filtered.sort((a, b) => {
+      if (sortOption === 'price-asc') return getEffectivePrice(a) - getEffectivePrice(b);
+      if (sortOption === 'price-desc') return getEffectivePrice(b) - getEffectivePrice(a);
+      if (sortOption === 'rating-desc') return b.rating - a.rating;
+      return 0;
+    });
+  }, [products, showOutOfStock, searchQuery, ratingFilter, priceRange, selectedNotes, selectedSizes, selectedBrands, selectedGender, sortOption]);
 
   const hasActiveFilters = ratingFilter > 0 || priceRange.min > 0 || !!searchQuery || selectedNotes.length > 0 || selectedSizes.length > 0 || selectedBrands.length > 0;
   const totalPages        = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);

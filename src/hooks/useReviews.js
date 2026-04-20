@@ -1,6 +1,5 @@
-// src/hooks/useReviews.js
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchReviewsAPI, submitReviewAPI } from '../services/reviewApi';
+import { fetchReviewsAPI, submitReviewAPI, fetchPendingReviewsAPI, updateReviewStatusAPI } from '../services/reviewApi';
 import { useAuth } from '../contexts/AuthContext';
 
 export const useReviews = (productId, fallbackRating) => {
@@ -22,7 +21,9 @@ export const useReviews = (productId, fallbackRating) => {
   const submitMutation = useMutation({
     mutationFn: ({ rating, comment }) => submitReviewAPI(productId, user.id, rating, comment),
     onSuccess: () => {
+      // Invalidate both lists just to be safe
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] });
     },
   });
 
@@ -32,8 +33,6 @@ export const useReviews = (productId, fallbackRating) => {
   };
 
   const hasReviewed = user ? reviewList.some(r => r.user_id === user.id) : false;
-
-  // canReview: logged in + hasn't already reviewed it
   const canReview = !!user && !hasReviewed;
 
   return {
@@ -42,4 +41,28 @@ export const useReviews = (productId, fallbackRating) => {
     canReview,
     submitNewReview,
   };
+};
+
+export const useAdminReviews = () => {
+  const queryClient = useQueryClient();
+
+  const { data: pendingReviews, isLoading } = useQuery({
+    queryKey: ['admin-pending-reviews'],
+    queryFn: fetchPendingReviewsAPI,
+  });
+
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ reviewId, status }) => updateReviewStatusAPI(reviewId, status),
+    onSuccess: () => {
+      // Refresh the pending list and public reviews
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+    }
+  });
+
+  const updateReviewStatus = async (reviewId, status) => {
+    await updateStatusMutation.mutateAsync({ reviewId, status });
+  };
+
+  return { pendingReviews, isLoading, updateReviewStatus };
 };

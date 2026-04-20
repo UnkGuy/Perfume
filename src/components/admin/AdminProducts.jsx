@@ -193,7 +193,7 @@ const AdminProducts = () => {
         </div>
       )}
 
-      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl flex flex-col">
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl flex flex-col mb-6">
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
@@ -243,6 +243,41 @@ const AdminProducts = () => {
 
         {/* Mobile View omitted for brevity, but same logic applies for base pricing removal */}
       </div>
+
+      {/* ✨ Pagination Block Added Here ✨ */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mb-8">
+          <button
+            disabled={activePage === 1}
+            onClick={() => setActivePage(prev => prev - 1)}
+            className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"
+          >
+            <ChevronLeft size={20} />
+          </button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+            <button
+              key={num}
+              onClick={() => setActivePage(num)}
+              className={`w-10 h-10 rounded font-bold transition-all ${
+                activePage === num
+                  ? 'bg-gold-400 text-black shadow-lg'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {num}
+            </button>
+          ))}
+
+          <button
+            disabled={activePage === totalPages}
+            onClick={() => setActivePage(prev => prev + 1)}
+            className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      )}
 
       <ProductFormModal
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSave}
