@@ -22,8 +22,8 @@ export const useResetPassword = () => {
       if (session?.user) {
         setIsAuthorized(true);
       } else {
-        // Boot them back to login if they try to manually visit /reset-password
-        navigate('/login', { replace: true });
+        // ✨ Boot them back to HOME if they try to manually visit /reset-password
+        navigate('/', { replace: true });
       }
       setVerifyingSession(false);
     };
@@ -38,10 +38,14 @@ export const useResetPassword = () => {
       setError('Please fill in both fields.');
       return;
     }
-    if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long.');
+
+    // ✨ Strict Password Validation: At least 8 chars AND 1 number
+    const passwordRegex = /^(?=.*[0-9]).{8,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      setError('Password must be at least 8 characters long and contain at least one number.');
       return;
     }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match.');
       return;

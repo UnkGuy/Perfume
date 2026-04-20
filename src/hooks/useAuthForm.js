@@ -17,8 +17,16 @@ export const useAuthForm = () => {
     const password = formData.password;
     const username = formData.username?.trim();
 
+    // Basic existence check
     if (!email || (view !== 'forgot' && !password)) {
       setError('Please fill in all required fields.');
+      return false;
+    }
+
+    // Strict Email Format Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address.');
       return false;
     }
 
@@ -27,10 +35,14 @@ export const useAuthForm = () => {
         setError('Please provide a username.');
         return false;
       }
-      if (password.length < 8) {
-        setError('Password must be at least 8 characters long.');
+      
+      // Strict Password Validation: At least 8 chars AND 1 number
+      const passwordRegex = /^(?=.*[0-9]).{8,}$/;
+      if (!passwordRegex.test(password)) {
+        setError('Password must be at least 8 characters long and contain at least one number.');
         return false;
       }
+
       if (password !== formData.confirmPassword) {
         setError('Passwords do not match.');
         return false;

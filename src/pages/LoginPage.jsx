@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, AlertCircle, ArrowLeft, Mail } from 'lucide-react'; // ✨ Added Mail icon
+import { Loader2, AlertCircle, ArrowLeft, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthForm } from '../hooks/useAuthForm'; 
 import { useUI } from '../contexts/UIContext';
@@ -44,7 +44,6 @@ const LoginPage = () => {
           </button>
         )}
 
-        {/* ✨ NEW CHECK EMAIL STATE ✨ */}
         {view === 'check-email' ? (
           <div className="text-center py-8 animate-fade-in">
             <div className="w-20 h-20 bg-gold-400/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-gold-400/20">
@@ -62,7 +61,6 @@ const LoginPage = () => {
             </button>
           </div>
         ) : (
-          /* STANDARD FORM RENDER */
           <>
             <div className="text-center mb-8 mt-4">
               <img src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" alt="KL Scents" className="w-16 h-16 rounded-full object-cover mx-auto mb-4 border border-white/10 shadow-lg" />
@@ -80,13 +78,13 @@ const LoginPage = () => {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1.5">Email Address</label>
-                <input type="email" name="email" placeholder="your@email.com" value={formData.email} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                <input required type="email" name="email" placeholder="your@email.com" value={formData.email} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
               </div>
 
               {view !== 'forgot' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
-                  <input type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                  <input required type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
                 </div>
               )}
 
@@ -94,11 +92,11 @@ const LoginPage = () => {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
-                    <input type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                    <input required type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                    <input type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                    <input required type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
                   </div>
                 </>
               )}
