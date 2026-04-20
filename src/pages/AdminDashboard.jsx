@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X,
   Tag, ClipboardList, Users, Settings, Star
@@ -12,7 +13,7 @@ import AdminPromos    from '../components/admin/AdminPromos';
 import AdminLogs      from '../components/admin/AdminLogs';
 import AdminUsers     from '../components/admin/AdminUsers';
 import AdminSettings  from '../components/admin/AdminSettings';
-import AdminReviews   from '../components/admin/AdminReviews'; // NEW
+import AdminReviews   from '../components/admin/AdminReviews';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
@@ -24,7 +25,7 @@ const NAV = [
   { id: 'products',  icon: <Package size={18} />,         label: 'Inventory' },
   { id: 'promos',    icon: <Tag size={18} />,             label: 'Promo Codes' },
   { id: 'users',     icon: <Users size={18} />,           label: 'Accounts' },
-  { id: 'reviews',   icon: <Star size={18} />,            label: 'Moderate Reviews' }, // NEW
+  { id: 'reviews',   icon: <Star size={18} />,            label: 'Moderate Reviews' },
   { id: 'logs',      icon: <ClipboardList size={18} />,   label: 'Activity Log' },
   { id: 'settings',  icon: <Settings size={18} />,        label: 'Website Settings' }, 
 ];
@@ -32,6 +33,7 @@ const NAV = [
 const AdminDashboard = () => {
   const { user, handleLogout } = useAuth();
   const { showToast } = useShop();
+  const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -95,7 +97,7 @@ const AdminDashboard = () => {
             </div>
           </div>
           <button
-            onClick={() => window.location.href = '/products'}
+            onClick={() => navigate('/products')}
             className="w-full flex items-center gap-3 px-4 py-2 text-gold-400 hover:bg-gold-400/10 rounded-lg transition-colors mb-2"
           >
             <Package size={18} /> View Collection

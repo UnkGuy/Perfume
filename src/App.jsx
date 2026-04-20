@@ -56,8 +56,9 @@ function App() {
     <div className="min-h-screen bg-rich-black text-white font-sans">
       <Toast toasts={toasts} removeToast={removeToast} />
 
-      <CartDrawer />
-      {settings.features?.wishlist !== false && <WishlistDrawer />}
+      {/* Hide drawers/widgets from admins entirely */}
+      {userRole !== 'admin' && <CartDrawer />}
+      {userRole !== 'admin' && settings.features?.wishlist !== false && <WishlistDrawer />}
       {userRole !== 'admin' && settings.features?.chatWidget !== false && <ChatWidget />}
 
       <Suspense fallback={<PageLoader />}>
@@ -65,10 +66,13 @@ function App() {
           <Route path="/"               element={<WelcomePage />} />
           <Route path="/products"       element={<ProductPage />} />
           <Route path="/products/:id"   element={<ProductPage />} />
-          <Route path="/cart"           element={<CartPage />} />
-          <Route path="/login"          element={<LoginPage />} />
-          <Route path="/profile"        element={<ProfilePage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          
+          {/* Admin Restricted Pages */}
+          <Route path="/cart"           element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <CartPage />} />
+          <Route path="/login"          element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <LoginPage />} />
+          <Route path="/profile"        element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ProfilePage />} />
+          <Route path="/reset-password" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ResetPasswordPage />} />
+          
           <Route
             path="/admin"
             element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />}

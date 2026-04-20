@@ -32,8 +32,8 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Customer nav links only — admin never sees these
-  const customerNavLinks = [
+  // Main navigation links visible to everyone
+  const navLinks = [
     { id: 'welcome',  label: 'Home' },
     { id: 'products', label: 'Collection' },
   ];
@@ -42,6 +42,7 @@ const Header = () => {
     if (isAdmin) {
       navigate('/admin');
     } else {
+      navigate('/');
       setCurrentPage('welcome');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -57,12 +58,16 @@ const Header = () => {
   const handleSignOut = async () => {
     await handleLogout();
     showToast('Logged Out', 'You have been successfully logged out.');
+    navigate('/');
     setCurrentPage('welcome');
   };
 
   const handleNavClick = (linkId) => {
     if (linkId === 'products') {
       navigate('/products');
+    } else if (linkId === 'welcome') {
+      navigate('/');
+      setCurrentPage('welcome');
     } else {
       setCurrentPage(linkId);
     }
@@ -94,25 +99,23 @@ const Header = () => {
               </div>
             </div>
 
-            {/* Nav: customer links only — hidden for admin */}
-            {!isAdmin && (
-              <nav className="hidden md:flex items-center space-x-8">
-                {customerNavLinks.map((link) => (
-                  <button
-                    key={link.id}
-                    onClick={() => handleNavClick(link.id)}
-                    className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group"
-                  >
-                    {link.label}
-                    <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold-400 transition-all group-hover:w-full"></span>
-                  </button>
-                ))}
-              </nav>
-            )}
+            {/* Nav: Main links - visible to admins too now */}
+            <nav className="hidden md:flex items-center space-x-8">
+              {navLinks.map((link) => (
+                <button
+                  key={link.id}
+                  onClick={() => handleNavClick(link.id)}
+                  className="text-sm font-medium text-gray-300 hover:text-gold-400 tracking-wide transition-colors uppercase relative group"
+                >
+                  {link.label}
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gold-400 transition-all group-hover:w-full"></span>
+                </button>
+              ))}
+            </nav>
 
             {/* Admin nav pill */}
             {isAdmin && (
-              <nav className="hidden md:flex items-center">
+              <nav className="hidden md:flex items-center ml-4">
                 <button
                   onClick={() => navigate('/admin')}
                   className="flex items-center gap-2 px-4 py-2 bg-gold-400/10 text-gold-400 border border-gold-400/20 rounded-lg text-sm font-bold tracking-widest uppercase hover:bg-gold-400/20 transition-colors"
@@ -150,7 +153,10 @@ const Header = () => {
               {user ? (
                 <div className="relative group flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(isAdmin ? 'admin' : 'profile')}
+                    onClick={() => {
+                      if (isAdmin) navigate('/admin');
+                      else setCurrentPage('profile');
+                    }}
                     className="text-gray-300 hover:text-gold-400 transition-colors py-2"
                   >
                     <User size={20} />
@@ -172,7 +178,7 @@ const Header = () => {
                   </div>
                 </div>
               ) : (
-                <button onClick={() => setCurrentPage('login')} className="text-gray-300 hover:text-gold-400 transition-colors">
+                <button onClick={() => navigate('/login')} className="text-gray-300 hover:text-gold-400 transition-colors">
                   <User size={20} />
                 </button>
               )}
@@ -184,7 +190,7 @@ const Header = () => {
                   onClick={(e) => {
                     e.preventDefault();
                     if (!user) {
-                      setCurrentPage('login');
+                      navigate('/login');
                       if (showToast) showToast('Login Required', 'Please sign in to view your cart.');
                       return;
                     }
@@ -200,24 +206,22 @@ const Header = () => {
                 </button>
               )}
 
-              {/* Mobile menu toggle — customer only */}
-              {!isAdmin && (
-                <button className="md:hidden text-gray-300" onClick={() => setIsMobileMenuOpen(true)}>
-                  <Menu size={24} />
-                </button>
-              )}
+              {/* Mobile menu toggle */}
+              <button className="md:hidden text-gray-300" onClick={() => setIsMobileMenuOpen(true)}>
+                <Menu size={24} />
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Mobile menu — customer only */}
-      {!isAdmin && isMobileMenuOpen && (
+      {/* Mobile menu - visible to everyone now, controlled by same logic */}
+      {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[60] bg-rich-black/98 backdrop-blur-xl md:hidden flex flex-col items-center justify-center space-y-8 animate-fade-in">
           <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white">
             <X size={32} />
           </button>
-          {customerNavLinks.map((link) => (
+          {navLinks.map((link) => (
             <button
               key={link.id}
               onClick={() => handleNavClick(link.id)}
@@ -226,6 +230,17 @@ const Header = () => {
               {link.label}
             </button>
           ))}
+          {isAdmin && (
+            <button
+              onClick={() => {
+                navigate('/admin');
+                setIsMobileMenuOpen(false);
+              }}
+              className="text-2xl font-light text-gold-400 hover:text-gold-300 tracking-widest uppercase mt-4"
+            >
+              Dashboard
+            </button>
+          )}
         </div>
       )}
     </>
