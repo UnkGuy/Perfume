@@ -37,6 +37,18 @@ const LoginPage = () => {
     }
   };
 
+  // ✨ Smart Back Button Logic ✨
+  const handleBack = () => {
+    // Check if there is history within the React Router stack
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      // If they landed directly from outside, fallback to home safely
+      navigate('/', { replace: true });
+      setCurrentPage('welcome');
+    }
+  };
+
   const renderHeader = () => {
     switch(view) {
       case 'register': return { title: 'Create Account', subtitle: 'Join the luxury experience' };
@@ -53,7 +65,7 @@ const LoginPage = () => {
       <div className="relative w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in my-12">
         
         {view !== 'check-email' && (
-          <button onClick={() => navigate(-1)} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-gray-400 hover:text-gold-400 transition-colors group">
+          <button onClick={handleBack} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-gray-400 hover:text-gold-400 transition-colors group">
             <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back
           </button>
         )}
