@@ -26,7 +26,6 @@ const ProfilePage = () => {
   
   const [invoiceOrder, setInvoiceOrder] = useState(null);
 
-  // ✨ Added handlePasswordResetRequest
   const { 
     profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors,
     identities, handleLinkIdentity, handleUnlinkIdentity, isLinking, handlePasswordResetRequest
@@ -71,10 +70,10 @@ const ProfilePage = () => {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-rich-black text-white font-sans flex flex-col">
+    <div className="min-h-[100dvh] bg-rich-black text-white font-sans flex flex-col">
       <div className="relative z-50"><Header /></div>
 
-      <div className="flex-1 container mx-auto px-6 py-24 max-w-4xl animate-fade-in">
+      <div className="flex-1 container mx-auto px-6 pt-32 landscape:pt-24 lg:landscape:pt-40 lg:pt-40 pb-24 max-w-4xl animate-fade-in">
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-3xl font-bold uppercase">
@@ -165,7 +164,6 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                {/* ✨ REPLACED PASSWORD FIELDS WITH EMAIL BUTTON ✨ */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
                   <p className="text-sm text-gray-500 mb-4">Click below to receive a secure link to reset your password. You will be safely logged out.</p>

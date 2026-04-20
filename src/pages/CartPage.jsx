@@ -14,7 +14,6 @@ import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
 
 const CartPage = () => {
-  // ✨ 1. Grab updateQuantity from useShop ✨
   const { cartItems, removeFromCart, clearCart, updateQuantity } = useShop();
   const { setCurrentPage } = useUI(); 
 
@@ -24,7 +23,7 @@ const CartPage = () => {
   useEffect(() => {
     const processedItems = safeCartItems.map(item => ({
       ...item,
-      quantity: item.quantity, // Pulls the correct quantity from DB/Context
+      quantity: item.quantity, 
       isRemoving: false
     }));
     setLocalItems(processedItems);
@@ -34,9 +33,7 @@ const CartPage = () => {
     const newItems = [...localItems];
     if (newItems[index].quantity + delta >= 1) {
       newItems[index].quantity += delta;
-      setLocalItems(newItems); // Optimistic UI update
-      
-      // ✨ 2. Tell the database about the change! ✨
+      setLocalItems(newItems); 
       updateQuantity(index, delta); 
     }
   };
@@ -66,12 +63,12 @@ const CartPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
+    <div className="min-h-[100dvh] bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
       <div className="relative z-50">
         <Header /> 
       </div>
       
-      <div className="flex-1 container mx-auto px-6 py-32 max-w-[1600px]">
+      <div className="flex-1 container mx-auto px-6 pt-32 landscape:pt-24 lg:landscape:pt-40 lg:pt-40 pb-24 max-w-[1600px]">
         <div className="mb-12">
           <h1 className="text-4xl font-bold mb-2">Your Selected Items</h1>
           <p className="text-gray-400">Review your items before messaging the seller</p>

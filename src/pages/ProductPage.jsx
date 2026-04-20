@@ -28,7 +28,6 @@ const ProductPage = () => {
 
   const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
 
-  // ✨ FIXED: Added String() wrappers to prevent regex crashing if size data gets weird ✨
   const dynamicSizes = useMemo(() => {
     const sizeSet = new Set();
     products.forEach(p => {
@@ -199,10 +198,10 @@ const ProductPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
+    <div className="min-h-[100dvh] bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
       <div className="relative z-50"><Header /></div>
 
-      <div className="container mx-auto px-4 md:px-6 py-24 max-w-[1600px]">
+      <div className="container mx-auto px-4 md:px-6 pt-32 landscape:pt-24 lg:landscape:pt-40 lg:pt-40 pb-24 max-w-[1600px]">
         {!selectedProduct && (
           <PredictiveSearch products={products} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSelectProduct={(p) => navigate(`/products/${p.id}`)} />
         )}

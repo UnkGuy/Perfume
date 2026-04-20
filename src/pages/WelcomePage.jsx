@@ -44,18 +44,19 @@ const WelcomePage = () => {
   const { products } = useStoreProducts();
   const [heroImgIdx, setHeroImgIdx] = useState(0);
 
-const heroImages = useMemo(() => {
-  const imgs = (products || [])
-    .filter(p => p.available && p.image_urls?.length > 0)
-    .map(p => p.image_urls[0]);
-  return imgs.length > 0 ? imgs : [HERO_IMAGE];
-}, [products]);
+  const heroImages = useMemo(() => {
+    const imgs = (products || [])
+      .filter(p => p.available && p.image_urls?.length > 0)
+      .map(p => p.image_urls[0]);
+    return imgs.length > 0 ? imgs : [HERO_IMAGE];
+  }, [products]);
 
-useEffect(() => {
-  if (heroImages.length <= 1) return;
-  const timer = setInterval(() => setHeroImgIdx(prev => (prev + 1) % heroImages.length), 5000);
-  return () => clearInterval(timer);
-}, [heroImages]);
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const timer = setInterval(() => setHeroImgIdx(prev => (prev + 1) % heroImages.length), 5000);
+    return () => clearInterval(timer);
+  }, [heroImages]);
+
   const navigate = useNavigate();
 
   const storyImageRef = useScrollReveal();
@@ -77,7 +78,6 @@ useEffect(() => {
 
   const featuredProducts = (products || []).filter(p => p.available).slice(0, 8);
 
-  // Content for the scrolling marquee banner
   const marqueeText = [
     "Free Shipping Nationwide", "•",
     "Artisan Crafted", "•",
@@ -85,11 +85,10 @@ useEffect(() => {
     "Cruelty-Free", "•",
     "Luxury Fragrances", "•"
   ];
-  // Duplicate array multiple times to ensure the loop is seamless on wide screens
   const repeatedMarquee = [...marqueeText, ...marqueeText, ...marqueeText, ...marqueeText];
 
   return (
-    <div className="min-h-screen bg-rich-black text-white font-sans flex flex-col selection:bg-gold-400 selection:text-black">
+    <div className="min-h-[100dvh] bg-rich-black text-white font-sans flex flex-col selection:bg-gold-400 selection:text-black">
       <style>{`
         .reveal-up, .reveal-left, .reveal-right, .reveal-fade { opacity: 0; transition: opacity 0.7s ease calc(var(--delay, 0s)), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--delay, 0s)); }
         .reveal-up { transform: translateY(40px); } .reveal-left { transform: translateX(-48px); } .reveal-right { transform: translateX(48px); } .reveal-fade { transform: translateY(16px); }
@@ -105,7 +104,6 @@ useEffect(() => {
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* New Marquee Animation */
         @keyframes scroll-x {
           from { transform: translateX(0); }
           to { transform: translateX(-50%); }
@@ -126,22 +124,24 @@ useEffect(() => {
 
       <main className="flex-1">
         {/* HERO SECTION */}
-        <section className="relative h-[85vh] flex items-center overflow-hidden">
+        {/* ✨ Modified to use min-h, flex-col, and safe top padding to prevent header overlap ✨ */}
+        <section className="relative min-h-[100dvh] lg:min-h-[85vh] flex flex-col justify-center overflow-hidden pt-32 landscape:pt-24 lg:landscape:pt-0 lg:pt-0 pb-16 lg:pb-0">
           <div className="absolute inset-0 z-0 bg-rich-black">
-  {heroImages.map((src, idx) => (
-    <img
-      key={src}
-      src={src}
-      alt="Luxury Perfume"
-      className="absolute inset-0 w-full h-full object-cover scale-105 animate-slow-pan"
-      style={{
-        opacity: idx === heroImgIdx ? 0.4 : 0,
-        transition: 'opacity 1.2s ease-in-out',
-      }}
-    />
-  ))}
-  <div className="absolute inset-0 bg-gradient-to-r from-rich-black via-rich-black/80 to-transparent"></div>
-</div>
+            {heroImages.map((src, idx) => (
+              <img
+                key={src}
+                src={src}
+                alt="Luxury Perfume"
+                className="absolute inset-0 w-full h-full object-cover scale-105 animate-slow-pan"
+                style={{
+                  opacity: idx === heroImgIdx ? 0.4 : 0,
+                  transition: 'opacity 1.2s ease-in-out',
+                }}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-r from-rich-black via-rich-black/80 to-transparent"></div>
+          </div>
+          
           <div className="container mx-auto px-6 relative z-10 max-w-7xl">
             <div className="max-w-2xl animate-fade-in-up">
               <span className="text-gold-400 font-bold tracking-widest uppercase text-sm mb-4 block">Discover Your Signature</span>
@@ -215,20 +215,19 @@ useEffect(() => {
               className="flex overflow-x-auto gap-6 px-6 md:px-12 pb-8 custom-scrollbar snap-x snap-mandatory hide-scrollbar"
             >
               {featuredProducts.map((product) => {
-  const imgSource = product.image_urls?.[0] || HERO_IMAGE;
-  
-  const displayPrice = product.product_variants?.length > 0 
-    ? Math.min(...product.product_variants.map(v => v.price)) 
-    : product.price;
+                const imgSource = product.image_urls?.[0] || HERO_IMAGE;
+                
+                const displayPrice = product.product_variants?.length > 0 
+                  ? Math.min(...product.product_variants.map(v => v.price)) 
+                  : product.price;
 
-  return (
-    <div 
-      key={product.id} 
-      onClick={() => navigate(`/products/${product.id}`)}
-      /* ✨ Forcing even smaller widths: 160px mobile, 200px desktop */
-      className="w-[160px] min-w-[160px] md:w-[200px] md:min-w-[200px] snap-center shrink-0 group cursor-pointer"
-    >
-      <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 border border-white/10 group-hover:border-gold-400/50 transition-colors">
+                return (
+                  <div 
+                    key={product.id} 
+                    onClick={() => navigate(`/products/${product.id}`)}
+                    className="w-[160px] min-w-[160px] md:w-[200px] md:min-w-[200px] snap-center shrink-0 group cursor-pointer"
+                  >
+                    <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 border border-white/10 group-hover:border-gold-400/50 transition-colors">
                       <img 
                         src={imgSource} 
                         alt={product.name}
