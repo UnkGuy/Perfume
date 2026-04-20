@@ -12,16 +12,12 @@ export const loginAPI = async (email, password) => {
 export const registerAPI = async (email, password, username) => {
   const cleanEmail = email.trim().toLowerCase();
   
-  // 1. Create the Auth user
   const { data, error } = await supabase.auth.signUp({ 
     email: cleanEmail, 
     password 
   });
   if (error) throw error;
 
-  // 2. Safely attempt to create Profile and Assign Role
-  // Note: If you have strict RLS, this might fail until the user verifies their email.
-  // Best practice is to use a Postgres Trigger on auth.users to create profiles automatically.
   if (data?.user?.id) {
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: data.user.id,
@@ -43,9 +39,18 @@ export const registerAPI = async (email, password, username) => {
 };
 
 export const resetPasswordAPI = async (email) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-    redirectTo: `${window.location.origin}/reset-password`, // Ensure this route exists
+  const cleanEmail = email.trim().toLowerCase();
+  
+  // Ensure the redirect URL is flawlessly constructed for Supabase PKCE
+  const getURL = () => {
+    let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
+    return url.endsWith('/') ? url : `${url}/`;
+  };
+
+  const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+    redirectTo: `${getURL()}reset-password`,
   });
+  
   if (error) throw error;
 };
 
@@ -66,29 +71,46 @@ export const updatePasswordAPI = async (newPassword) => {
   if (error) throw error;
 };
 
-// ✨ FIXED: OAuth Wrapper now includes redirectTo
-// ✨ OPTIMIZED: Bulletproof redirect path
 export const signInWithOAuthAPI = async (provider) => {
-  // Ensure we get the clean base URL whether they are on localhost or Vercel
   const getURL = () => {
-    let url =
-      import.meta.env.VITE_SITE_URL ?? // Useful if you set a hardcoded env var later
-      window.location.origin;
-
-    // Make sure it includes a trailing slash for consistent matching in Supabase
+    let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
     url = url.endsWith('/') ? url : `${url}/`;
     return url;
   };
 
   const { data, error } = await supabase.auth.signInWithOAuth({ 
     provider,
-    options: {
-      redirectTo: getURL(), 
-    }
+    options: { redirectTo: getURL() }
   });
   
   if (error) throw error;
   return data;
+};
+
+export const linkOAuthIdentityAPI = async (provider) => {
+  const getURL = () => {
+    let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
+    url = url.endsWith('/') ? url : `${url}/`;
+    return url;
+  };
+
+  const { data, error } = await supabase.auth.linkIdentity({ 
+    provider,
+    options: { redirectTo: `${getURL()}profile` }
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const unlinkOAuthIdentityAPI = async (identity) => {
+  const { error } = await supabase.auth.unlinkIdentity(identity);
+  if (error) throw error;
+};
+
+export const getUserIdentitiesAPI = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return user?.identities || [];
 };
 
 export const getSessionAPI = async () => {

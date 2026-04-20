@@ -37,14 +37,14 @@ function App() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash && hash.includes('type=recovery')) {
-      navigate('/reset-password', { replace: true });
-      window.history.replaceState(null, '', window.location.pathname);
-    }
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') navigate('/reset-password');
+    // Securely listen for the exact moment Supabase verifies the email token
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Token verified. Navigate to reset page securely.
+        navigate('/reset-password', { replace: true });
+      }
     });
+
     return () => subscription.unsubscribe();
   }, [navigate]);
 

@@ -13,7 +13,6 @@ export const useAuthForm = () => {
   const submitAuth = async (view, formData, setView) => {
     setError('');
 
-    // Edge case: Empty spaces bypass empty string checks
     const email = formData.email?.trim();
     const password = formData.password;
     const username = formData.username?.trim();
@@ -55,15 +54,21 @@ export const useAuthForm = () => {
         
       } else if (view === 'forgot') {
         await resetPasswordAPI(email);
-        if (showToast) showToast('Email Sent', 'Check your inbox for the reset link.');
-        setView('login');
+        
+        // ✨ Switch the UI directly to the check email screen!
+        setView('check-email');
       }
       return true;
     } catch (err) {
-      // Edge case: User-friendly error messaging
-      const message = err.message.includes('Invalid login') 
-        ? 'Invalid email or password.' 
-        : err.message;
+      let message = err.message;
+      
+      if (message.includes('Invalid login')) {
+         message = 'Invalid email or password. Did you originally sign up with Google or Facebook?';
+      }
+      if (message.includes('over the email rate limit')) {
+         message = 'Too many requests. Please wait a moment and try again.';
+      }
+      
       setError(message);
       return false;
     } finally {
@@ -73,10 +78,9 @@ export const useAuthForm = () => {
 
   const handleOAuthSignIn = async (provider) => {
     setError('');
-    setIsLoading(true); // Prevent multi-clicks
+    setIsLoading(true);
     try {
       await signInWithOAuthAPI(provider);
-      // Browser will redirect automatically, no need to set isLoading to false
     } catch (err) {
       setError(err.message || `Failed to sign in with ${provider}.`);
       setIsLoading(false);
