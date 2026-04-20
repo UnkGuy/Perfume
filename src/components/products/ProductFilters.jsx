@@ -30,7 +30,6 @@ const ProductFilters = ({
   const displayedBrands = availableBrands.filter(b => b.toLowerCase().includes(brandSearch.toLowerCase()));
   const displayedNotes = availableNotes.filter(n => n.toLowerCase().includes(noteSearch.toLowerCase()));
 
-  // ✨ FIX: Separated the ugly Tailwind string into clean, readable CSS classes so the compiler doesn't break! ✨
   const sliderThumbClasses = "absolute w-full top-1/2 -translate-y-1/2 appearance-none bg-transparent pointer-events-none z-30 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-gold-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:pointer-events-auto [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-gold-400 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:cursor-pointer";
 
   return (
@@ -105,8 +104,8 @@ const ProductFilters = ({
           <div className="space-y-2">
             {genders.map(gender => (
               <div key={gender} className="flex items-center gap-2">
-                <input type="checkbox" id={gender} checked={selectedGender.includes(gender)} onChange={() => toggleFilter(gender, selectedGender, setSelectedGender)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
-                <label htmlFor={gender} className="text-sm cursor-pointer hover:text-gold-400">{gender}</label>
+                <input type="checkbox" id={gender} checked={selectedGender.includes(gender)} onChange={() => toggleFilter(gender, selectedGender, setSelectedGender)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer flex-shrink-0" />
+                <label htmlFor={gender} className="text-sm cursor-pointer hover:text-gold-400 flex-1 min-w-0 truncate">{gender}</label>
               </div>
             ))}
           </div>
@@ -136,7 +135,7 @@ const ProductFilters = ({
               {displayedNotes.map(note => (
                 <div key={note} className="flex items-center gap-2">
                   <input type="checkbox" id={note} checked={selectedNotes.includes(note)} onChange={() => toggleFilter(note, selectedNotes, setSelectedNotes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer flex-shrink-0" />
-                  <label htmlFor={note} className="text-sm cursor-pointer hover:text-gold-400 truncate">{note}</label>
+                  <label htmlFor={note} className="text-sm cursor-pointer hover:text-gold-400 flex-1 min-w-0 truncate">{note}</label>
                 </div>
               ))}
               {displayedNotes.length === 0 && <p className="text-xs text-gray-500 italic">No notes found.</p>}
@@ -166,7 +165,7 @@ const ProductFilters = ({
               {displayedBrands.map(brand => (
                 <div key={brand} className="flex items-center gap-2">
                   <input type="checkbox" id={brand} checked={selectedBrands.includes(brand)} onChange={() => toggleFilter(brand, selectedBrands, setSelectedBrands)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer flex-shrink-0" />
-                  <label htmlFor={brand} className="text-sm cursor-pointer hover:text-gold-400 truncate">{brand}</label>
+                  <label htmlFor={brand} className="text-sm cursor-pointer hover:text-gold-400 flex-1 min-w-0 truncate">{brand}</label>
                 </div>
               ))}
               {displayedBrands.length === 0 && <p className="text-xs text-gray-500 italic">No brands found.</p>}
@@ -185,7 +184,7 @@ const ProductFilters = ({
               {availableSizes.map(size => (
                 <div key={size} className="flex items-center gap-2">
                   <input type="checkbox" id={size} checked={selectedSizes.includes(size)} onChange={() => toggleFilter(size, selectedSizes, setSelectedSizes)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer flex-shrink-0" />
-                  <label htmlFor={size} className="text-sm cursor-pointer hover:text-gold-400">{size}</label>
+                  <label htmlFor={size} className="text-sm cursor-pointer hover:text-gold-400 flex-1 min-w-0 truncate">{size}</label>
                 </div>
               ))}
             </div>
@@ -199,8 +198,8 @@ const ProductFilters = ({
             <h4>Availability</h4>
           </div>
           <div className="flex items-center gap-2">
-            <input type="checkbox" id="outOfStock" checked={showOutOfStock} onChange={(e) => setShowOutOfStock(e.target.checked)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer" />
-            <label htmlFor="outOfStock" className="text-sm cursor-pointer hover:text-gold-400">Include Out of Stock</label>
+            <input type="checkbox" id="outOfStock" checked={showOutOfStock} onChange={(e) => setShowOutOfStock(e.target.checked)} className="accent-gold-400 rounded border-gray-600 bg-transparent w-4 h-4 cursor-pointer flex-shrink-0" />
+            <label htmlFor="outOfStock" className="text-sm cursor-pointer hover:text-gold-400 flex-1 min-w-0 truncate">Include Out of Stock</label>
           </div>
         </div>
         

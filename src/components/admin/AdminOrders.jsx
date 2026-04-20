@@ -32,8 +32,8 @@ const AdminOrders = ({ onNavigateToMessages }) => {
 
   return (
     <>
-      <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20">
+      <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden w-full">
+        <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20 w-full">
           <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
             <div className="relative w-full sm:w-36">
               <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -80,8 +80,8 @@ const AdminOrders = ({ onNavigateToMessages }) => {
         </div>
 
         {/* Desktop Table */}
-        <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
+        <div className="hidden md:block overflow-x-auto w-full">
+          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
             <thead>
               <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
                 {['Order ID','Date','Customer','Total','Status','Actions'].map(h => (
@@ -97,13 +97,13 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                   <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
                     <td className="p-4 font-mono text-gold-400">#{order.id}</td>
                     <td className="p-4">{new Date(order.created_at).toLocaleDateString()}</td>
-                    <td className="p-4">{order.profiles?.email || 'Unknown User'}</td>
+                    <td className="p-4 truncate max-w-[150px]" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</td>
                     <td className="p-4 font-bold text-white">₱{Number(order.total_amount).toLocaleString()}</td>
                     <td className="p-4">
                       <select
                         value={order.status}
                         onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
-                        className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${statusClass(order.status)}`}
+                        className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center w-full max-w-[100px] ${statusClass(order.status)}`}
                       >
                         <option value="pending"   className="bg-rich-black text-white">Pending</option>
                         <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
@@ -123,18 +123,18 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                   {expandedOrderId === order.id && (
                     <tr className="bg-black/40 border-b border-white/10">
                       <td colSpan="6" className="p-6">
-                        <div className="bg-white/5 border border-white/10 rounded-lg p-4">
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 w-full">
                           <h4 className="text-xs uppercase tracking-widest text-gray-500 mb-3 font-bold">Order Items</h4>
                           {order.order_items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-center text-sm mb-1">
-                              <div>
+                            <div key={idx} className="flex justify-between items-center text-sm mb-1 gap-2 min-w-0">
+                              <div className="min-w-0 truncate">
                                 <span className="text-gold-400 font-bold mr-2">{item.quantity}x</span>
-                                <span className="text-white">
+                                <span className="text-white truncate">
                                   {item.products?.name || 'Unknown'} 
                                   {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
                                 </span>
                               </div>
-                              <span className="text-gray-400 font-mono">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
+                              <span className="text-gray-400 font-mono flex-shrink-0">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
                             </div>
                           ))}
                         </div>
@@ -148,39 +148,39 @@ const AdminOrders = ({ onNavigateToMessages }) => {
         </div>
 
         {/* Mobile Table */}
-        <div className="md:hidden flex flex-col divide-y divide-white/10">
+        <div className="md:hidden flex flex-col divide-y divide-white/10 w-full overflow-hidden">
           {filteredOrders.map(order => (
-            <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors">
-              <div className="flex justify-between items-start">
-                <div>
-                  <span className="font-mono text-gold-400 font-bold text-lg">#{order.id}</span>
-                  <p className="text-xs text-gray-400 mt-0.5">{new Date(order.created_at).toLocaleDateString()}</p>
+            <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors min-w-0">
+              <div className="flex justify-between items-start gap-2 min-w-0">
+                <div className="min-w-0">
+                  <span className="font-mono text-gold-400 font-bold text-base sm:text-lg truncate max-w-[120px] inline-block">#{order.id}</span>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{new Date(order.created_at).toLocaleDateString()}</p>
                 </div>
-                <p className="font-bold text-white text-lg">₱{Number(order.total_amount).toLocaleString()}</p>
+                <p className="font-bold text-white text-base sm:text-lg flex-shrink-0">₱{Number(order.total_amount).toLocaleString()}</p>
               </div>
-              <div className="bg-black/40 rounded p-2 border border-white/5">
-                <p className="text-sm text-gray-300 truncate">{order.profiles?.email || 'Unknown User'}</p>
+              <div className="bg-black/40 rounded p-2 border border-white/5 min-w-0">
+                <p className="text-xs sm:text-sm text-gray-300 truncate" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</p>
               </div>
-              <div className="flex justify-between items-center gap-3">
+              <div className="flex justify-between items-center gap-2 sm:gap-3 w-full">
                 <select
                   value={order.status}
                   onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
-                  className={`flex-1 px-3 py-2 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center ${statusClass(order.status)}`}
+                  className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center min-w-0 ${statusClass(order.status)}`}
                 >
                   <option value="pending"   className="bg-rich-black text-white">Pending</option>
                   <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
                   <option value="completed" className="bg-rich-black text-white">Completed</option>
                   <option value="canceled"  className="bg-rich-black text-white">Canceled</option>
                 </select>
-                <div className="flex gap-2">
-                  <button onClick={() => setInvoiceOrder(order)} className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
-                    <FileText size={18} />
+                <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
+                  <button onClick={() => setInvoiceOrder(order)} className="p-1.5 sm:p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
+                    <FileText size={16} />
                   </button>
-                  <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-colors">
-                    {expandedOrderId === order.id ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-colors">
+                    {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
-                  <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors">
-                    <MessageCircle size={18} />
+                  <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-1.5 sm:p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors">
+                    <MessageCircle size={16} />
                   </button>
                 </div>
               </div>
@@ -194,6 +194,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
   );
 };
 
+/* Rest of the InvoiceModal code remains the same... */
 const InvoiceModal = ({ order, onClose, modifyOrder }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
@@ -208,7 +209,6 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
   const [newFeeName, setNewFeeName] = useState('');
   const [newFeeAmount, setNewFeeAmount] = useState('');
 
-  // Extract Invoice Document to a new window for pure printing without app CSS interference
   const handlePrint = () => {
     const printContent = document.getElementById('printable-invoice-area').innerHTML;
     const printWindow = window.open('', '_blank');
@@ -227,7 +227,6 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
             ${printContent}
           </div>
           <script>
-            // Slight delay to ensure Tailwind applies completely before the print dialog opens
             setTimeout(() => { window.print(); window.close(); }, 750);
           </script>
         </body>
@@ -265,7 +264,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm w-full">
       <div className="absolute top-6 right-6 flex gap-3">
         {order.status === 'pending' && (
           <button 
@@ -283,8 +282,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
 
       <div className="bg-gray-100 w-full max-w-4xl rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col md:flex-row">
         
-        {/* Printable View Area */}
-        <div className="flex-1 bg-white p-10 text-black" id="printable-invoice-area">
+        <div className="flex-1 bg-white p-10 text-black min-w-0" id="printable-invoice-area">
           <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
             <div>
               <h1 className="text-3xl font-extrabold tracking-widest text-gray-900">KL SCENTS</h1>
@@ -301,27 +299,27 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-6 mb-8">
-            <div>
+            <div className="min-w-0">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed & Shipped To</h3>
-              <p className="text-sm font-bold text-gray-800">{order.profiles?.email}</p>
-              <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed">{editData.address || 'No Address Provided'}</p>
-              <p className="text-sm text-gray-600 mt-1">{editData.contact || 'No Contact Provided'}</p>
+              <p className="text-sm font-bold text-gray-800 truncate" title={order.profiles?.email}>{order.profiles?.email}</p>
+              <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed break-words">{editData.address || 'No Address Provided'}</p>
+              <p className="text-sm text-gray-600 mt-1 truncate">{editData.contact || 'No Contact Provided'}</p>
             </div>
-            <div className="text-right">
+            <div className="text-right min-w-0">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Order Specifics</h3>
-              {editData.promo_code && <p className="text-sm text-gray-600 mt-1">Promo: <span className="font-bold text-yellow-600">{editData.promo_code}</span></p>}
-              <p className="text-sm text-gray-600 mt-1">Fulfillment: <span className="font-bold capitalize">{editData.fulfillment_method || 'N/A'}</span></p>
-              <p className="text-sm text-gray-600 mt-1">Payment: <span className="font-bold capitalize">{editData.payment_preference || 'N/A'}</span></p>
+              {editData.promo_code && <p className="text-sm text-gray-600 mt-1 truncate">Promo: <span className="font-bold text-yellow-600">{editData.promo_code}</span></p>}
+              <p className="text-sm text-gray-600 mt-1 truncate">Fulfillment: <span className="font-bold capitalize">{editData.fulfillment_method || 'N/A'}</span></p>
+              <p className="text-sm text-gray-600 mt-1 truncate">Payment: <span className="font-bold capitalize">{editData.payment_preference || 'N/A'}</span></p>
             </div>
           </div>
 
-          <table className="w-full text-left border-collapse mb-6">
+          <table className="w-full text-left border-collapse mb-6 table-fixed">
             <thead>
               <tr className="border-b-2 border-gray-200 text-xs uppercase tracking-wider text-gray-500">
-                <th className="py-3 font-bold">Item Description</th>
-                <th className="py-3 font-bold text-center">Qty</th>
-                <th className="py-3 font-bold text-right">Price</th>
-                <th className="py-3 font-bold text-right">Total</th>
+                <th className="py-3 font-bold w-1/2">Item Description</th>
+                <th className="py-3 font-bold text-center w-1/6">Qty</th>
+                <th className="py-3 font-bold text-right w-1/6">Price</th>
+                <th className="py-3 font-bold text-right w-1/6">Total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm text-gray-800">
@@ -329,13 +327,13 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
                 const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
                 return (
                   <tr key={idx}>
-                    <td className="py-4">
-                      <p className="font-bold">{item.products?.name}</p>
-                      <p className="text-xs text-gray-500">{variant?.size || 'Standard'}</p>
+                    <td className="py-4 min-w-0">
+                      <p className="font-bold truncate">{item.products?.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{variant?.size || 'Standard'}</p>
                     </td>
                     <td className="py-4 text-center">{item.quantity}</td>
-                    <td className="py-4 text-right">₱{item.price_at_time.toLocaleString()}</td>
-                    <td className="py-4 text-right font-medium">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
+                    <td className="py-4 text-right truncate">₱{item.price_at_time.toLocaleString()}</td>
+                    <td className="py-4 text-right font-medium truncate">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
                   </tr>
                 )
               })}
@@ -350,11 +348,11 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
               </div>
               {editData.custom_fees.map((fee, idx) => (
                 <div key={idx} className="flex justify-between text-sm text-gray-600 group">
-                  <span className="flex items-center">
-                    {fee.name} 
-                    {isEditing && <button onClick={() => handleRemoveFee(idx)} className="text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block" title="Remove from print view completely">Remove</button>}
+                  <span className="flex items-center min-w-0">
+                    <span className="truncate">{fee.name}</span>
+                    {isEditing && <button onClick={() => handleRemoveFee(idx)} className="text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block flex-shrink-0" title="Remove from print view completely">Remove</button>}
                   </span>
-                  <span>{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
+                  <span className="flex-shrink-0">{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
                 </div>
               ))}
               <div className="flex justify-between text-lg font-bold text-gray-900 border-t-2 border-gray-200 pt-3 mt-3">
@@ -370,9 +368,8 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
           </div>
         </div>
 
-        {/* Edit Pane */}
         {isEditing && (
-          <div className="w-full md:w-80 bg-gray-50 p-6 border-l border-gray-200 animate-fade-in flex flex-col gap-4 text-sm text-gray-800">
+          <div className="w-full md:w-80 bg-gray-50 p-6 border-l border-gray-200 animate-fade-in flex flex-col gap-4 text-sm text-gray-800 flex-shrink-0">
             <h3 className="font-bold text-lg border-b border-gray-200 pb-2 flex items-center gap-2"><Edit2 size={18}/> Edit Details</h3>
             
             <div className="flex flex-col gap-1">
@@ -404,9 +401,9 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
             <div className="border-t border-gray-200 pt-4 mt-2">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Custom Fees/Discounts</label>
               <div className="flex gap-2">
-                <input placeholder="Name" value={newFeeName} onChange={e => setNewFeeName(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/2" />
-                <input placeholder="Amt (- for discount)" type="number" value={newFeeAmount} onChange={e => setNewFeeAmount(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/3" />
-                <button onClick={handleAddFee} className="bg-gray-800 text-white rounded p-2 flex-1 hover:bg-gray-700 flex justify-center"><Plus size={16}/></button>
+                <input placeholder="Name" value={newFeeName} onChange={e => setNewFeeName(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/2 min-w-0" />
+                <input placeholder="Amt (- for discount)" type="number" value={newFeeAmount} onChange={e => setNewFeeAmount(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/3 min-w-0" />
+                <button onClick={handleAddFee} className="bg-gray-800 text-white rounded p-2 flex-1 hover:bg-gray-700 flex justify-center flex-shrink-0"><Plus size={16}/></button>
               </div>
             </div>
 
