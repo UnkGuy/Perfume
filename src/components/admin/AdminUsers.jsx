@@ -42,7 +42,6 @@ const AdminUsers = () => {
     }
   };
 
-  // ✨ NEW: Change Role Handler
   const handleRoleChange = async (userId, newRole) => {
     try {
       await updateUserRoleAPI(userId, newRole);
@@ -61,23 +60,23 @@ const AdminUsers = () => {
   });
 
   return (
-    <div className="animate-fade-in space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="animate-fade-in space-y-6 w-full overflow-hidden">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h3 className="text-2xl font-bold text-white mb-1">Accounts</h3>
           <p className="text-gray-400 text-sm">Manage registered users and permissions.</p>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center w-full md:w-auto">
           <select 
             value={roleFilter} 
             onChange={e => setRoleFilter(e.target.value)}
-            className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400"
+            className="bg-black/50 border border-white/10 rounded-lg py-2 px-3 text-sm text-white focus:outline-none focus:border-gold-400 w-full sm:w-auto"
           >
             <option value="all">All Roles</option>
             <option value="customer">Customers</option>
             <option value="admin">Admins</option>
           </select>
-          <div className="relative w-64">
+          <div className="relative w-full sm:w-64">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
             <input type="text" placeholder="Search email..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400"
@@ -86,14 +85,14 @@ const AdminUsers = () => {
         </div>
       </div>
 
-      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-x-auto w-full">
+        <table className="w-full text-left border-collapse min-w-[600px]">
           <thead>
             <tr className="bg-black/40 border-b border-white/10 text-xs uppercase text-gray-500">
-              <th className="p-4 font-medium">Email</th>
-              <th className="p-4 font-medium">Role</th>
-              <th className="p-4 font-medium">Status</th>
-              <th className="p-4 font-medium text-right">Actions</th>
+              <th className="p-4 font-medium w-1/3">Email</th>
+              <th className="p-4 font-medium w-1/4">Role</th>
+              <th className="p-4 font-medium w-1/6">Status</th>
+              <th className="p-4 font-medium text-right w-1/4">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5 text-sm">
@@ -102,13 +101,16 @@ const AdminUsers = () => {
               const currentRole = u.user_roles?.[0]?.role || 'customer';
               return (
                 <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 text-white font-medium break-long-text max-w-[200px]">{u.email}</td>
+                  <td className="p-4 text-white font-medium break-all sm:break-words">
+                    <div className="max-w-[150px] sm:max-w-xs md:max-w-sm lg:max-w-md truncate" title={u.email}>
+                      {u.email}
+                    </div>
+                  </td>
                   <td className="p-4">
-                    {/* ✨ NEW: Role Dropdown ✨ */}
                     <select 
                       value={currentRole}
                       onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                      className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-gray-300 uppercase tracking-wider focus:outline-none focus:border-gold-400 cursor-pointer"
+                      className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-gray-300 uppercase tracking-wider focus:outline-none focus:border-gold-400 cursor-pointer w-full max-w-[120px]"
                     >
                       <option value="customer">Customer</option>
                       <option value="admin">Admin</option>
@@ -116,12 +118,12 @@ const AdminUsers = () => {
                   </td>
                   <td className="p-4">
                     {u.is_banned 
-                      ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold">Blocked</span>
-                      : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold">Active</span>}
+                      ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Blocked</span>
+                      : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Active</span>}
                   </td>
                   <td className="p-4 text-right">
                     <button onClick={() => handleToggleBan(u.id, u.is_banned)}
-                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${u.is_banned ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'}`}>
+                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${u.is_banned ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'}`}>
                       {u.is_banned ? 'Unblock' : 'Block Account'}
                     </button>
                   </td>
