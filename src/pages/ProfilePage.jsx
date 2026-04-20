@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Clock, LogOut, ArrowLeft, Settings, User, Phone, Lock, Loader2 } from 'lucide-react';
+import { Package, Clock, LogOut, ArrowLeft, Settings, User, Phone, Lock, Loader2, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
 import Header from '../components/common/Header';
@@ -23,14 +23,13 @@ const ProfilePage = () => {
 
   const { orderHistory, isLoading: ordersLoading } = useUserOrders(user?.id);
   const [activeTab, setActiveTab] = useState('history');
-  const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
-
+  
   const [invoiceOrder, setInvoiceOrder] = useState(null);
 
-  // ✨ Updated to remove hasPassword and include identity handlers
+  // ✨ Added handlePasswordResetRequest
   const { 
     profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors,
-    identities, handleLinkIdentity, handleUnlinkIdentity, isLinking
+    identities, handleLinkIdentity, handleUnlinkIdentity, isLinking, handlePasswordResetRequest
   } = useProfile(activeTab);
   
   const { regions, provinces, cities, barangays, getProvinces, getCities, getBarangays, isFetchingLocation } = usePSGC();
@@ -63,9 +62,8 @@ const ProfilePage = () => {
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
-    const success = await saveProfile(passwords);
+    const success = await saveProfile();
     if (success) {
-      setPasswords({ newPassword: '', confirmPassword: '' });
       setIsEditingAddress(false);
     }
   };
@@ -167,39 +165,22 @@ const ProfilePage = () => {
                   </div>
                 </div>
 
-                {/* ✨ UNIFIED SECURITY BLOCK ✨ */}
+                {/* ✨ REPLACED PASSWORD FIELDS WITH EMAIL BUTTON ✨ */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
-                  <p className="text-sm text-gray-500 mb-4">Set a password for email login, or update your existing one. Leave blank if no changes are needed.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                        <Lock size={14} className="text-gold-400" /> New Password
-                      </label>
-                      <input 
-                        type="password" 
-                        value={passwords.newPassword} 
-                        onChange={e => setPasswords({ ...passwords, newPassword: e.target.value })} 
-                        className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" 
-                        placeholder="••••••••" 
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                        <Lock size={14} className="text-gold-400" /> Confirm Password
-                      </label>
-                      <input 
-                        type="password" 
-                        value={passwords.confirmPassword} 
-                        onChange={e => setPasswords({ ...passwords, confirmPassword: e.target.value })} 
-                        className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" 
-                        placeholder="••••••••" 
-                      />
-                    </div>
+                  <p className="text-sm text-gray-500 mb-4">Click below to receive a secure link to reset your password. You will be safely logged out.</p>
+                  <div>
+                    <button 
+                      type="button" 
+                      onClick={() => handlePasswordResetRequest(user.email)} 
+                      className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Mail size={16} /> Send Password Reset Link
+                    </button>
                   </div>
                 </div>
 
-                {/* ✨ CONNECTED ACCOUNTS UI ✨ */}
+                {/* CONNECTED ACCOUNTS UI */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2 mt-8">Connected Accounts</h3>
                   <p className="text-sm text-gray-500 mb-4">Link your social accounts to log in with one click.</p>

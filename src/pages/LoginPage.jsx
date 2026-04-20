@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Loader2, AlertCircle, ArrowLeft, Mail } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Loader2, AlertCircle, ArrowLeft, Mail, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthForm } from '../hooks/useAuthForm'; 
 import { useUI } from '../contexts/UIContext';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
 
 const LoginPage = () => {
   const { setCurrentPage } = useUI();
@@ -10,6 +11,13 @@ const LoginPage = () => {
   
   const [view, setView] = useState('login'); 
   const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '' });
+  
+  // New states for password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef(null);
   
   const { submitAuth, handleOAuthSignIn, isLoading, error, setError } = useAuthForm();
 
@@ -20,7 +28,13 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await submitAuth(view, formData, setView);
+    const success = await submitAuth(view, formData, setView, captchaToken);
+    
+    // Reset captcha on failure for BOTH login and register so they can try again
+    if (!success && (view === 'register' || view === 'login') && captchaRef.current) {
+        captchaRef.current.resetCaptcha();
+        setCaptchaToken('');
+    }
   };
 
   const renderHeader = () => {
@@ -84,7 +98,12 @@ const LoginPage = () => {
               {view !== 'forgot' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
-                  <input required type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                  <div className="relative">
+                    <input required type={showPassword ? "text" : "password"} name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 pr-10 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gold-400 transition-colors">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -92,7 +111,12 @@ const LoginPage = () => {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
-                    <input required type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                    <div className="relative">
+                      <input required type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 pr-10 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gold-400 transition-colors">
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
@@ -102,8 +126,20 @@ const LoginPage = () => {
               )}
 
               {view === 'login' && (
-                <div className="flex justify-end text-sm">
+                <div className="flex justify-end text-sm mt-1">
                   <button type="button" onClick={() => { setView('forgot'); setError(''); }} className="text-gold-400 hover:text-gold-300 transition-colors">Forgot password?</button>
+                </div>
+              )}
+
+              {/* hCaptcha Component rendered for BOTH login and registration */}
+              {(view === 'login' || view === 'register') && (
+                <div className="flex justify-center mt-4">
+                  <HCaptcha
+                    ref={captchaRef}
+                    sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY}
+                    onVerify={(token) => setCaptchaToken(token)}
+                    theme="dark"
+                  />
                 </div>
               )}
 
@@ -149,7 +185,15 @@ const LoginPage = () => {
 
                   <div className="text-center text-sm text-gray-400 pt-4 mt-2 border-t border-white/10">
                     {view === 'login' ? "Don't have an account? " : "Already have an account? "}
-                    <button onClick={() => { setView(view === 'login' ? 'register' : 'login'); setError(''); }} className="text-gold-400 hover:text-gold-300 font-bold">
+                    <button onClick={() => { 
+                        setView(view === 'login' ? 'register' : 'login'); 
+                        setError(''); 
+                        setCaptchaToken(''); 
+                        if (captchaRef.current) captchaRef.current.resetCaptcha();
+                        // Reset visibility toggles when switching views
+                        setShowPassword(false);
+                        setShowConfirmPassword(false);
+                    }} className="text-gold-400 hover:text-gold-300 font-bold">
                       {view === 'login' ? 'Sign up free' : 'Sign in'}
                     </button>
                   </div>

@@ -1,20 +1,28 @@
 import { supabase } from './supabase';
 
-export const loginAPI = async (email, password) => {
+// ✨ Modified to accept captchaToken for login
+export const loginAPI = async (email, password, captchaToken) => {
   const { data, error } = await supabase.auth.signInWithPassword({ 
     email: email.trim().toLowerCase(), 
-    password 
+    password,
+    options: {
+      captchaToken, // ✨ Pass the token to Supabase
+    }
   });
   if (error) throw error;
   return data;
 };
 
-export const registerAPI = async (email, password, username) => {
+// ✨ Modified to accept captchaToken for registration
+export const registerAPI = async (email, password, username, captchaToken) => {
   const cleanEmail = email.trim().toLowerCase();
   
   const { data, error } = await supabase.auth.signUp({ 
     email: cleanEmail, 
-    password 
+    password,
+    options: {
+      captchaToken, // ✨ Pass the token to Supabase
+    }
   });
   if (error) throw error;
 
@@ -41,7 +49,6 @@ export const registerAPI = async (email, password, username) => {
 export const resetPasswordAPI = async (email) => {
   const cleanEmail = email.trim().toLowerCase();
   
-  // Ensure the redirect URL is flawlessly constructed for Supabase PKCE
   const getURL = () => {
     let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
     return url.endsWith('/') ? url : `${url}/`;

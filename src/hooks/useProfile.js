@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchUserProfileAPI, updateUserProfileAPI } from '../services/userApi';
-import { updatePasswordAPI, getUserIdentitiesAPI, unlinkOAuthIdentityAPI, linkOAuthIdentityAPI } from '../services/authApi'; 
+import { resetPasswordAPI, logoutAPI, getUserIdentitiesAPI, unlinkOAuthIdentityAPI, linkOAuthIdentityAPI } from '../services/authApi'; 
 import { useAuth } from '../contexts/AuthContext';
 import { useShop } from '../contexts/ShopContext';
 
@@ -65,7 +65,7 @@ export const useProfile = (activeTab) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const saveProfile = async (passwords) => {
+  const saveProfile = async () => {
     if (!validateForm()) {
       if (showToast) showToast("Error", "Please fix the errors in the form.", "error");
       return false;
@@ -79,17 +79,7 @@ export const useProfile = (activeTab) => {
         address: JSON.stringify(profileData.address)
       });
 
-      // ✨ SIMPLIFIED AND BULLETPROOF PASSWORD UPDATE ✨
-      if (passwords?.newPassword) {
-        if (passwords.newPassword !== passwords.confirmPassword) {
-            throw new Error("New passwords do not match.");
-        }
-        
-        await updatePasswordAPI(passwords.newPassword);
-        if (showToast) showToast("Security Updated", "Your password has been successfully updated.", "success");
-      } else {
-        if (showToast) showToast("Success", "Profile updated successfully.");
-      }
+      if (showToast) showToast("Success", "Profile updated successfully.");
       
       return true;
     } catch (err) {
@@ -97,6 +87,17 @@ export const useProfile = (activeTab) => {
       return false;
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ✨ NEW: Handles triggering the password reset email and logging out ✨
+  const handlePasswordResetRequest = async (email) => {
+    try {
+      await resetPasswordAPI(email);
+      if (showToast) showToast("Check Your Email", "A secure password reset link has been sent. You have been safely logged out.", "success");
+      await logoutAPI();
+    } catch (err) {
+      if (showToast) showToast("Error", err.message || "Failed to send reset link.", "error");
     }
   };
 
@@ -134,6 +135,7 @@ export const useProfile = (activeTab) => {
 
   return { 
     profileData, setProfileData, handleAddressChange, isProfileLoading, isSaving, 
-    saveProfile, errors, identities, handleLinkIdentity, handleUnlinkIdentity, isLinking 
+    saveProfile, errors, identities, handleLinkIdentity, handleUnlinkIdentity, isLinking,
+    handlePasswordResetRequest // exported new function
   };
 };

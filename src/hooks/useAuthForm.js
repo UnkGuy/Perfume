@@ -10,20 +10,18 @@ export const useAuthForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const submitAuth = async (view, formData, setView) => {
+  const submitAuth = async (view, formData, setView, captchaToken) => {
     setError('');
 
     const email = formData.email?.trim();
     const password = formData.password;
     const username = formData.username?.trim();
 
-    // Basic existence check
     if (!email || (view !== 'forgot' && !password)) {
       setError('Please fill in all required fields.');
       return false;
     }
 
-    // Strict Email Format Validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address.');
@@ -36,10 +34,14 @@ export const useAuthForm = () => {
         return false;
       }
       
-      // Strict Password Validation: At least 8 chars AND 1 number
-      const passwordRegex = /^(?=.*[0-9]).{8,}$/;
-      if (!passwordRegex.test(password)) {
-        setError('Password must be at least 8 characters long and contain at least one number.');
+      // Explicit password feedback
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        return false;
+      }
+      
+      if (!/\d/.test(password)) {
+        setError('Password must contain at least one number.');
         return false;
       }
 
@@ -49,16 +51,22 @@ export const useAuthForm = () => {
       }
     }
 
+    // Require captcha for BOTH login and registration
+    if ((view === 'register' || view === 'login') && !captchaToken) {
+      setError('Please complete the captcha verification.');
+      return false;
+    }
+
     setIsLoading(true);
 
     try {
       if (view === 'register') {
-        await registerAPI(email, password, username);
+        await registerAPI(email, password, username, captchaToken);
         if (showToast) showToast('Success', 'Account created! Please check your email to verify.');
         setView('login'); 
         
       } else if (view === 'login') {
-        const data = await loginAPI(email, password);
+        const data = await loginAPI(email, password, captchaToken);
         const role = await fetchUserRoleAPI(data.user?.id);
         
         if (showToast) showToast('Welcome Back', 'Successfully logged in.');
@@ -66,19 +74,19 @@ export const useAuthForm = () => {
         
       } else if (view === 'forgot') {
         await resetPasswordAPI(email);
-        
-        // ✨ Switch the UI directly to the check email screen!
         setView('check-email');
       }
       return true;
     } catch (err) {
       let message = err.message;
       
+      // Specific user feedback mappings
       if (message.includes('Invalid login')) {
          message = 'Invalid email or password. Did you originally sign up with Google or Facebook?';
-      }
-      if (message.includes('over the email rate limit')) {
+      } else if (message.includes('over the email rate limit')) {
          message = 'Too many requests. Please wait a moment and try again.';
+      } else if (message.includes('already registered') || message.toLowerCase().includes('already in use')) {
+         message = 'This email is already in use. Please sign in instead.';
       }
       
       setError(message);
