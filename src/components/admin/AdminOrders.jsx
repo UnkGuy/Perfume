@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2, Plus, Trash2 } from 'lucide-react';
 import { useOrders } from '../../hooks/useOrders';
 import { useShop } from '../../contexts/ShopContext';
 
@@ -11,7 +11,6 @@ const statusClass = (status) =>
 
 const AdminOrders = ({ onNavigateToMessages }) => {
   const { showToast } = useShop();
-  // ✨ Pass modifyOrder into our destructure!
   const { orders, isLoading, changeOrderStatus, modifyOrder } = useOrders(showToast);
   
   const [expandedOrderId, setExpandedOrderId] = useState(null);
@@ -33,7 +32,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
 
   return (
     <>
-      <div className={`animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden ${invoiceOrder ? 'print:hidden' : ''}`}>
+      <div className="animate-fade-in bg-white/5 border border-white/10 rounded-xl overflow-hidden">
         <div className="p-4 border-b border-white/10 flex flex-col gap-3 bg-black/20">
           <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
             <div className="relative w-full sm:w-36">
@@ -75,17 +74,9 @@ const AdminOrders = ({ onNavigateToMessages }) => {
               onClick={() => onNavigateToMessages?.()}
               className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold"
             >
-              <MessageCircle size={16} /> Open Messages Console
+              <MessageCircle size={16} /> Open Messages
             </button>
           </div>
-
-          {(idSearch || emailSearch) && (
-            <p className="text-xs text-gray-500">
-              Showing {filteredOrders.length} of {orders.length} orders
-              {idSearch && <span> · ID contains "<span className="text-gold-400">{idSearch}</span>"</span>}
-              {emailSearch && <span> · Email contains "<span className="text-gold-400">{emailSearch}</span>"</span>}
-            </p>
-          )}
         </div>
 
         {/* Desktop Table */}
@@ -158,9 +149,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
 
         {/* Mobile Table */}
         <div className="md:hidden flex flex-col divide-y divide-white/10">
-          {filteredOrders.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">No orders found.</div>
-          ) : filteredOrders.map(order => (
+          {filteredOrders.map(order => (
             <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors">
               <div className="flex justify-between items-start">
                 <div>
@@ -187,86 +176,97 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                   <button onClick={() => setInvoiceOrder(order)} className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
                     <FileText size={18} />
                   </button>
-                  <button
-                    onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)}
-                    className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}
-                  >{expandedOrderId === order.id ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-                  <button
-                    onClick={() => onNavigateToMessages?.(order.user_id)}
-                    className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"
-                  >
+                  <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-colors">
+                    {expandedOrderId === order.id ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                  <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors">
                     <MessageCircle size={18} />
                   </button>
                 </div>
               </div>
-              {expandedOrderId === order.id && (
-                <div className="bg-black/40 border border-white/10 rounded-lg p-3 animate-fade-in">
-                  <h4 className="text-[10px] uppercase tracking-widest text-gray-500 mb-2 font-bold border-b border-white/10 pb-2">Order Items</h4>
-                  {order.order_items.map((item, idx) => (
-                    <div key={idx} className="flex justify-between text-xs gap-3 mb-1.5">
-                      <span className="flex-1 truncate">
-                        <span className="text-gold-400 font-bold mr-1.5">{item.quantity}x</span>
-                        {item.products?.name || 'Unknown'} 
-                        {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
-                      </span>
-                      <span className="text-gray-400 font-mono flex-shrink-0">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </div>
       </div>
 
-      {/* ✨ Pass modifyOrder to InvoiceModal ✨ */}
       {invoiceOrder && <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} modifyOrder={modifyOrder} />}
     </>
   );
 };
 
-// ─── ✨ UPGRADED INVOICE MODAL (Now Editable & Detailed) ✨ ─────────────────
 const InvoiceModal = ({ order, onClose, modifyOrder }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [customFees, setCustomFees] = useState(order.metadata?.custom_fees || []);
+  const [editData, setEditData] = useState({
+    address: order.metadata?.address || order.metadata?.location || '',
+    contact: order.metadata?.contact || '',
+    promo_code: order.metadata?.promo_code || '',
+    fulfillment_method: order.metadata?.fulfillment_method || '',
+    payment_preference: order.metadata?.payment_preference || '',
+    custom_fees: order.metadata?.custom_fees || []
+  });
+
   const [newFeeName, setNewFeeName] = useState('');
   const [newFeeAmount, setNewFeeAmount] = useState('');
 
-  const handlePrint = () => window.print();
+  // Extract Invoice Document to a new window for pure printing without app CSS interference
+  const handlePrint = () => {
+    const printContent = document.getElementById('printable-invoice-area').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Invoice #${order.id}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
+          <style>
+            @page { size: auto; margin: 15mm; }
+            body { font-family: sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; color: black; }
+          </style>
+        </head>
+        <body class="bg-white">
+          <div class="max-w-3xl mx-auto py-8">
+            ${printContent}
+          </div>
+          <script>
+            // Slight delay to ensure Tailwind applies completely before the print dialog opens
+            setTimeout(() => { window.print(); window.close(); }, 750);
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
-  // Calculations
   const baseTotal = order.order_items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0);
-  const feesTotal = customFees.reduce((sum, fee) => sum + Number(fee.amount), 0);
+  const feesTotal = editData.custom_fees.reduce((sum, fee) => sum + Number(fee.amount), 0);
   const grandTotal = baseTotal + feesTotal;
+
+  const handleFieldChange = (field, value) => setEditData({ ...editData, [field]: value });
 
   const handleAddFee = () => {
     if (!newFeeName || !newFeeAmount) return;
-    setCustomFees([...customFees, { name: newFeeName, amount: Number(newFeeAmount) }]);
+    setEditData({
+      ...editData,
+      custom_fees: [...editData.custom_fees, { name: newFeeName, amount: Number(newFeeAmount) }]
+    });
     setNewFeeName('');
     setNewFeeAmount('');
   };
 
   const handleRemoveFee = (index) => {
-    setCustomFees(customFees.filter((_, i) => i !== index));
+    setEditData({
+      ...editData,
+      custom_fees: editData.custom_fees.filter((_, i) => i !== index)
+    });
   };
 
   const handleSave = () => {
-    modifyOrder(order.id, grandTotal, customFees);
+    modifyOrder(order.id, grandTotal, editData);
     setIsEditing(false);
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm print:static print:bg-white print:p-0 print:block [print-color-adjust:exact] print-container">
-      
-      <style type="text/css" media="print">
-        {`
-          @page { size: auto; margin: 0mm; }
-          body, html { background-color: white !important; }
-        `}
-      </style>
-
-      {/* Non-printable overlay buttons */}
-      <div className="absolute top-6 right-6 flex gap-3 print:hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="absolute top-6 right-6 flex gap-3">
         {order.status === 'pending' && (
           <button 
             onClick={() => setIsEditing(!isEditing)} 
@@ -281,127 +281,140 @@ const InvoiceModal = ({ order, onClose, modifyOrder }) => {
         <button onClick={onClose} className="bg-white/10 text-white px-4 py-2 rounded hover:bg-white/20 border border-white/20">Close</button>
       </div>
 
-      <div className="bg-white text-black w-full max-w-2xl p-10 md:p-12 rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none print:w-full print:m-0 print:p-8">
+      <div className="bg-gray-100 w-full max-w-4xl rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col md:flex-row">
         
-        <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-widest text-gray-900">KL SCENTS</h1>
-            <p className="text-sm text-gray-500 mt-1">Premium Fragrance Collection</p>
-          </div>
-          <div className="text-right">
-            <h2 className="text-xl font-bold text-gray-800">INVOICE</h2>
-            <p className="text-sm text-gray-500 font-mono mt-1">#{order.id}</p>
-            <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
-            <span className={`inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase rounded ${order.status === 'pending' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
-              {order.status}
-            </span>
-          </div>
-        </div>
-
-        {/* ✨ NEW: Detailed Customer & Order Info Grid ✨ */}
-        <div className="grid grid-cols-2 gap-6 mb-8">
-          <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed & Shipped To</h3>
-            <p className="text-sm font-bold text-gray-800">{order.profiles?.email}</p>
-            {order.metadata?.address && <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed">{order.metadata.address}</p>}
-            {order.metadata?.location && !order.metadata?.address && <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed">{order.metadata.location}</p>}
-            {order.metadata?.contact && <p className="text-sm text-gray-600 mt-1">{order.metadata.contact}</p>}
-          </div>
-          <div className="text-right">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Order Specifics</h3>
-            {order.metadata?.promo_code && <p className="text-sm text-gray-600 mt-1">Promo: <span className="font-bold text-gold-600">{order.metadata.promo_code}</span></p>}
-            {order.metadata?.fulfillment_method && <p className="text-sm text-gray-600 mt-1">Fulfillment: <span className="font-bold capitalize">{order.metadata.fulfillment_method}</span></p>}
-            {order.metadata?.payment_preference && <p className="text-sm text-gray-600 mt-1">Payment: <span className="font-bold capitalize">{order.metadata.payment_preference}</span></p>}
-          </div>
-        </div>
-
-        <table className="w-full text-left border-collapse mb-6">
-          <thead>
-            <tr className="border-b-2 border-gray-200 text-xs uppercase tracking-wider text-gray-500">
-              <th className="py-3 font-bold">Item Description</th>
-              <th className="py-3 font-bold text-center">Qty</th>
-              <th className="py-3 font-bold text-right">Price</th>
-              <th className="py-3 font-bold text-right">Total</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 text-sm text-gray-800">
-            {order.order_items.map((item, idx) => {
-              const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
-              return (
-                <tr key={idx}>
-                  <td className="py-4">
-                    <p className="font-bold">{item.products?.name}</p>
-                    <p className="text-xs text-gray-500">{variant?.size || 'Standard'}</p>
-                  </td>
-                  <td className="py-4 text-center">{item.quantity}</td>
-                  <td className="py-4 text-right">₱{item.price_at_time.toLocaleString()}</td>
-                  <td className="py-4 text-right font-medium">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-
-        {/* Totals Section */}
-        <div className="w-full flex justify-end">
-          <div className="w-full sm:w-1/2 space-y-3">
-            <div className="flex justify-between text-sm text-gray-600">
-              <span>Subtotal</span>
-              <span>₱{baseTotal.toLocaleString()}</span>
+        {/* Printable View Area */}
+        <div className="flex-1 bg-white p-10 text-black" id="printable-invoice-area">
+          <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-widest text-gray-900">KL SCENTS</h1>
+              <p className="text-sm text-gray-500 mt-1">Premium Fragrance Collection</p>
             </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold text-gray-800">INVOICE</h2>
+              <p className="text-sm text-gray-500 font-mono mt-1">#{order.id}</p>
+              <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
+              <span className={`inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase rounded ${order.status === 'pending' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
+                {order.status}
+              </span>
+            </div>
+          </div>
 
-            {customFees.map((fee, idx) => (
-              <div key={idx} className="flex justify-between text-sm text-gray-600 group">
-                <span className="flex items-center">
-                  {fee.name} 
-                  {isEditing && <button onClick={() => handleRemoveFee(idx)} className="text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block">Remove</button>}
-                </span>
-                <span>{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed & Shipped To</h3>
+              <p className="text-sm font-bold text-gray-800">{order.profiles?.email}</p>
+              <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed">{editData.address || 'No Address Provided'}</p>
+              <p className="text-sm text-gray-600 mt-1">{editData.contact || 'No Contact Provided'}</p>
+            </div>
+            <div className="text-right">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Order Specifics</h3>
+              {editData.promo_code && <p className="text-sm text-gray-600 mt-1">Promo: <span className="font-bold text-yellow-600">{editData.promo_code}</span></p>}
+              <p className="text-sm text-gray-600 mt-1">Fulfillment: <span className="font-bold capitalize">{editData.fulfillment_method || 'N/A'}</span></p>
+              <p className="text-sm text-gray-600 mt-1">Payment: <span className="font-bold capitalize">{editData.payment_preference || 'N/A'}</span></p>
+            </div>
+          </div>
+
+          <table className="w-full text-left border-collapse mb-6">
+            <thead>
+              <tr className="border-b-2 border-gray-200 text-xs uppercase tracking-wider text-gray-500">
+                <th className="py-3 font-bold">Item Description</th>
+                <th className="py-3 font-bold text-center">Qty</th>
+                <th className="py-3 font-bold text-right">Price</th>
+                <th className="py-3 font-bold text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-sm text-gray-800">
+              {order.order_items.map((item, idx) => {
+                const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
+                return (
+                  <tr key={idx}>
+                    <td className="py-4">
+                      <p className="font-bold">{item.products?.name}</p>
+                      <p className="text-xs text-gray-500">{variant?.size || 'Standard'}</p>
+                    </td>
+                    <td className="py-4 text-center">{item.quantity}</td>
+                    <td className="py-4 text-right">₱{item.price_at_time.toLocaleString()}</td>
+                    <td className="py-4 text-right font-medium">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+
+          <div className="w-full flex justify-end">
+            <div className="w-full sm:w-1/2 space-y-3">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Subtotal</span>
+                <span>₱{baseTotal.toLocaleString()}</span>
               </div>
-            ))}
-
-            <div className="flex justify-between text-lg font-bold text-gray-900 border-t-2 border-gray-200 pt-3 mt-3">
-              <span>Total</span>
-              <span>₱{grandTotal.toLocaleString()}</span>
+              {editData.custom_fees.map((fee, idx) => (
+                <div key={idx} className="flex justify-between text-sm text-gray-600 group">
+                  <span className="flex items-center">
+                    {fee.name} 
+                    {isEditing && <button onClick={() => handleRemoveFee(idx)} className="text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block" title="Remove from print view completely">Remove</button>}
+                  </span>
+                  <span>{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="flex justify-between text-lg font-bold text-gray-900 border-t-2 border-gray-200 pt-3 mt-3">
+                <span>Total</span>
+                <span>₱{grandTotal.toLocaleString()}</span>
+              </div>
             </div>
+          </div>
+
+          <div className="mt-16 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
+            <p>Thank you for shopping with KL Scents.</p>
+            <p className="mt-1">If you have any questions concerning this invoice, please message us.</p>
           </div>
         </div>
 
-        {/* ✨ Admin Edit Controls (Visible Only When isEditing = true) ✨ */}
+        {/* Edit Pane */}
         {isEditing && (
-          <div className="mt-8 border-2 border-blue-100 bg-blue-50 p-6 rounded-lg print:hidden animate-fade-in">
-            <h4 className="font-bold mb-4 text-blue-900 flex items-center gap-2">
-              <Edit2 size={18} /> Modify Invoice Fees
-            </h4>
-            <div className="flex flex-col sm:flex-row gap-3 mb-4">
-              <input 
-                type="text" 
-                placeholder="Fee Name (e.g. Shipping, Discount)" 
-                value={newFeeName} 
-                onChange={e => setNewFeeName(e.target.value)} 
-                className="border border-blue-200 p-2.5 rounded flex-1 text-sm bg-white focus:outline-none focus:border-blue-500" 
-              />
-              <input 
-                type="number" 
-                placeholder="Amount (use - for discount)" 
-                value={newFeeAmount} 
-                onChange={e => setNewFeeAmount(e.target.value)} 
-                className="border border-blue-200 p-2.5 rounded w-full sm:w-48 text-sm bg-white focus:outline-none focus:border-blue-500" 
-              />
-              <button onClick={handleAddFee} className="bg-blue-600 text-white px-6 py-2.5 rounded text-sm font-bold hover:bg-blue-700 transition-colors">
-                Add
-              </button>
+          <div className="w-full md:w-80 bg-gray-50 p-6 border-l border-gray-200 animate-fade-in flex flex-col gap-4 text-sm text-gray-800">
+            <h3 className="font-bold text-lg border-b border-gray-200 pb-2 flex items-center gap-2"><Edit2 size={18}/> Edit Details</h3>
+            
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Address</label>
+              <textarea value={editData.address} onChange={e => handleFieldChange('address', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 h-20 resize-none" />
             </div>
-            <button onClick={handleSave} className="w-full bg-green-600 text-white font-bold py-3 rounded mt-2 shadow-lg hover:bg-green-700 transition-colors uppercase tracking-widest text-sm">
-              Save Invoice Changes
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</label>
+              <input value={editData.contact} onChange={e => handleFieldChange('contact', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fulfillment</label>
+                <input value={editData.fulfillment_method} onChange={e => handleFieldChange('fulfillment_method', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment</label>
+                <input value={editData.payment_preference} onChange={e => handleFieldChange('payment_preference', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Promo Code</label>
+              <input value={editData.promo_code} onChange={e => handleFieldChange('promo_code', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 font-mono text-yellow-600 font-bold" />
+            </div>
+
+            <div className="border-t border-gray-200 pt-4 mt-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Custom Fees/Discounts</label>
+              <div className="flex gap-2">
+                <input placeholder="Name" value={newFeeName} onChange={e => setNewFeeName(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/2" />
+                <input placeholder="Amt (- for discount)" type="number" value={newFeeAmount} onChange={e => setNewFeeAmount(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/3" />
+                <button onClick={handleAddFee} className="bg-gray-800 text-white rounded p-2 flex-1 hover:bg-gray-700 flex justify-center"><Plus size={16}/></button>
+              </div>
+            </div>
+
+            <button onClick={handleSave} className="mt-auto bg-green-600 text-white font-bold py-3 rounded shadow hover:bg-green-700 transition-colors uppercase tracking-widest text-sm">
+              Save Changes
             </button>
           </div>
         )}
-
-        <div className="mt-16 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
-          <p>Thank you for shopping with KL Scents.</p>
-          <p className="mt-1">If you have any questions concerning this invoice, please message us via the support widget.</p>
-        </div>
 
       </div>
     </div>

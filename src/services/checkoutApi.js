@@ -19,7 +19,6 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
 
   // --- STOCK AVAILABILITY CHECK (VARIANT-AWARE) ---
   for (const item of localItems) {
-    // 1. Check if base product is still active
     const { data: product, error: prodErr } = await supabase
       .from('products')
       .select('available, name')
@@ -30,7 +29,6 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
       throw new Error(`"${item.name}" is currently unavailable.`);
     }
 
-    // 2. Check the specific variant's stock
     const { data: variant, error: varErr } = await supabase
       .from('product_variants')
       .select('stock_count')
@@ -83,10 +81,22 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
     if (updateErr) throw new Error("Failed to secure promo code.");
   }
 
-  // --- CREATE ORDER ---
+  // --- CREATE ORDER WITH FULL METADATA ---
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
-    .insert([{ user_id: userId, total_amount: total, status: 'pending' }])
+    .insert([{ 
+      user_id: userId, 
+      total_amount: total, 
+      status: 'pending',
+      metadata: {
+        promo_code: promoCode || '',
+        fulfillment_method: checkoutInfo.fulfillmentMethod || '',
+        payment_preference: checkoutInfo.paymentMethod || '',
+        address: checkoutInfo.location || '',
+        contact: checkoutInfo.phoneNumber || '',
+        custom_fees: []
+      }
+    }])
     .select()
     .single();
 
@@ -98,8 +108,7 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
     product_id: item.id,
     quantity: item.quantity,
     price_at_time: item.price,
-    // NOTE: If you add a variant_id column to your order_items table in Supabase, 
-    // you should add `variant_id: item.variant_id` here too!
+    variant_id: item.variant_id
   }));
 
   const { error: itemsError } = await supabase.from('order_items').insert(orderItemsToInsert);
@@ -108,7 +117,7 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
   // --- SEND RECEIPT MESSAGE ---
   const chatItems = localItems.map(item => ({
     name: item.name,
-    size: item.size, // Now the admin will see which size was ordered in the chat!
+    size: item.size,
     quantity: item.quantity,
     price: item.price,
     variant_id: item.variant_id
