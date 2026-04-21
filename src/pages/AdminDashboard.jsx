@@ -1,3 +1,4 @@
+// src/pages/AdminDashboard.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -22,12 +23,12 @@ const NAV = [
   { id: 'overview',  icon: <LayoutDashboard size={18} />, label: 'Overview' },
   { id: 'orders',    icon: <ShoppingCart size={18} />,    label: 'Order Inquiries' },
   { id: 'messages',  icon: <MessageSquare size={18} />,   label: 'Messages' },
-  { id: 'products',  icon: <Package size={18} />,         label: 'Inventory' },
-  { id: 'promos',    icon: <Tag size={18} />,             label: 'Promo Codes' },
-  { id: 'users',     icon: <Users size={18} />,           label: 'Accounts' },
-  { id: 'reviews',   icon: <Star size={18} />,            label: 'Moderate Reviews' },
+  { id: 'products',  icon: <Package size={18} />,          label: 'Inventory' },
+  { id: 'promos',    icon: <Tag size={18} />,              label: 'Promo Codes' },
+  { id: 'users',     icon: <Users size={18} />,            label: 'Accounts' },
+  { id: 'reviews',   icon: <Star size={18} />,             label: 'Moderate Reviews' },
   { id: 'logs',      icon: <ClipboardList size={18} />,   label: 'Activity Log' },
-  { id: 'settings',  icon: <Settings size={18} />,        label: 'Website Settings' }, 
+  { id: 'settings',  icon: <Settings size={18} />,         label: 'Website Settings' }, 
 ];
 
 const AdminDashboard = () => {
@@ -39,9 +40,16 @@ const AdminDashboard = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [targetMessageUser, setTargetMessageUser] = useState(null);
 
+  // Modified: Logic to handle tab switching + specific user targeting
   const handleTabClick = (tab, userId = null) => {
     setActiveTab(tab);
-    if (userId) setTargetMessageUser(userId);
+    
+    // Only update the target user if a valid ID was passed
+    // If user is clicking the sidebar link, userId will be undefined/null
+    if (userId && typeof userId === 'string') {
+      setTargetMessageUser(userId);
+    }
+    
     setIsMobileMenuOpen(false);
   };
 

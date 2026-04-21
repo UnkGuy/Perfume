@@ -10,7 +10,7 @@ import { useShop } from '../../contexts/ShopContext';
 import { supabase } from '../../services/supabase';
 
 const STATUS_COLORS = {
-  pending:   'bg-orange-500/10 text-orange-400 border-orange-500/30',
+  pending:   'bg-orange-500/10 text-orange-400 border-orange-500/30', 
   shipped:   'bg-blue-500/10 text-blue-400 border-blue-500/30',
   completed: 'bg-green-500/10 text-green-400 border-green-500/30',
   canceled:  'bg-red-500/10 text-red-400 border-red-500/30',
@@ -20,12 +20,14 @@ const MAX_CHARS = 250;
 
 const AdminMessages = ({ defaultSelectedUser }) => {
   const { showToast } = useShop();
-  const [selectedUser, setSelectedUser] = useState(null);
+  
+  // Modified: Initialize state with the prop if provided
+  const [selectedUser, setSelectedUser] = useState(defaultSelectedUser || null);
   const [reply, setReply] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [latestOrder, setLatestOrder] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null); // { file, localUrl }
+  const [imagePreview, setImagePreview] = useState(null);
 
   const messagesEndRef = useRef(null);
   const fileInputRef   = useRef(null);
@@ -34,8 +36,11 @@ const AdminMessages = ({ defaultSelectedUser }) => {
   const { messages, sendMessage, uploadChatImage } = useMessageThread(selectedUser, 'admin');
   const { isBanned, toggleBan } = useUserBan(selectedUser);
 
+  // Modified: Sync local state when parent passes a new user ID
   useEffect(() => {
-    if (defaultSelectedUser) setSelectedUser(defaultSelectedUser);
+    if (defaultSelectedUser) {
+      setSelectedUser(defaultSelectedUser);
+    }
   }, [defaultSelectedUser]);
 
   useEffect(() => {
@@ -57,7 +62,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // ── Image selection ────────────────────────────────────────────────────────
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -75,7 +79,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
     setImagePreview(null);
   };
 
-  // ── Send ───────────────────────────────────────────────────────────────────
   const handleReply = async (e) => {
     e?.preventDefault();
     const hasText  = reply.trim().length > 0;
@@ -121,8 +124,7 @@ const AdminMessages = ({ defaultSelectedUser }) => {
 
   return (
     <div className="h-[600px] md:h-[70vh] w-full bg-rich-black border border-white/10 rounded-xl overflow-hidden flex animate-fade-in relative shadow-2xl">
-
-      {/* ── Left panel: chat list ── */}
+      {/* Left panel */}
       <div className={`${selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-1/3 border-r border-white/10 flex-col bg-black/40 min-w-0 flex-shrink-0`}>
         <div className="p-4 border-b border-white/10 flex flex-col gap-3">
           <h3 className="font-bold text-white tracking-widest uppercase text-sm">Active Inquiries</h3>
@@ -168,7 +170,7 @@ const AdminMessages = ({ defaultSelectedUser }) => {
         </div>
       </div>
 
-      {/* ── Right panel: message thread ── */}
+      {/* Right panel */}
       <div className={`${!selectedUser ? 'hidden md:flex' : 'flex'} w-full md:w-2/3 flex-col relative min-w-0 overflow-hidden`}>
         {!selectedUser ? (
           <div className="flex-1 flex flex-col items-center justify-center text-gray-500 bg-white/5">
@@ -177,7 +179,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
           </div>
         ) : (
           <>
-            {/* Header */}
             <div className="p-3 md:p-4 border-b border-white/10 bg-black/20 sticky top-0 z-10 backdrop-blur-md">
               <div className="flex justify-between items-start gap-2">
                 <div className="flex items-center gap-2 md:gap-3 overflow-hidden">
@@ -188,7 +189,7 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                     <ArrowLeft size={20} />
                   </button>
                   <div className="flex flex-col overflow-hidden">
-                    <span className="font-bold text-white text-sm md:text-base truncate">{selectedChatData?.email}</span>
+                    <span className="font-bold text-white text-sm md:text-base truncate">{selectedChatData?.email || 'Loading...'}</span>
                     {isBanned && <span className="text-[10px] text-red-400 font-bold tracking-widest">RESTRICTED USER</span>}
                   </div>
                 </div>
@@ -217,7 +218,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
               )}
             </div>
 
-            {/* Messages */}
             <div className="flex-1 p-4 md:p-6 overflow-y-auto custom-scrollbar bg-black/10 min-w-0">
               {messages.map((msg, index) => {
                 const isAdmin = msg.sender_role === 'admin';
@@ -299,12 +299,10 @@ const AdminMessages = ({ defaultSelectedUser }) => {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Compose area */}
             <form
               onSubmit={handleReply}
               className="p-3 md:p-4 border-t border-white/10 bg-black/40 flex flex-col gap-2 relative w-full min-w-0"
             >
-              {/* Image preview */}
               {imagePreview && (
                 <div className="relative w-fit">
                   <img
@@ -323,7 +321,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
               )}
 
               <div className="flex items-center justify-between px-1">
-                {/* Image upload button */}
                 <div>
                   <input
                     type="file"
@@ -343,7 +340,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                   </button>
                 </div>
 
-                {/* Character count */}
                 <span className={`text-[10px] font-medium transition-colors ${
                   reply.length >= MAX_CHARS       ? 'text-red-400' :
                   reply.length >= MAX_CHARS * 0.8 ? 'text-gold-400' : 'text-gray-500'
@@ -354,7 +350,6 @@ const AdminMessages = ({ defaultSelectedUser }) => {
 
               <div className="relative w-full min-w-0 overflow-hidden">
                 <div className="grid w-full min-w-0">
-                  {/* Ghost div for auto-height */}
                   <div
                     aria-hidden="true"
                     className="invisible whitespace-pre-wrap break-all col-start-1 col-end-2 row-start-1 row-end-2 py-3 pl-4 pr-12 text-sm leading-relaxed border border-transparent min-h-[3rem] max-h-[25vh] overflow-hidden w-full"
@@ -367,7 +362,7 @@ const AdminMessages = ({ defaultSelectedUser }) => {
                     value={reply}
                     onChange={e => setReply(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Type a reply… (Shift+Enter for new line)"
+                    placeholder="Type a reply…"
                     className="w-full h-full resize-none col-start-1 col-end-2 row-start-1 row-end-2 bg-black/50 border border-white/20 rounded-2xl py-3 pl-4 pr-12 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors custom-scrollbar break-all leading-relaxed overflow-y-auto"
                   />
                 </div>

@@ -1,21 +1,28 @@
+// src/components/admin/AdminOrders.jsx
 import React, { useState } from 'react'; 
 import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2, Plus, Trash2 } from 'lucide-react'; 
 import { useOrders } from '../../hooks/useOrders'; 
 import { useShop } from '../../contexts/ShopContext';
-import { useSettings } from '../../contexts/SettingsContext'; // Import Settings Context
+import { useSettings } from '../../contexts/SettingsContext';
 
-const statusClass = (status) => status === 'pending' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' : status === 'shipped' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' : status === 'canceled' ? 'bg-red-500/10 text-red-400 border border-red-500/30' : 'bg-green-500/10 text-green-400 border border-green-500/30';
-
+const statusClass = (status) => 
+  status === 'pending' 
+    ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' 
+    : status === 'shipped' 
+    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' 
+    : status === 'canceled' 
+    ? 'bg-red-500/10 text-red-400 border border-red-500/30' 
+    : 'bg-green-500/10 text-green-400 border border-green-500/30';
+    
 const AdminOrders = ({ onNavigateToMessages }) => { 
   const { showToast } = useShop(); 
-  const { settings } = useSettings(); // Use context for invoice data
+  const { settings } = useSettings(); 
   const { orders, isLoading, changeOrderStatus, modifyOrder } = useOrders(showToast);
 
   const [expandedOrderId, setExpandedOrderId] = useState(null); 
   const [idSearch, setIdSearch] = useState(''); 
   const [emailSearch, setEmailSearch] = useState(''); 
   const [statusFilter, setStatusFilter] = useState('all');
-
   const [invoiceOrder, setInvoiceOrder] = useState(null);
 
   const filteredOrders = orders.filter(order => { 
@@ -109,6 +116,16 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                       <button onClick={() => setInvoiceOrder(order)} className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
                         <FileText size={16} />
                       </button>
+                      
+                      {/* Added: Desktop Message Button */}
+                      <button 
+                        onClick={() => onNavigateToMessages?.(order.user_id)} 
+                        className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" 
+                        title="Message User"
+                      >
+                        <MessageCircle size={16} />
+                      </button>
+
                       <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}>
                         {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -141,7 +158,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
           </table>
         </div>
 
-        {/* Mobile Table */}
+        {/* Mobile View */}
         <div className="md:hidden flex flex-col divide-y divide-white/10 w-full overflow-hidden">
           {filteredOrders.map(order => (
             <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors min-w-0">
@@ -183,7 +200,6 @@ const AdminOrders = ({ onNavigateToMessages }) => {
         </div>
       </div>
 
-      {/* Pass settings directly to the invoice modal */}
       {invoiceOrder && <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} modifyOrder={modifyOrder} settings={settings} />}
     </>
   ); 
