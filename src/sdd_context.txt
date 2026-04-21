@@ -1,0 +1,3951 @@
+==================================================
+FILE: services/messageApi.js
+==================================================
+  import { supabase } from './supabase';
+
+  export const fetchActiveChatsAPI = async () => {
+    const { data, error } = await supabase
+      .from('latest_messages_per_user') 
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+  };
+
+  export const fetchMessagesByUserAPI = async (userId) => {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+  };
+
+  export const sendMessageAPI = async (payload) => {
+    const hasImage = payload.metadata?.image_url;
+    const hasText = payload.content && payload.content.trim();
+
+    if (!hasText && !hasImage) throw new Error('Message cannot be empty.');
+    if (hasText && payload.content.length > 2000) throw new Error('Message is too long (max 2000 characters).');
+`
+    const { error } = await supabase.from('messages').insert([{
+      ...payload,
+      // ← If image-only, store empty string instead of null
+      //   (guards against DB NOT NULL constraint as a fallback)
+      content: hasText ? payload.content.trim() : '',
+    }]);
+    if (error) throw error;
+  };
+
+
+==================================================
+FILE: services/supabase.js
+==================================================
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+
+==================================================
+FILE: services/orderApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const fetchOrdersAPI = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`id, created_at, status, total_amount, user_id, metadata, profiles(email), order_items(quantity, price_at_time, product_id, variant_id, products(name), product_variants(size))`)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const updateOrderStatusAPI = async (orderId, newStatus, orderItems = []) => {
+  const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+  if (error) throw error;
+
+  if (newStatus === 'completed' && orderItems.length > 0) {
+    for (const item of orderItems) {
+      if (!item.variant_id) continue; 
+      try {
+        const { data: variant } = await supabase.from('product_variants').select('stock_count').eq('id', item.variant_id).single();
+        if (variant?.stock_count != null) {
+          const newStock = Math.max(0, variant.stock_count - item.quantity);
+          await supabase.from('product_variants').update({ stock_count: newStock }).eq('id', item.variant_id);
+        }
+      } catch (err) { console.error(`Stock update failed`, err); }
+    }
+  }
+};
+
+// Merges the new entire metadata object cleanly
+export const updateOrderDetailsAPI = async (orderId, newTotal, updatedMetadata) => {
+  const { data: currentOrder } = await supabase.from('orders').select('metadata').eq('id', orderId).single();
+  const currentMeta = currentOrder?.metadata || {};
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ 
+      total_amount: newTotal,
+      metadata: { ...currentMeta, ...updatedMetadata }
+    })
+    .eq('id', orderId);
+
+  if (error) throw error;
+};
+
+export const fetchUserOrdersAPI = async (userId) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`id, created_at, status, total_amount, metadata, order_items(quantity, price_at_time, variant_id, products(*), product_variants(*))`)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+
+==================================================
+FILE: services/reviewApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const fetchReviewsAPI = async (productId) => {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*')
+    .eq('product_id', productId)
+    .eq('status', 'approved') // Only fetch approved reviews for the frontend
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+// Admin specific fetcher for pending reviews
+export const fetchPendingReviewsAPI = async () => {
+  const { data, error } = await supabase
+    .from('reviews')
+    .select('*, products(name)') // Join product name to easily identify what is being reviewed
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data;
+};
+
+// Admin specific update status function
+// Admin specific update status function
+export const updateReviewStatusAPI = async (reviewId, status) => {
+  const { data, error } = await supabase
+    .from('reviews')
+    .update({ status })
+    .eq('id', reviewId)
+    .select(); // Force Supabase to return the updated row
+
+  if (error) throw error;
+  
+  // If RLS blocks the update, no error is thrown but data will be empty
+  if (!data || data.length === 0) {
+    throw new Error('Action blocked: You do not have permission to update this review.');
+  }
+
+  return data;
+};
+
+export const checkUserPurchasedAPI = async (userId, productId) => {
+  if (!userId || !productId) return false;
+
+  const { data, error } = await supabase
+    .from('order_items')
+    .select('id, orders!inner(user_id)')
+    .eq('product_id', productId)
+    .eq('orders.user_id', userId)
+    .limit(1);
+
+  if (error) {
+    console.error('Purchase check error:', error);
+    return false; 
+  }
+  return data && data.length > 0;
+};
+
+export const submitReviewAPI = async (productId, userId, rating, comment) => {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw new Error('Rating must be between 1 and 5.');
+  }
+  if (comment && comment.length > 1000) {
+    throw new Error('Review comment is too long (max 1000 characters).');
+  }
+
+  const { error } = await supabase
+    .from('reviews')
+    .insert([{
+      product_id: productId,
+      user_id: userId,
+      rating,
+      comment: comment?.trim() || null,
+      status: 'pending' // Force new reviews to pending
+    }]);
+
+  if (error) throw error;
+};
+
+
+==================================================
+FILE: services/wishlistApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const fetchUserWishlistAPI = async (userId) => {
+  const { data, error } = await supabase
+    .from('wishlists')
+    // ✨ FIXED: Include variants so the drawer can show prices! ✨
+    .select('product_id, products(*, product_variants(*))')
+    .eq('user_id', userId);
+    
+  if (error) throw error;
+  return data ? data.map(row => row.products) : [];
+};
+
+export const updateWishlistAPI = async (userId, productId, isAdding) => {
+  if (isAdding) {
+    const { error } = await supabase.from('wishlists').insert([{ user_id: userId, product_id: productId }]);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('wishlists').delete().match({ user_id: userId, product_id: productId });
+    if (error) throw error;
+  }
+};
+
+
+==================================================
+FILE: services/promoApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const validatePromoCodeAPI = async (code) => {
+  const { data, error } = await supabase
+    .from('promo_codes')
+    .select('*')
+    .eq('code', code.toUpperCase())
+    .single();
+
+  if (error || !data) throw new Error("Invalid promo code.");
+  if (!data.active) throw new Error("This promo code is no longer active.");
+  
+  if (data.expiry_date && new Date(data.expiry_date) < new Date()) {
+    throw new Error("This promo code has expired.");
+  }
+  if (data.usage_limit && data.times_used >= data.usage_limit) {
+    throw new Error("This promo code has reached its usage limit.");
+  }
+  return data;
+};
+
+// ✨ NEW: Admin Functions ✨
+export const fetchAllPromosAPI = async () => {
+  const { data, error } = await supabase.from('promo_codes').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const createPromoAPI = async (payload) => {
+  const { error } = await supabase.from('promo_codes').insert([payload]);
+  if (error) throw error;
+};
+
+export const deletePromoAPI = async (id) => {
+  const { error } = await supabase.from('promo_codes').delete().eq('id', id);
+  if (error) throw error;
+};
+
+
+==================================================
+FILE: services/userApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const fetchUserBanStatusAPI = async (userId) => {
+  if (!userId) return false;
+  const { data, error } = await supabase.from('profiles').select('is_banned').eq('id', userId).maybeSingle();
+  if (error) throw error;
+  return data?.is_banned || false;
+};
+
+export const toggleUserBanAPI = async (userId, isBanned) => {
+  const { data, error } = await supabase.from('profiles').update({ is_banned: isBanned }).eq('id', userId).select();
+  if (error) throw error;
+  if (data && data.length === 0) {
+    const { error: insertError } = await supabase.from('profiles').insert([{ id: userId, is_banned: isBanned }]);
+    if (insertError) throw insertError;
+  }
+};
+
+export const fetchUserProfileAPI = async (userId) => {
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateUserProfileAPI = async (userId, updates) => {
+  const { error } = await supabase.from('profiles').upsert({ id: userId, ...updates });
+  if (error) throw error;
+};
+
+// ✨ NEW: Role Management API
+export const updateUserRoleAPI = async (userId, role) => {
+  const { error } = await supabase.from('user_roles').upsert({ user_id: userId, role });
+  if (error) throw error;
+};
+
+
+==================================================
+FILE: services/productApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const fetchProductsAPI = async () => {
+  const { data, error } = await supabase
+    .from('products')
+    // We now fetch the reviews alongside the products to dynamically calculate ratings
+    .select('*, product_variants(*), reviews(*)')
+    .order('created_at', { ascending: false });
+    
+  if (error) throw error;
+
+  // Process the rating on the fly so it's always accurate across the whole app!
+  return data.map(product => {
+    const approvedReviews = (product.reviews || []).filter(r => r.status === 'approved');
+    const avgRating = approvedReviews.length > 0
+      ? (approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length).toFixed(1)
+      : 0;
+
+    return {
+      ...product,
+      rating: avgRating, 
+    };
+  });
+};
+
+export const saveProductAPI = async (payload, id = null) => {
+  const { variants, ...productData } = payload;
+  let productId = id;
+
+  if (id) {
+    const { error } = await supabase.from('products').update(productData).eq('id', id);
+    if (error) throw error;
+  } else {
+    const { data, error } = await supabase.from('products').insert([productData]).select().single();
+    if (error) throw error;
+    productId = data.id;
+  }
+
+  const { data: existingVariants } = await supabase.from('product_variants').select('id').eq('product_id', productId);
+  const existingIds = existingVariants?.map(v => v.id) || [];
+  
+  const incomingIds = variants.map(v => v.id).filter(Boolean);
+  const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
+
+  if (idsToDelete.length > 0) {
+    await supabase.from('product_variants').delete().in('id', idsToDelete);
+  }
+
+  if (variants && variants.length > 0) {
+    const variantsToUpsert = variants.map(v => ({
+      ...(v.id ? { id: v.id } : {}),
+      product_id: productId,
+      size: v.size,
+      price: v.price,
+      compare_at_price: v.compare_at_price || null,
+      stock_count: v.stock_count || null,
+      image_url: v.image_url || null
+    }));
+    
+    const { error: varError } = await supabase.from('product_variants').upsert(variantsToUpsert);
+    if (varError) throw varError;
+  }
+};
+
+export const deleteProductAPI = async (id) => {
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) throw error;
+};
+
+
+==================================================
+FILE: services/settingsApi.js
+==================================================
+// src/services/settingsApi.js 
+import { supabase } from './supabase';
+
+export const DEFAULT_SETTINGS = { 
+  features: { reviews: true, wishlist: true, promoCodes: true, guestCheckout: true, chatWidget: true, ratingsDisplay: true, reorderButton: true, }, 
+  paymentMethods: ['GCash', 'Bank Transfer', 'Cash on Hand'], 
+  fulfillmentMethods: ['Delivery', 'Meetup', 'Store Pickup'], 
+  storeInfo: { 
+    name: 'KL Scents', 
+    tagline: 'Experience luxury in every drop.', 
+    instagramUrl: 'https://www.instagram.com/klscentsph', 
+    facebookUrl: 'https://www.facebook.com/profile.php?id=61568097239499', 
+    contactEmail: '', 
+    contactPhone: '', 
+  }, 
+  checkout: { 
+    minOrderAmount: 0, 
+    maxCartItems: 20, 
+    spamLimitSeconds: 60, 
+  }, 
+  announcement: { 
+    enabled: false, 
+    text: 'Free Shipping Nationwide • Artisan Crafted • Extrait de Parfum', 
+    bgColor: '#d4af37', 
+    textColor: '#000000', 
+  },
+  welcomeImages: { // Added dynamic image support for welcome page
+    hero: [],
+    secondary: []
+  }
+};
+
+function deepMerge(defaults, overrides) { 
+  const result = { ...defaults }; 
+  for (const key in overrides) { 
+    if ( overrides[key] !== null && typeof overrides[key] === 'object' && !Array.isArray(overrides[key]) ) { 
+      result[key] = deepMerge(defaults[key] || {}, overrides[key]); 
+    } else { 
+      result[key] = overrides[key]; 
+    } 
+  } 
+  return result; 
+}
+
+export const fetchSettingsAPI = async () => { 
+  const { data, error } = await supabase 
+    .from('site_settings') 
+    .select('settings') 
+    .eq('id', 1) 
+    .maybeSingle();
+
+  if (error) throw error; 
+  if (data?.settings) return deepMerge(DEFAULT_SETTINGS, data.settings); 
+  return DEFAULT_SETTINGS; 
+};
+
+export const saveSettingsAPI = async (settings) => { 
+  const { data, error } = await supabase 
+    .from('site_settings') 
+    .upsert({ id: 1, settings, updated_at: new Date().toISOString() })
+    .select(); // ✨ THIS IS THE MAGIC WORD
+
+  if (error) throw error; 
+  
+  // If RLS blocked it, data will be empty. Throw an error so the frontend knows!
+  if (!data || data.length === 0) {
+    throw new Error("Action blocked by database security. Are you sure you are an admin?");
+  }
+};
+
+
+==================================================
+FILE: services/logApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const logAdminActionAPI = async (adminEmail, action, targetItem) => {
+  // If useAuth hasn't loaded yet, adminEmail might be undefined
+  if (!adminEmail) {
+    console.warn("Log attempted without admin email");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from('admin_logs')
+    .insert([
+      { 
+        admin_email: adminEmail, 
+        action: action, 
+        target_item: String(targetItem) // Ensure it's a string
+      }
+    ]);
+
+  if (error) {
+    console.error("Supabase Log Error:", error.message, error.details);
+  }
+};
+
+
+==================================================
+FILE: services/statsApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const fetchDashboardStatsAPI = async () => {
+  // 1. Top-level numbers
+  const { count: inquiries } = await supabase
+    .from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
+
+  const { data: revData } = await supabase.from('orders').select('total_amount').eq('status', 'completed');
+  const revenue = revData?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
+  
+  const { count: activeUsers } = await supabase
+    .from('profiles').select('*', { count: 'exact', head: true });
+
+  const { count: outOfStock } = await supabase
+    .from('products').select('*', { count: 'exact', head: true }).eq('available', false);
+
+  // 2. Revenue chart (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const { data: recentOrders } = await supabase
+    .from('orders')
+    .select('created_at, total_amount')
+    .eq('status', 'completed')
+    .gte('created_at', thirtyDaysAgo.toISOString())
+    .order('created_at', { ascending: true });
+
+  const chartDataMap = {};
+  recentOrders?.forEach(order => {
+    const date = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (!chartDataMap[date]) chartDataMap[date] = 0;
+    chartDataMap[date] += Number(order.total_amount);
+  });
+
+  const chartData = Object.keys(chartDataMap).map(date => ({
+    name: date,
+    revenue: chartDataMap[date],
+  }));
+
+  // 3. Best sellers
+  const { data: orderItems } = await supabase
+    .from('order_items')
+    .select('quantity, products(name)');
+
+  const productSales = {};
+  if (orderItems) {
+    orderItems.forEach(item => {
+      const prodName = item.products?.name || 'Unknown Scent';
+      if (!productSales[prodName]) productSales[prodName] = 0;
+      productSales[prodName] += item.quantity;
+    });
+  }
+
+  const bestSellers = Object.keys(productSales)
+    .map(name => ({ name, value: productSales[name] }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5);
+
+  // 4. ✨ FIXED: Low stock products now looks at product_variants ✨
+  const { data: lowStockProducts } = await supabase
+    .from('product_variants')
+    .select('id, size, stock_count, products(name, brand)')
+    .not('stock_count', 'is', null) 
+    .lt('stock_count', 5)
+    .order('stock_count', { ascending: true })
+    .limit(10);
+
+  return {
+    inquiries: inquiries || 0,
+    revenue,
+    activeUsers: activeUsers || 0,
+    outOfStock: outOfStock || 0,
+    chartData,
+    bestSellers,
+    lowStockProducts: lowStockProducts || [],
+  };
+};
+
+
+==================================================
+FILE: services/checkoutApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo, promoCode = null) => {
+  // --- ANTI-SPAM CHECK ---
+  const { data: recentOrder } = await supabase
+    .from('orders')
+    .select('created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (recentOrder) {
+    const lastOrderTime = new Date(recentOrder.created_at).getTime();
+    if (Date.now() - lastOrderTime < 60000) {
+      throw new Error("Please wait a minute before placing another inquiry.");
+    }
+  }
+
+  // --- STOCK AVAILABILITY CHECK (VARIANT-AWARE) ---
+  for (const item of localItems) {
+    const { data: product, error: prodErr } = await supabase
+      .from('products')
+      .select('available, name')
+      .eq('id', item.id)
+      .single();
+
+    if (prodErr || !product?.available) {
+      throw new Error(`"${item.name}" is currently unavailable.`);
+    }
+
+    const { data: variant, error: varErr } = await supabase
+      .from('product_variants')
+      .select('stock_count')
+      .eq('id', item.variant_id)
+      .single();
+
+    if (varErr || !variant) {
+      throw new Error(`The specific size for "${item.name}" could not be found.`);
+    }
+
+    if (variant.stock_count != null && variant.stock_count < item.quantity) {
+      throw new Error(`"${item.name}" (${item.size}) only has ${variant.stock_count} unit(s) left.`);
+    }
+  }
+
+  // --- PROMO CODE VERIFICATION & INCREMENT ---
+  if (promoCode) {
+    const { data: promoData, error: promoErr } = await supabase
+      .from('promo_codes')
+      .select('*')
+      .eq('code', promoCode)
+      .single();
+
+    if (promoErr || !promoData || !promoData.active) {
+      throw new Error("This promo code is no longer active.");
+    }
+    if (promoData.usage_limit && promoData.times_used >= promoData.usage_limit) {
+      throw new Error("This promo code has reached its global usage limit.");
+    }
+    if (promoData.expiry_date && new Date(promoData.expiry_date) < new Date()) {
+      throw new Error("This promo code has expired.");
+    }
+
+    const { data: pastUsage } = await supabase
+      .from('messages')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('metadata->>promo_code', promoCode)
+      .limit(1);
+
+    if (pastUsage && pastUsage.length > 0) {
+      throw new Error("You have already used this promo code.");
+    }
+
+    const { error: updateErr } = await supabase
+      .from('promo_codes')
+      .update({ times_used: promoData.times_used + 1 })
+      .eq('id', promoData.id);
+
+    if (updateErr) throw new Error("Failed to secure promo code.");
+  }
+
+  // --- CREATE ORDER WITH FULL METADATA ---
+  const { data: orderData, error: orderError } = await supabase
+    .from('orders')
+    .insert([{ 
+      user_id: userId, 
+      total_amount: total, 
+      status: 'pending',
+      metadata: {
+        promo_code: promoCode || '',
+        fulfillment_method: checkoutInfo.fulfillmentMethod || '',
+        payment_preference: checkoutInfo.paymentMethod || '',
+        address: checkoutInfo.location || '',
+        contact: checkoutInfo.phoneNumber || '',
+        custom_fees: []
+      }
+    }])
+    .select()
+    .single();
+
+  if (orderError) throw orderError;
+
+  // --- INSERT ITEMS ---
+  const orderItemsToInsert = localItems.map(item => ({
+    order_id: orderData.id,
+    product_id: item.id,
+    quantity: item.quantity,
+    price_at_time: item.price,
+    variant_id: item.variant_id
+  }));
+
+  const { error: itemsError } = await supabase.from('order_items').insert(orderItemsToInsert);
+  if (itemsError) throw itemsError;
+
+  // --- SEND RECEIPT MESSAGE ---
+  const chatItems = localItems.map(item => ({
+    name: item.name,
+    size: item.size,
+    quantity: item.quantity,
+    price: item.price,
+    variant_id: item.variant_id
+  }));
+
+  let formattedContent = `New Inquiry Placed.\nFulfillment: ${checkoutInfo.fulfillmentMethod}\nPayment: ${checkoutInfo.paymentMethod}\nContact: ${checkoutInfo.phoneNumber}\nLocation: ${checkoutInfo.location || 'N/A'}`;
+  if (promoCode) formattedContent += `\nPromo Applied: ${promoCode}`;
+
+  const { error: msgError } = await supabase.from('messages').insert([{
+    sender_role: 'user',
+    content: formattedContent,
+    user_id: userId,
+    metadata: {
+      type: 'order_inquiry',
+      order_id: orderData.id,
+      total,
+      items: chatItems,
+      fulfillment: checkoutInfo.fulfillmentMethod,
+      payment: checkoutInfo.paymentMethod,
+      contact: checkoutInfo.phoneNumber,
+      location: checkoutInfo.location,
+      promo_code: promoCode,
+    },
+  }]);
+
+  if (msgError) throw msgError;
+
+  return orderData;
+};
+
+
+==================================================
+FILE: services/cartApi.js
+==================================================
+import { supabase } from './supabase';
+
+export const fetchUserCartAPI = async (userId) => {
+  const { data, error } = await supabase
+    .from('cart_items')
+    .select(`
+      id,
+      quantity,
+      product_id,
+      variant_id,
+      products ( id, name, brand, gender, notes, available, image_urls, description ),
+      product_variants ( id, size, price, compare_at_price, stock_count, image_url )
+    `)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error("Supabase Cart Fetch Error:", error);
+    throw error;
+  }
+
+  // Safely flatten the data so the cart component gets a clean object
+  return data.map(item => {
+    const p = Array.isArray(item.products) ? item.products[0] : item.products;
+    const v = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
+
+    if (!p || !v) return null;
+
+    return {
+      ...p,
+      // Overwrite base details with specific variant details
+      variant_id: v.id,
+      size: v.size,
+      price: Number(v.price),
+      compare_at_price: v.compare_at_price ? Number(v.compare_at_price) : null,
+      stock_count: v.stock_count,
+      image_urls: v.image_url ? [v.image_url] : p.image_urls,
+      // Retain cart quantities
+      quantity: item.quantity,
+      cart_item_id: item.id
+    };
+  }).filter(Boolean); // removes any null items
+};
+
+export const syncCartItemAPI = async (userId, productId, quantity, variantId) => {
+  if (!variantId) throw new Error("Variant ID is required to sync cart items.");
+
+  const { data: existing, error: fetchErr } = await supabase
+    .from('cart_items')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('product_id', productId)
+    .eq('variant_id', variantId)
+    .maybeSingle();
+
+  if (fetchErr) throw fetchErr;
+
+  if (existing) {
+    const { error: updateErr } = await supabase
+      .from('cart_items')
+      .update({ quantity })
+      .eq('id', existing.id);
+    if (updateErr) throw updateErr;
+  } else {
+    const { error: insertErr } = await supabase
+      .from('cart_items')
+      .insert([{ user_id: userId, product_id: productId, quantity, variant_id: variantId }]);
+    if (insertErr) throw insertErr;
+  }
+};
+
+export const removeFromCartAPI = async (userId, productId, variantId) => {
+   const { error } = await supabase
+    .from('cart_items')
+    .delete()
+    .eq('user_id', userId)
+    .eq('product_id', productId)
+    .eq('variant_id', variantId); // strictly require variant_id now
+
+  if (error) throw error;
+};
+
+export const clearCartAPI = async (userId) => {
+  const { error } = await supabase
+    .from('cart_items')
+    .delete()
+    .eq('user_id', userId);
+  if (error) throw error;
+};
+
+
+==================================================
+FILE: services/authApi.js
+==================================================
+import { supabase } from './supabase';
+
+// ✨ Modified to accept captchaToken for login
+export const loginAPI = async (email, password, captchaToken) => {
+  const { data, error } = await supabase.auth.signInWithPassword({ 
+    email: email.trim().toLowerCase(), 
+    password,
+    options: {
+      captchaToken, // ✨ Pass the token to Supabase
+    }
+  });
+  if (error) throw error;
+  return data;
+};
+
+// ✨ Modified to accept captchaToken for registration
+export const registerAPI = async (email, password, username, captchaToken) => {
+  const cleanEmail = email.trim().toLowerCase();
+  
+  const { data, error } = await supabase.auth.signUp({ 
+    email: cleanEmail, 
+    password,
+    options: {
+      captchaToken, // ✨ Pass the token to Supabase
+    }
+  });
+  if (error) throw error;
+
+  if (data?.user?.id) {
+    const { error: profileError } = await supabase.from('profiles').upsert({
+      id: data.user.id,
+      email: cleanEmail,
+      username: username.trim()
+    });
+    
+    if (!profileError) {
+      await supabase.from('user_roles').upsert({
+        user_id: data.user.id,
+        role: 'customer'
+      });
+    } else {
+        console.warn("Profile creation deferred until email verification.");
+    }
+  }
+
+  return data;
+};
+
+export const resetPasswordAPI = async (email) => {
+  const cleanEmail = email.trim().toLowerCase();
+  
+  const getURL = () => {
+    let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
+    return url.endsWith('/') ? url : `${url}/`;
+  };
+
+  const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
+    redirectTo: `${getURL()}reset-password`,
+  });
+  
+  if (error) throw error;
+};
+
+export const fetchUserRoleAPI = async (userId) => {
+  if (!userId) return 'customer';
+  const { data, error } = await supabase.from('user_roles').select('role').eq('user_id', userId).single();
+  if (error || !data) return 'customer';
+  return data.role;
+};
+
+export const logoutAPI = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+};
+
+export const updatePasswordAPI = async (newPassword) => {
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) throw error;
+};
+
+export const signInWithOAuthAPI = async (provider) => {
+  const getURL = () => {
+    let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
+    url = url.endsWith('/') ? url : `${url}/`;
+    return url;
+  };
+
+  const { data, error } = await supabase.auth.signInWithOAuth({ 
+    provider,
+    options: { redirectTo: getURL() }
+  });
+  
+  if (error) throw error;
+  return data;
+};
+
+export const linkOAuthIdentityAPI = async (provider) => {
+  const getURL = () => {
+    let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
+    url = url.endsWith('/') ? url : `${url}/`;
+    return url;
+  };
+
+  const { data, error } = await supabase.auth.linkIdentity({ 
+    provider,
+    options: { redirectTo: `${getURL()}profile` }
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const unlinkOAuthIdentityAPI = async (identity) => {
+  const { error } = await supabase.auth.unlinkIdentity(identity);
+  if (error) throw error;
+};
+
+export const getUserIdentitiesAPI = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return user?.identities || [];
+};
+
+export const getSessionAPI = async () => {
+  return await supabase.auth.getSession();
+};
+
+export const onAuthStateChangeAPI = (callback) => {
+  return supabase.auth.onAuthStateChange(callback);
+};
+
+
+==================================================
+FILE: contexts/SettingsContext.jsx
+==================================================
+// src/contexts/SettingsContext.jsx
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { fetchSettingsAPI, DEFAULT_SETTINGS } from '../services/settingsApi';
+
+const SettingsContext = createContext({});
+
+export const SettingsProvider = ({ children }) => {
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await fetchSettingsAPI();
+        setSettings(data);
+      } catch (err) {
+        console.warn('Could not load site settings, using defaults.', err);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+    load();
+  }, []);
+
+  const refreshSettings = async () => {
+    try {
+      const data = await fetchSettingsAPI();
+      setSettings(data);
+    } catch (err) {
+      console.error('Failed to refresh settings', err);
+    }
+  };
+
+  return (
+    <SettingsContext.Provider value={{ settings, setSettings, refreshSettings, isLoadingSettings }}>
+      {children}
+    </SettingsContext.Provider>
+  );
+};
+
+export const useSettings = () => useContext(SettingsContext);
+
+
+==================================================
+FILE: contexts/AuthContext.jsx
+==================================================
+import React, { createContext, useState, useEffect, useContext } from 'react';
+// ✨ REMOVE direct supabase import ✨
+import { fetchUserRoleAPI, logoutAPI, getSessionAPI, onAuthStateChangeAPI } from '../services/authApi'; 
+
+const AuthContext = createContext({});
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [userRole, setUserRole] = useState('customer');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRole = async (userId) => {
+      const role = await fetchUserRoleAPI(userId);
+      setUserRole(role);
+      setLoading(false);
+    };
+
+    // ✨ Use the API wrappers! ✨
+    getSessionAPI().then(({ data: { session } }) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) fetchRole(currentUser.id);
+      else setLoading(false);
+    });
+
+    const { data: { subscription } } = onAuthStateChangeAPI((_event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) fetchRole(currentUser.id);
+      else {
+        setUserRole('customer');
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await logoutAPI();
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, userRole, handleLogout, loading }}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+
+
+==================================================
+FILE: contexts/UIContext.jsx
+==================================================
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+
+const UIContext = createContext({});
+
+export const UIProvider = ({ children }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Trick: derive currentPage from the URL so existing components don't break
+  const currentPage = location.pathname === '/' ? 'welcome' : location.pathname.substring(1);
+
+  // Trick: Map the old state setter to the new router
+  const setCurrentPage = (page) => {
+    if (page === 'welcome') {
+      navigate('/');
+    } else {
+      navigate(`/${page}`);
+    }
+  };
+
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Theme logic remains unchanged
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('klscents_theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('klscents_theme', theme);
+    } catch { /* ignore */ }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+
+  return (
+    <UIContext.Provider value={{
+      currentPage, setCurrentPage,
+      isCartOpen, setIsCartOpen,
+      isWishlistOpen, setIsWishlistOpen,
+      searchQuery, setSearchQuery,
+      theme, toggleTheme,
+    }}>
+      {children}
+    </UIContext.Provider>
+  );
+};
+
+export const useUI = () => useContext(UIContext);
+
+
+==================================================
+FILE: contexts/ShopContext.jsx
+==================================================
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { useAuth } from './AuthContext';
+import { fetchUserWishlistAPI, updateWishlistAPI } from '../services/wishlistApi';
+import { fetchUserCartAPI, syncCartItemAPI, removeFromCartAPI, clearCartAPI } from '../services/cartApi';
+
+const ShopContext = createContext({});
+
+const GUEST_CART_KEY = 'klscents_guest_cart';
+
+const readGuestCart = () => {
+  try {
+    const raw = localStorage.getItem(GUEST_CART_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeGuestCart = (items) => {
+  try {
+    // Added variant_id to the saved data
+    const slim = items.map(({ id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity, variant_id }) => ({
+      id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity, variant_id,
+    }));
+    localStorage.setItem(GUEST_CART_KEY, JSON.stringify(slim));
+  } catch { }
+};
+
+const clearGuestCart = () => {
+  try { localStorage.removeItem(GUEST_CART_KEY); } catch { }
+};
+
+export const ShopProvider = ({ children }) => {
+  const { user } = useAuth();
+
+  const [cartItems, setCartItems] = useState([]);
+  const [wishlistItems, setWishlistItems] = useState([]);
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    if (user) {
+      const loadUserData = async () => {
+        try {
+          const [wishItems, dbCart] = await Promise.all([
+            fetchUserWishlistAPI(user.id),
+            fetchUserCartAPI(user.id),
+          ]);
+          setWishlistItems(wishItems);
+
+          const guestCart = readGuestCart();
+          if (guestCart.length > 0) {
+            clearGuestCart();
+            const merged = [...dbCart];
+            for (const guestItem of guestCart) {
+              // Now checks for both product ID AND variant ID
+              const existing = merged.find(i => i.id === guestItem.id && i.variant_id === guestItem.variant_id);
+              if (existing) {
+                existing.quantity += guestItem.quantity;
+              } else {
+                merged.push(guestItem);
+              }
+              try {
+                const finalQty = existing ? existing.quantity : guestItem.quantity;
+                await syncCartItemAPI(user.id, guestItem.id, finalQty, guestItem.variant_id);
+              } catch (err) {
+                console.error('Merge sync error for item', guestItem.id, err);
+              }
+            }
+            setCartItems(merged);
+          } else {
+            setCartItems(dbCart);
+          }
+        } catch (error) {
+          console.error("Failed to load user data", error);
+        }
+      };
+      loadUserData();
+    } else {
+      setWishlistItems([]);
+      setCartItems(readGuestCart());
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) writeGuestCart(cartItems);
+  }, [cartItems, user]);
+
+  const showToast = (title, message, type = 'success') => {
+    const id = crypto.randomUUID();
+    setToasts(prev => [...prev, { id, title, message, type }]);
+    setTimeout(() => removeToast(id), 3000);
+  };
+
+  const removeToast = (id) => setToasts(prev => prev.filter(t => t.id !== id));
+
+  const addToCart = async (product, quantity = 1, silent = false) => {
+    let finalQuantity = quantity;
+
+    setCartItems(prev => {
+      // Now checks for both product ID AND variant ID
+      const existing = prev.find(item => item.id === product.id && item.variant_id === product.variant_id);
+      if (existing) {
+        finalQuantity = existing.quantity + quantity;
+        return prev.map(item => (item.id === product.id && item.variant_id === product.variant_id) ? { ...item, quantity: finalQuantity } : item);
+      }
+      return [...prev, { ...product, quantity }];
+    });
+
+    if (!silent) showToast("Added to Cart", `${product.name} (${product.size}) is now in your bag.`);
+
+    if (user) {
+      try {
+        await syncCartItemAPI(user.id, product.id, finalQuantity, product.variant_id);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
+  };
+
+  const updateQuantity = async (index, delta) => {
+    const item = cartItems[index];
+    if (!item) return;
+    const newQuantity = item.quantity + delta;
+    if (newQuantity < 1) return;
+
+    setCartItems(prev => prev.map((p, i) => i === index ? { ...p, quantity: newQuantity } : p));
+
+    if (user) {
+      try {
+        await syncCartItemAPI(user.id, item.id, newQuantity, item.variant_id);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
+  };
+
+  const removeFromCart = async (index, silent = false) => {
+    const itemToRemove = cartItems[index];
+
+    setCartItems(prev => prev.filter((_, i) => i !== index));
+    if (!silent) showToast("Removed", "Item removed from cart.", "info");
+
+    if (user && itemToRemove) {
+      try {
+        await removeFromCartAPI(user.id, itemToRemove.id, itemToRemove.variant_id);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
+  };
+
+  const clearCart = async () => {
+    setCartItems([]);
+    clearGuestCart();
+    if (user) {
+      try {
+        await clearCartAPI(user.id);
+      } catch (error) {
+        console.error("Cart sync error", error);
+      }
+    }
+  };
+
+  const toggleWishlist = async (product, silent = false) => {
+    const isSaved = wishlistItems.some(item => item.id === product.id);
+
+    try {
+      if (isSaved) {
+        setWishlistItems(prev => prev.filter(item => item.id !== product.id));
+        if (!silent) showToast("Removed", `${product.name} removed from wishlist.`, "info");
+        if (user) await updateWishlistAPI(user.id, product.id, false);
+      } else {
+        setWishlistItems(prev => [...prev, product]);
+        if (!silent) showToast("Saved", `${product.name} saved to wishlist.`);
+        if (user) await updateWishlistAPI(user.id, product.id, true);
+      }
+    } catch (error) {
+      console.error("Wishlist error", error);
+      if (!silent) showToast("Error", "Could not update wishlist.", "error");
+    }
+  };
+
+  return (
+    <ShopContext.Provider value={{
+      cartItems, addToCart, removeFromCart, updateQuantity, clearCart,
+      wishlistItems, toggleWishlist,
+      toasts, showToast, removeToast,
+    }}>
+      {children}
+    </ShopContext.Provider>
+  );
+};
+
+export const useShop = () => useContext(ShopContext);
+
+
+==================================================
+FILE: hooks/useUserBan.js
+==================================================
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchUserBanStatusAPI, toggleUserBanAPI } from '../services/userApi';
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
+
+export const useUserBan = (targetUserId) => {
+  const queryClient = useQueryClient();
+  const { user: adminUser } = useAuth();
+  const { showToast } = useShop();
+
+  const { data: isBanned, isLoading } = useQuery({
+    queryKey: ['userBan', targetUserId],
+    queryFn: () => fetchUserBanStatusAPI(targetUserId),
+    enabled: !!targetUserId,
+  });
+
+  const banMutation = useMutation({
+    mutationFn: (newBanStatus) => toggleUserBanAPI(targetUserId, newBanStatus),
+    onSuccess: (_, newBanStatus) => {
+      queryClient.invalidateQueries({ queryKey: ['userBan', targetUserId] });
+      if (showToast) showToast('Success', newBanStatus ? 'User blocked.' : 'User unblocked.');
+      
+      // ✨ Look! It's already here and perfect! ✨
+      const actionType = newBanStatus ? 'Blocked User' : 'Unblocked User';
+      logAdminActionAPI(adminUser?.email, actionType, `User ID: ${targetUserId}`);
+    },
+  });
+
+  const toggleBan = async (newBanStatus) => await banMutation.mutateAsync(newBanStatus);
+
+  return { isBanned, isLoading, toggleBan };
+};
+
+
+==================================================
+FILE: hooks/useDashboardStats.js
+==================================================
+import { useQuery } from '@tanstack/react-query';
+import { fetchDashboardStatsAPI } from '../services/statsApi';
+
+export const useDashboardStats = () => {
+  const { data, isLoading } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: fetchDashboardStatsAPI,
+    staleTime: 1000 * 60 * 15, // Cache these heavy calculations for 15 minutes
+  });
+
+  return { 
+    stats: data || { inquiries: 0, revenue: 0, activeUsers: 0, outOfStock: 0 }, 
+    isLoading 
+  };
+};
+
+
+==================================================
+FILE: hooks/useReviews.js
+==================================================
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; 
+import { fetchReviewsAPI, submitReviewAPI, fetchPendingReviewsAPI, updateReviewStatusAPI } from '../services/reviewApi'; 
+import { useAuth } from '../contexts/AuthContext';
+import { logAdminActionAPI } from '../services/logApi'; // Ensure we import the logger
+
+export const useReviews = (productId, fallbackRating) => { 
+  const queryClient = useQueryClient(); 
+  const { user } = useAuth();
+
+  const { data: reviews } = useQuery({ 
+    queryKey: ['reviews', productId], 
+    queryFn: () => fetchReviewsAPI(productId), 
+    enabled: !!productId, 
+  });
+
+  const reviewList = reviews || [];
+  const averageRating = reviewList.length > 0 ? (reviewList.reduce((acc, curr) => acc + curr.rating, 0) / reviewList.length).toFixed(1) : (fallbackRating || 5);
+
+  const submitMutation = useMutation({ 
+    mutationFn: ({ rating, comment }) => submitReviewAPI(productId, user.id, rating, comment), 
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: ['reviews', productId] }); 
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] }); 
+    }, 
+  });
+
+  const submitNewReview = async (rating, comment) => { 
+    if (!user) throw new Error("Must be logged in to review."); 
+    await submitMutation.mutateAsync({ rating, comment }); 
+  };
+
+  const hasReviewed = user ? reviewList.some(r => r.user_id === user.id) : false; 
+  const canReview = !!user && !hasReviewed;
+
+  return { reviews: reviewList, averageRating, canReview, submitNewReview, }; 
+};
+
+export const useAdminReviews = () => { 
+  const queryClient = useQueryClient();
+  const { user: adminUser } = useAuth(); // Import Admin Auth logic to get email
+
+  const { data: pendingReviews, isLoading } = useQuery({ 
+    queryKey: ['admin-pending-reviews'], 
+    queryFn: fetchPendingReviewsAPI, 
+  });
+
+  const updateStatusMutation = useMutation({ 
+    mutationFn: ({ reviewId, status }) => updateReviewStatusAPI(reviewId, status), 
+    onSuccess: (_, variables) => { 
+      // Admin Log for accepted/denied reviews
+      logAdminActionAPI(adminUser?.email, `Review ${variables.status}`, `Review ID: ${variables.reviewId}`);
+      
+      queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] }); 
+      queryClient.invalidateQueries({ queryKey: ['reviews'] }); 
+    } 
+  });
+
+  const updateReviewStatus = async (reviewId, status) => { 
+    await updateStatusMutation.mutateAsync({ reviewId, status }); 
+  };
+
+  return { pendingReviews, isLoading, updateReviewStatus }; 
+};
+
+
+==================================================
+FILE: hooks/usePSGC.js
+==================================================
+import { useState, useEffect } from 'react';
+
+const BASE_URL = 'https://psgc.gitlab.io/api';
+
+export const usePSGC = () => {
+  const [regions, setRegions] = useState([]);
+  const [provinces, setProvinces] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [barangays, setBarangays] = useState([]);
+  const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  // 1. Fetch Regions on mount
+  useEffect(() => {
+    fetch(`${BASE_URL}/regions/`)
+      .then(res => res.json())
+      .then(data => setRegions(data.sort((a, b) => a.name.localeCompare(b.name))))
+      .catch(console.error);
+  }, []);
+
+  // 2. Fetch Provinces (or Cities if NCR)
+  const getProvinces = async (regionCode) => {
+    setIsFetchingLocation(true);
+    try {
+      const res = await fetch(`${BASE_URL}/regions/${regionCode}/provinces/`);
+      const data = await res.json();
+      
+      // NCR Edge Case: It returns an empty array for provinces. 
+      // If so, we skip to fetching cities for that region.
+      if (data.length === 0) {
+        setProvinces([]);
+        const cityRes = await fetch(`${BASE_URL}/regions/${regionCode}/cities-municipalities/`);
+        const cityData = await cityRes.json();
+        setCities(cityData.sort((a, b) => a.name.localeCompare(b.name)));
+      } else {
+        setProvinces(data.sort((a, b) => a.name.localeCompare(b.name)));
+        setCities([]); // Clear cities until province is picked
+      }
+      setBarangays([]); // Clear barangays
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  // 3. Fetch Cities based on Province
+  const getCities = async (provinceCode) => {
+    setIsFetchingLocation(true);
+    try {
+      const res = await fetch(`${BASE_URL}/provinces/${provinceCode}/cities-municipalities/`);
+      const data = await res.json();
+      setCities(data.sort((a, b) => a.name.localeCompare(b.name)));
+      setBarangays([]);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  // 4. Fetch Barangays based on City
+  const getBarangays = async (cityCode) => {
+    setIsFetchingLocation(true);
+    try {
+      const res = await fetch(`${BASE_URL}/cities-municipalities/${cityCode}/barangays/`);
+      const data = await res.json();
+      setBarangays(data.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsFetchingLocation(false);
+    }
+  };
+
+  return { 
+    regions, provinces, cities, barangays, 
+    getProvinces, getCities, getBarangays, 
+    isFetchingLocation 
+  };
+};
+
+
+==================================================
+FILE: hooks/useOrders.js
+==================================================
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchOrdersAPI, updateOrderStatusAPI, updateOrderDetailsAPI } from '../services/orderApi';
+import { sendMessageAPI } from '../services/messageApi';
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
+
+const STATUS_MESSAGES = {
+  shipped: (orderId) => `📦 Your order #${orderId} has been marked as shipped! We'll be in touch with delivery details shortly.`,
+  completed: (orderId) => `✅ Your order #${orderId} has been completed. We hope you love your new scent!`,
+  canceled: (orderId) => `❌ Your order #${orderId} has been canceled. Please reply if you have questions.`,
+};
+
+export const useOrders = (showToast) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: orders, isLoading } = useQuery({
+    queryKey: ['adminOrders'],
+    queryFn: fetchOrdersAPI,
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ orderId, newStatus, orderItems }) => updateOrderStatusAPI(orderId, newStatus, orderItems),
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      if (showToast) showToast('Success', `Order #${variables.orderId} updated to ${variables.newStatus}`);
+      logAdminActionAPI(user?.email, `Updated Order Status to ${variables.newStatus}`, `Order #${variables.orderId}`);
+      
+      const messageTemplate = STATUS_MESSAGES[variables.newStatus];
+      if (messageTemplate && variables.orderUserId) {
+        try { await sendMessageAPI({ sender_role: 'admin', content: messageTemplate(variables.orderId), user_id: variables.orderUserId }); } 
+        catch (err) { console.warn('Notification failed:', err); }
+      }
+    }
+  });
+
+  const editOrderMutation = useMutation({
+    mutationFn: ({ orderId, newTotal, updatedMetadata }) => updateOrderDetailsAPI(orderId, newTotal, updatedMetadata),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      if (showToast) showToast('Success', `Order #${variables.orderId} successfully modified.`);
+      logAdminActionAPI(user?.email, `Modified Order Details`, `Order #${variables.orderId}`);
+    }
+  });
+
+  const changeOrderStatus = async (orderId, newStatus, orderUserId, orderItems = []) => {
+    await statusMutation.mutateAsync({ orderId, newStatus, orderUserId, orderItems });
+  };
+
+  const modifyOrder = async (orderId, newTotal, updatedMetadata) => {
+    await editOrderMutation.mutateAsync({ orderId, newTotal, updatedMetadata });
+  };
+
+  return { orders: orders || [], isLoading, changeOrderStatus, modifyOrder };
+};
+
+
+==================================================
+FILE: hooks/useAuthForm.js
+==================================================
+import { useState } from 'react';
+import { loginAPI, registerAPI, resetPasswordAPI, fetchUserRoleAPI, signInWithOAuthAPI } from '../services/authApi';
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
+
+export const useAuthForm = () => {
+  const { showToast } = useShop();
+  const { setCurrentPage } = useUI();
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const submitAuth = async (view, formData, setView, captchaToken) => {
+    setError('');
+
+    const email = formData.email?.trim();
+    const password = formData.password;
+    const username = formData.username?.trim();
+
+    if (!email || (view !== 'forgot' && !password)) {
+      setError('Please fill in all required fields.');
+      return false;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('Please enter a valid email address.');
+      return false;
+    }
+
+    if (view === 'register') {
+      if (!username) {
+        setError('Please provide a username.');
+        return false;
+      }
+      
+      // Explicit password feedback
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters long.');
+        return false;
+      }
+      
+      if (!/\d/.test(password)) {
+        setError('Password must contain at least one number.');
+        return false;
+      }
+
+      if (password !== formData.confirmPassword) {
+        setError('Passwords do not match.');
+        return false;
+      }
+    }
+
+    // Require captcha for BOTH login and registration
+    if ((view === 'register' || view === 'login') && !captchaToken) {
+      setError('Please complete the captcha verification.');
+      return false;
+    }
+
+    setIsLoading(true);
+
+    try {
+      if (view === 'register') {
+        await registerAPI(email, password, username, captchaToken);
+        if (showToast) showToast('Success', 'Account created! Please check your email to verify.');
+        setView('login'); 
+        
+      } else if (view === 'login') {
+        const data = await loginAPI(email, password, captchaToken);
+        const role = await fetchUserRoleAPI(data.user?.id);
+        
+        if (showToast) showToast('Welcome Back', 'Successfully logged in.');
+        setCurrentPage(role === 'admin' ? 'admin' : 'products');
+        
+      } else if (view === 'forgot') {
+        await resetPasswordAPI(email);
+        setView('check-email');
+      }
+      return true;
+    } catch (err) {
+      let message = err.message;
+      
+      // Specific user feedback mappings
+      if (message.includes('Invalid login')) {
+         message = 'Invalid email or password. Did you originally sign up with Google or Facebook?';
+      } else if (message.includes('over the email rate limit')) {
+         message = 'Too many requests. Please wait a moment and try again.';
+      } else if (message.includes('already registered') || message.toLowerCase().includes('already in use')) {
+         message = 'This email is already in use. Please sign in instead.';
+      }
+      
+      setError(message);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOAuthSignIn = async (provider) => {
+    setError('');
+    setIsLoading(true);
+    try {
+      await signInWithOAuthAPI(provider);
+    } catch (err) {
+      setError(err.message || `Failed to sign in with ${provider}.`);
+      setIsLoading(false);
+    }
+  };
+
+  return { submitAuth, handleOAuthSignIn, isLoading, error, setError };
+};
+
+
+==================================================
+FILE: hooks/usePromos.js
+==================================================
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchAllPromosAPI, createPromoAPI, deletePromoAPI } from '../services/promoApi';
+import { logAdminActionAPI } from '../services/logApi'; 
+import { useAuth } from '../contexts/AuthContext';
+
+export const usePromos = (showToast) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth(); // Get the logged-in admin!
+
+  // 1. Fetch Promos
+  const { data: promos, isLoading } = useQuery({
+    queryKey: ['promos'],
+    queryFn: fetchAllPromosAPI,
+  });
+
+  // 2. Create Promo Mutation
+  const createMutation = useMutation({
+    mutationFn: (payload) => createPromoAPI(payload),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['promos'] });
+      if (showToast) showToast('Success', `Promo code ${variables.code} created!`);
+      
+      // ✨ LOG THE ACTION ✨
+      logAdminActionAPI(user?.email, 'Created Promo Code', variables.code);
+    },
+    onError: () => {
+      if (showToast) showToast('Error', 'Could not create code. Ensure it is unique.', 'error');
+    }
+  });
+
+  // 3. Delete Promo Mutation
+  const deleteMutation = useMutation({
+    // Passing an object so we can access codeString in onSuccess for the log
+    mutationFn: ({ id }) => deletePromoAPI(id),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['promos'] });
+      if (showToast) showToast('Deleted', `Promo code ${variables.codeString} removed.`);
+      
+      // ✨ LOG THE ACTION ✨
+      logAdminActionAPI(user?.email, 'Deleted Promo Code', variables.codeString);
+    },
+    onError: () => {
+      if (showToast) showToast('Error', 'Failed to delete promo code.', 'error');
+    }
+  });
+
+  // Wrapper functions
+  const createPromo = async (payload) => await createMutation.mutateAsync(payload);
+  const deletePromo = async (id, codeString) => await deleteMutation.mutateAsync({ id, codeString });
+
+  return { 
+    promos: promos || [], 
+    isLoading, 
+    // If you are using React Query v5, use isPending. If v4, use isLoading.
+    isAdding: createMutation.isPending || createMutation.isLoading, 
+    createPromo, 
+    deletePromo 
+  };
+};
+
+
+==================================================
+FILE: hooks/useMessages.js
+==================================================
+// src/hooks/useMessages.js 
+import { useState, useEffect } from 'react'; 
+import { supabase } from '../services/supabase'; 
+import { fetchActiveChatsAPI, fetchMessagesByUserAPI, sendMessageAPI } from '../services/messageApi';
+
+export const useActiveChats = () => { 
+  const [activeChats, setActiveChats] = useState([]); 
+  const [isLoading, setIsLoading] = useState(true);
+
+  const buildChatList = (data) => { 
+    if (!data || data.length === 0) return []; 
+    return data.map(msg => ({ 
+      id: msg.user_id, 
+      email: msg.email || `Customer ${msg.user_id.substring(0, 6)}`, 
+      displayName: msg.username || msg.email || 'Unknown User', 
+      lastActive: msg.created_at, 
+    })); 
+  };
+
+  useEffect(() => { 
+    let isMounted = true; 
+    const loadChats = async () => { 
+      setIsLoading(true); 
+      try { 
+        const data = await fetchActiveChatsAPI(); 
+        if (isMounted) setActiveChats(buildChatList(data)); 
+      } catch (error) { 
+        console.error('Failed to load active chats', error); 
+      } finally { 
+        if (isMounted) setIsLoading(false); 
+      } 
+    }; 
+    loadChats();
+
+    const subscription = supabase
+      .channel('admin-active-chats')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async () => {
+        try {
+          const data = await fetchActiveChatsAPI();
+          if (isMounted) setActiveChats(buildChatList(data));
+        } catch (err) {
+          console.error('Failed to refresh active chats', err);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  return { activeChats, isLoading }; 
+};
+
+export const useMessageThread = (userId, role) => { 
+  const [messages, setMessages] = useState([]);
+
+  useEffect(() => { 
+    if (!userId) { setMessages([]); return; }
+
+    const loadMessages = async () => {
+      try {
+        const data = await fetchMessagesByUserAPI(userId);
+        setMessages(data || []);
+      } catch (error) {
+        console.error('Failed to load messages', error);
+      }
+    };
+    loadMessages();
+
+    const channelName = role === 'admin'
+      ? `admin-messages-${userId}`
+      : `public:messages:user_id=eq.${userId}`;
+
+    const subscription = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          setMessages(current => {
+            const optimisticIndex = current.findIndex(
+              m => m._optimistic &&
+                   m.sender_role === payload.new.sender_role &&
+                   m.content === payload.new.content &&
+                   m.user_id === payload.new.user_id
+            );
+            if (optimisticIndex !== -1) {
+              const updated = [...current];
+              updated[optimisticIndex] = payload.new; 
+              return updated;
+            }
+            const exists = current.some(m => m.id === payload.new.id);
+            return exists ? current : [...current, payload.new];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => supabase.removeChannel(subscription);
+  }, [userId, role]);
+
+  const sendMessage = async (content, imageUrl = null) => { 
+    const trimmedContent = content?.trim() || null; 
+    if (!trimmedContent && !imageUrl) return { success: false }; 
+    if (!userId) return { success: false };
+
+    const optimisticId = `optimistic-${Date.now()}`;
+
+    // Fix: Match exact fallback structure of DB inserted content (`''` instead of null if empty)
+    const optimisticMsg = {
+      id: optimisticId,
+      _optimistic: true,
+      sender_role: role,
+      content: trimmedContent || '', 
+      user_id: userId,
+      created_at: new Date().toISOString(),
+      metadata: imageUrl ? { image_url: imageUrl } : null,
+    };
+    setMessages(current => [...current, optimisticMsg]);
+
+    try {
+      await sendMessageAPI({
+        sender_role: role,
+        content: trimmedContent,
+        user_id: userId,
+        metadata: imageUrl ? { image_url: imageUrl } : null,
+      });
+
+      setMessages(current =>
+        current.map(m =>
+          m.id === optimisticId ? { ...m, _optimistic: false } : m
+        )
+      );
+
+      return { success: true };
+    } catch (error) {
+      setMessages(current => current.filter(m => m.id !== optimisticId));
+      return { success: false, error };
+    }
+  };
+
+  const uploadChatImage = async (file) => { 
+    if (!file.type.startsWith('image/')) throw new Error('File must be an image.'); 
+    const fileName = `${userId}_${Date.now()}.jpg`;
+
+    const { data, error } = await supabase.storage
+      .from('chat-images')
+      .upload(fileName, file, { contentType: file.type, upsert: true });
+
+    if (error) throw error;
+    const { data: publicUrlData } = supabase.storage.from('chat-images').getPublicUrl(data.path);
+    return publicUrlData.publicUrl;
+  };
+
+  return { messages, sendMessage, uploadChatImage }; 
+};
+
+
+==================================================
+FILE: hooks/useAdminProducts.js
+==================================================
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { fetchProductsAPI, saveProductAPI, deleteProductAPI } from '../services/productApi';
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
+
+export const useProducts = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: products, isLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProductsAPI,
+  });
+
+  // ← Listen for the custom event fired by the bulk availability update in AdminProducts.
+  // This forces a cache invalidation without needing to pass the queryClient down as a prop.
+  useEffect(() => {
+    const handler = () => queryClient.invalidateQueries({ queryKey: ['products'] });
+    window.addEventListener('klscents:products-updated', handler);
+    return () => window.removeEventListener('klscents:products-updated', handler);
+  }, [queryClient]);
+
+  const saveMutation = useMutation({
+    mutationFn: ({ payload, id }) => saveProductAPI(payload, id),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      const actionType = variables.id ? 'Edited Product' : 'Added New Product';
+      logAdminActionAPI(user?.email, actionType, variables.payload.name);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => deleteProductAPI(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      logAdminActionAPI(user?.email, 'Deleted Product', `Product ID: ${id}`);
+    },
+  });
+
+  const saveProduct   = async (payload, id = null) => await saveMutation.mutateAsync({ payload, id });
+  const deleteProduct = async (id) => await deleteMutation.mutateAsync(id);
+
+  return { products: products || [], isLoading, saveProduct, deleteProduct };
+};
+
+
+==================================================
+FILE: hooks/useCheckout.js
+==================================================
+import { useState } from 'react';
+import { processCheckoutAPI } from '../services/checkoutApi';
+import { fetchUserBanStatusAPI } from '../services/userApi';
+import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
+
+export const useCheckout = () => {
+  const { user } = useAuth();
+  const { showToast } = useShop();
+  const { setCurrentPage } = useUI();
+  
+  const [isSending, setIsSending] = useState(false);
+
+  // ✨ Added promoCode parameter ✨
+  const submitCheckout = async (total, localItems, checkoutInfo, promoCode, onSuccess) => {
+    if (!user) {
+      if(showToast) showToast("Login Required", "Please sign in to place an inquiry.", "error");
+      setCurrentPage('login');
+      return false;
+    }
+
+    const isBanned = await fetchUserBanStatusAPI(user.id);
+    if (isBanned) {
+      if(showToast) showToast("Restricted", "Your account is not permitted to place inquiries.", "error");
+      return false;
+    }
+    
+    if (checkoutInfo.fulfillmentMethod !== 'Store Pickup' && (!checkoutInfo.location || !checkoutInfo.phoneNumber)) {
+       if(showToast) showToast("Missing Info", "Please provide a location and contact number.", "error");
+       return false;
+    }
+
+    setIsSending(true);
+    try {
+      // ✨ Pass promoCode to API ✨
+      await processCheckoutAPI(user.id, total, localItems, checkoutInfo, promoCode);
+      if(showToast) showToast("Inquiry Sent!", "Check your chat widget for details.");
+      if(onSuccess) onSuccess();
+      return true;
+    } catch (err) {
+      console.error(err);
+      if(showToast) showToast("Checkout Error", err.message || "Could not process order.", "error");
+      return false;
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return { submitCheckout, isSending };
+};
+
+
+==================================================
+FILE: hooks/useUserOrders.js
+==================================================
+import { useQuery } from '@tanstack/react-query';
+import { fetchUserOrdersAPI } from '../services/orderApi';
+
+export const useUserOrders = (userId) => {
+  const { data, isLoading } = useQuery({
+    // Create a unique cache just for this specific user
+    queryKey: ['userOrders', userId],
+    queryFn: () => fetchUserOrdersAPI(userId),
+    // Only run this query if a userId actually exists
+    enabled: !!userId,
+  });
+
+  return { 
+    orderHistory: data || [], 
+    isLoading 
+  };
+};
+
+
+==================================================
+FILE: hooks/useProfile.js
+==================================================
+import { useState, useEffect } from 'react';
+import { fetchUserProfileAPI, updateUserProfileAPI } from '../services/userApi';
+import { resetPasswordAPI, logoutAPI, getUserIdentitiesAPI, unlinkOAuthIdentityAPI, linkOAuthIdentityAPI } from '../services/authApi'; 
+import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
+
+export const useProfile = (activeTab) => {
+  const { user } = useAuth();
+  const { showToast } = useShop();
+
+  const [profileData, setProfileData] = useState({ 
+    username: '', 
+    phone_number: '',
+    address: { region: '', province: '', city: '', barangay: '', street: '', landmark: '' }
+  });
+  
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+  
+  const [identities, setIdentities] = useState([]);
+  const [isLinking, setIsLinking] = useState(false);
+
+  useEffect(() => {
+    if (user && activeTab === 'settings') {
+      const loadData = async () => {
+        setIsProfileLoading(true);
+        try {
+          const data = await fetchUserProfileAPI(user.id);
+          if (data) {
+            let parsedAddress = { region: '', province: '', city: '', barangay: '', street: '', landmark: '' };
+            if (data.address) {
+              try { parsedAddress = JSON.parse(data.address); } 
+              catch (e) { parsedAddress.street = data.address; }
+            }
+            setProfileData({
+              username: data.username || '',
+              phone_number: data.phone_number || '',
+              address: parsedAddress
+            });
+          }
+
+          const userIdentities = await getUserIdentitiesAPI();
+          setIdentities(userIdentities);
+
+        } catch (err) {
+          console.error("Failed to load profile data", err);
+        } finally {
+          setIsProfileLoading(false);
+        }
+      };
+      loadData();
+    }
+  }, [user, activeTab]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (profileData.phone_number) {
+      const phPhoneRegex = /^(09|\+639)\d{9}$/;
+      if (!phPhoneRegex.test(profileData.phone_number.trim())) {
+        newErrors.phone_number = "Please enter a valid PH number.";
+      }
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const saveProfile = async () => {
+    if (!validateForm()) {
+      if (showToast) showToast("Error", "Please fix the errors in the form.", "error");
+      return false;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateUserProfileAPI(user.id, {
+        username: profileData.username,
+        phone_number: profileData.phone_number,
+        address: JSON.stringify(profileData.address)
+      });
+
+      if (showToast) showToast("Success", "Profile updated successfully.");
+      
+      return true;
+    } catch (err) {
+      if (showToast) showToast("Error", err.message, "error");
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // ✨ NEW: Handles triggering the password reset email and logging out ✨
+  const handlePasswordResetRequest = async (email) => {
+    try {
+      await resetPasswordAPI(email);
+      if (showToast) showToast("Check Your Email", "A secure password reset link has been sent. You have been safely logged out.", "success");
+      await logoutAPI();
+    } catch (err) {
+      if (showToast) showToast("Error", err.message || "Failed to send reset link.", "error");
+    }
+  };
+
+  const handleLinkIdentity = async (provider) => {
+    setIsLinking(true);
+    try {
+      await linkOAuthIdentityAPI(provider);
+    } catch (err) {
+      if (showToast) showToast("Connection Failed", err.message, "error");
+      setIsLinking(false);
+    }
+  };
+
+  const handleUnlinkIdentity = async (provider) => {
+    const identityToUnlink = identities.find(id => id.provider === provider);
+    if (!identityToUnlink) return;
+
+    if (identities.length <= 1) {
+      if (showToast) showToast("Action Blocked", "You cannot disconnect your only login method.", "error");
+      return;
+    }
+
+    try {
+      await unlinkOAuthIdentityAPI(identityToUnlink);
+      setIdentities(identities.filter(id => id.provider !== provider));
+      if (showToast) showToast("Account Disconnected", `Successfully unlinked ${provider}.`, "success");
+    } catch (err) {
+      if (showToast) showToast("Error", "Could not unlink account.", "error");
+    }
+  };
+
+  const handleAddressChange = (e) => {
+    setProfileData(prev => ({ ...prev, address: { ...prev.address, [e.target.name]: e.target.value } }));
+  };
+
+  return { 
+    profileData, setProfileData, handleAddressChange, isProfileLoading, isSaving, 
+    saveProfile, errors, identities, handleLinkIdentity, handleUnlinkIdentity, isLinking,
+    handlePasswordResetRequest // exported new function
+  };
+};
+
+
+==================================================
+FILE: hooks/useResetPassword.js
+==================================================
+import { useState, useEffect } from 'react';
+import { updatePasswordAPI, getSessionAPI, logoutAPI } from '../services/authApi';
+import { useShop } from '../contexts/ShopContext';
+import { useNavigate } from 'react-router-dom';
+
+export const useResetPassword = () => {
+  const { showToast } = useShop();
+  const navigate = useNavigate();
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+  
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [verifyingSession, setVerifyingSession] = useState(true);
+
+  useEffect(() => {
+    const verifyAccess = async () => {
+      const { data: { session } } = await getSessionAPI();
+      
+      // If there is an active session, they are cleared to reset the password
+      if (session?.user) {
+        setIsAuthorized(true);
+      } else {
+        // ✨ Boot them back to HOME if they try to manually visit /reset-password
+        navigate('/', { replace: true });
+      }
+      setVerifyingSession(false);
+    };
+    verifyAccess();
+  }, [navigate]);
+
+  const submitNewPassword = async (formData) => {
+    setError('');
+    setSuccess(false);
+
+    if (!formData.password || !formData.confirmPassword) {
+      setError('Please fill in both fields.');
+      return;
+    }
+
+    // ✨ Strict Password Validation: At least 8 chars AND 1 number
+    const passwordRegex = /^(?=.*[0-9]).{8,}$/;
+    if (!passwordRegex.test(formData.password)) {
+      setError('Password must be at least 8 characters long and contain at least one number.');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await updatePasswordAPI(formData.password);
+      setSuccess(true);
+      if (showToast) showToast('Success!', 'Your password has been updated. Please log in again.');
+      
+      // Force logout so they must use the new credentials
+      await logoutAPI();
+      
+    } catch (err) {
+      setError(err.message || 'Failed to update password.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { submitNewPassword, isLoading, error, setError, success, isAuthorized, verifyingSession };
+};
+
+
+==================================================
+FILE: hooks/useStoreProducts.js
+==================================================
+import { useQuery } from '@tanstack/react-query';
+import { fetchProductsAPI } from '../services/productApi'; 
+
+export const useStoreProducts = () => {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['products'],           // The unique "name" for this cache
+    queryFn: fetchProductsAPI,        // The service function to call
+    staleTime: 1000 * 60 * 5,         // Keep data fresh for 5 minutes without hitting Supabase
+  });
+
+  return { 
+    products: data || [], 
+    isLoading, 
+    isError 
+  };
+};
+
+
+==================================================
+FILE: pages/ResetPasswordPage.jsx
+==================================================
+import React, { useState } from 'react';
+import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useResetPassword } from '../hooks/useResetPassword'; 
+
+const ResetPasswordPage = () => {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState({ password: '', confirmPassword: '' });
+  
+  const { submitNewPassword, isLoading, error, setError, success, isAuthorized, verifyingSession } = useResetPassword();
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) setError('');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await submitNewPassword(formData);
+  };
+
+  if (verifyingSession) {
+    return (
+      <div className="min-h-screen bg-rich-black flex items-center justify-center p-6">
+        <Loader2 className="animate-spin text-gold-400" size={48} />
+      </div>
+    );
+  }
+
+  if (!isAuthorized) return null;
+
+  return (
+    <div className="min-h-screen bg-rich-black flex items-center justify-center p-6 text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold-400/10 rounded-full blur-[120px] pointer-events-none"></div>
+      
+      <div className="relative w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in">
+        
+        <div className="text-center mb-8">
+          <img src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" alt="KL Scents" className="w-16 h-16 rounded-full object-cover mx-auto mb-4 border border-white/10 shadow-lg" />
+          <h2 className="text-2xl font-bold text-white mb-2">Set New Password</h2>
+          <p className="text-sm text-gray-400">Enter your new secure password below.</p>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 p-3 mb-6 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg">
+            <AlertCircle size={16} className="flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success ? (
+          <div className="flex flex-col items-center gap-4 p-4 text-center">
+            <CheckCircle size={48} className="text-green-400" />
+            <p className="text-lg font-semibold text-white">Password Updated!</p>
+            <button onClick={() => navigate('/login', { replace: true })} className="w-full py-3 mt-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded-lg transition-all">
+              Proceed to Login
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1.5">New Password</label>
+              <input required type="password" name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm New Password</label>
+              <input required type="password" name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors" />
+            </div>
+            <button type="submit" disabled={isLoading} className="w-full py-3 mt-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded-lg transition-all shadow-lg disabled:opacity-70 flex justify-center items-center gap-2">
+              {isLoading ? <><Loader2 className="animate-spin" size={18} /> Updating...</> : 'Update Password'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default ResetPasswordPage;
+
+
+==================================================
+FILE: pages/WelcomePage.jsx
+==================================================
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
+import { ArrowRight, Sparkles, Droplets, Wind, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useUI } from '../contexts/UIContext';
+import { useStoreProducts } from '../hooks/useStoreProducts';
+import { useSettings } from '../contexts/SettingsContext'; // Added Settings Context
+
+const HERO_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
+
+const useScrollReveal = (options = {}) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) el.classList.add('is-visible');
+        else el.classList.remove('is-visible');
+      },
+      { threshold: 0.12, ...options }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+};
+
+const FeatureCard = ({ icon, title, description, delay }) => {
+  const ref = useScrollReveal();
+  return (
+    <div ref={ref} className="reveal-up flex flex-col items-center" style={{ '--delay': delay }}>
+      <div className="w-16 h-16 rounded-full bg-gold-400/10 flex items-center justify-center text-gold-400 mb-6 icon-ring">
+        {icon}
+      </div>
+      <h3 className="text-xl font-bold text-white mb-3 feature-title">{title}</h3>
+      <p className="text-gray-400 leading-relaxed">{description}</p>
+    </div>
+  );
+};
+
+const WelcomePage = () => {
+  const { setCurrentPage } = useUI(); 
+  const { products } = useStoreProducts();
+  const { settings } = useSettings(); // Hook into settings for admin images
+  const [heroImgIdx, setHeroImgIdx] = useState(0);
+
+  const heroImages = useMemo(() => {
+    // 1. Check if admin has set custom hero images in settings
+    const adminHeroes = settings?.welcomeImages?.hero;
+    if (adminHeroes && adminHeroes.length > 0) {
+      return adminHeroes;
+    }
+
+    // 2. Fallback to the original logic (product images)
+    const imgs = (products || [])
+      .filter(p => p.available && p.image_urls?.length > 0)
+      .map(p => p.image_urls[0]);
+    return imgs.length > 0 ? imgs : [HERO_IMAGE];
+  }, [products, settings?.welcomeImages?.hero]);
+
+  // Admin configurable secondary/story image
+  const storyImage = settings?.welcomeImages?.secondary?.[0] || HERO_IMAGE;
+
+  useEffect(() => {
+    if (heroImages.length <= 1) return;
+    const timer = setInterval(() => setHeroImgIdx(prev => (prev + 1) % heroImages.length), 5000);
+    return () => clearInterval(timer);
+  }, [heroImages]);
+
+  const navigate = useNavigate();
+
+  const storyImageRef = useScrollReveal();
+  const storyHeadingRef = useScrollReveal();
+  const storyP1Ref = useScrollReveal();
+  const storyP2Ref = useScrollReveal();
+  const storyBtnRef = useScrollReveal();
+
+  const carouselRef = useRef(null);
+  const scrollCarousel = (direction) => {
+    if (carouselRef.current) {
+      const scrollAmount = carouselRef.current.offsetWidth * 0.8;
+      carouselRef.current.scrollBy({ 
+        left: direction === 'left' ? -scrollAmount : scrollAmount, 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
+  const featuredProducts = (products || []).filter(p => p.available).slice(0, 8);
+
+  const marqueeText = [
+    "Free Shipping Nationwide", "•",
+    "Artisan Crafted", "•",
+    "Extrait de Parfum", "•",
+    "Cruelty-Free", "•",
+    "Luxury Fragrances", "•"
+  ];
+  const repeatedMarquee = [...marqueeText, ...marqueeText, ...marqueeText, ...marqueeText];
+
+  return (
+    <div className="min-h-[100dvh] bg-rich-black text-white font-sans flex flex-col selection:bg-gold-400 selection:text-black">
+      <style>{`
+        .reveal-up, .reveal-left, .reveal-right, .reveal-fade { opacity: 0; transition: opacity 0.7s ease calc(var(--delay, 0s)), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--delay, 0s)); }
+        .reveal-up { transform: translateY(40px); } .reveal-left { transform: translateX(-48px); } .reveal-right { transform: translateX(48px); } .reveal-fade { transform: translateY(16px); }
+        .reveal-up.is-visible, .reveal-left.is-visible, .reveal-right.is-visible, .reveal-fade.is-visible { opacity: 1; transform: translate(0); }
+        .icon-ring { transition: transform 0.4s ease, background-color 0.4s ease, box-shadow 0.4s ease; }
+        .reveal-up:hover .icon-ring { transform: scale(1.15); background-color: rgba(212, 175, 55, 0.2); box-shadow: 0 0 24px rgba(212, 175, 55, 0.25); }
+        .feature-title { transition: color 0.3s ease; }
+        .reveal-up:hover .feature-title { color: #d4af37; }
+        .story-image-wrap { opacity: 0; transform: translateX(-48px) scale(0.97); transition: opacity 0.8s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+        .story-image-wrap.is-visible { opacity: 1; transform: translateX(0) scale(1); }
+        .story-divider { display: block; width: 0; height: 2px; background: linear-gradient(90deg, #d4af37, transparent); margin-bottom: 1.5rem; transition: width 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.2s; }
+        .reveal-fade.is-visible .story-divider { width: 64px; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes scroll-x {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          display: flex;
+          width: max-content;
+          animation: scroll-x 20s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
+      <div className="relative z-50">
+        <Header />
+      </div>
+
+      <main className="flex-1">
+        {/* HERO SECTION */}
+        {/* ✨ Modified to use min-h, flex-col, and safe top padding to prevent header overlap ✨ */}
+        <section className="relative min-h-[100dvh] lg:min-h-[85vh] flex flex-col justify-center overflow-hidden pt-32 landscape:pt-24 lg:landscape:pt-0 lg:pt-0 pb-16 lg:pb-0">
+          <div className="absolute inset-0 z-0 bg-rich-black">
+            {heroImages.map((src, idx) => (
+              <img
+                key={src}
+                src={src}
+                alt="Luxury Perfume"
+                className="absolute inset-0 w-full h-full object-cover scale-105 animate-slow-pan"
+                style={{
+                  opacity: idx === heroImgIdx ? 0.4 : 0,
+                  transition: 'opacity 1.2s ease-in-out',
+                }}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-r from-rich-black via-rich-black/80 to-transparent"></div>
+          </div>
+          
+          <div className="container mx-auto px-6 relative z-10 max-w-7xl">
+            <div className="max-w-2xl animate-fade-in-up">
+              <span className="text-gold-400 font-bold tracking-widest uppercase text-sm mb-4 block">Discover Your Signature</span>
+              <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+                The Essence of <br/><span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-300 to-gold-600">Pure Luxury</span>
+              </h1>
+              <p className="text-gray-300 text-lg md:text-xl mb-10 max-w-lg leading-relaxed">
+                Handcrafted fragrances designed to leave an unforgettable impression. Explore our curated collection of premium scents.
+              </p>
+              <button 
+                onClick={() => setCurrentPage('products')}
+                className="group px-8 py-4 bg-gold-400 text-rich-black font-bold uppercase tracking-widest rounded-sm hover:bg-gold-300 transition-all flex items-center gap-3 shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)]"
+              >
+                Shop Collection <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* SCROLLING MARQUEE BANNER */}
+        <div className="bg-gold-400 py-3 overflow-hidden border-y border-gold-500 shadow-lg">
+          <div className="animate-marquee flex gap-8 md:gap-12 items-center">
+            {repeatedMarquee.map((text, idx) => (
+              <span 
+                key={idx} 
+                className={`text-black font-bold uppercase tracking-widest whitespace-nowrap ${text === '•' ? 'text-[10px] opacity-60' : 'text-xs md:text-sm'}`}
+              >
+                {text}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* FEATURES SECTION */}
+        <section className="py-24 bg-white/5">
+          <div className="container mx-auto px-6 max-w-7xl">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
+              <FeatureCard icon={<Sparkles size={28} />} title="Premium Ingredients" description="Sourced globally from the finest botanicals to ensure a rich, long-lasting scent profile." delay="0s" />
+              <FeatureCard icon={<Droplets size={28} />} title="Extrait de Parfum" description="Highly concentrated formulations guaranteeing projection and longevity throughout your day." delay="0.15s" />
+              <FeatureCard icon={<Wind size={28} />} title="Artisan Crafted" description="Blended and aged perfectly by master perfumers to achieve ultimate olfactory balance." delay="0.3s" />
+            </div>
+          </div>
+        </section>
+
+        {/* INTERACTIVE CAROUSEL SECTION */}
+        {featuredProducts.length > 0 && (
+          <section className="py-24 relative overflow-hidden border-t border-white/5">
+            <div className="container mx-auto px-6 max-w-7xl mb-10 flex justify-between items-end">
+              <div>
+                <span className="text-gold-400 font-bold tracking-widest uppercase text-sm mb-2 block">Trending</span>
+                <h2 className="text-3xl md:text-4xl font-bold text-white">Featured Collection</h2>
+              </div>
+              <div className="hidden md:flex gap-3">
+                <button 
+                  onClick={() => scrollCarousel('left')}
+                  className="p-3 border border-white/20 rounded-full hover:border-gold-400 hover:text-gold-400 transition-colors"
+                >
+                  <ChevronLeft size={24} />
+                </button>
+                <button 
+                  onClick={() => scrollCarousel('right')}
+                  className="p-3 border border-white/20 rounded-full hover:border-gold-400 hover:text-gold-400 transition-colors"
+                >
+                  <ChevronRight size={24} />
+                </button>
+              </div>
+            </div>
+
+            <div 
+              ref={carouselRef}
+              className="flex overflow-x-auto gap-6 px-6 md:px-12 pb-8 custom-scrollbar snap-x snap-mandatory hide-scrollbar"
+            >
+              {featuredProducts.map((product) => {
+                const imgSource = product.image_urls?.[0] || HERO_IMAGE;
+                
+                const displayPrice = product.product_variants?.length > 0 
+                  ? Math.min(...product.product_variants.map(v => v.price)) 
+                  : product.price;
+
+                return (
+                  <div 
+                    key={product.id} 
+                    onClick={() => navigate(`/products/${product.id}`)}
+                    className="w-[160px] min-w-[160px] md:w-[200px] md:min-w-[200px] snap-center shrink-0 group cursor-pointer"
+                  >
+                    <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 border border-white/10 group-hover:border-gold-400/50 transition-colors">
+                      <img 
+                        src={imgSource} 
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-5">
+                        <span className="bg-gold-400 text-black px-4 py-2 font-bold uppercase tracking-widest text-[10px] md:text-xs rounded shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                          View Details
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <h3 className="text-base md:text-lg font-bold text-white group-hover:text-gold-400 transition-colors truncate">{product.name}</h3>
+                        <p className="text-gray-400 text-xs uppercase tracking-wider mt-1 truncate">{product.brand}</p>
+                      </div>
+                      <p className="text-white font-medium whitespace-nowrap text-sm md:text-base">
+                        {product.product_variants?.length > 1 && <span className="text-[10px] text-gray-400 mr-1 block sm:inline text-right">From</span>}
+                        ₱{displayPrice}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* STORY SECTION */}
+        <section className="py-24 bg-white/5 border-t border-white/5">
+          <div className="container mx-auto px-6 max-w-7xl">
+            <div className="flex flex-col md:flex-row items-center gap-16">
+              <div ref={storyImageRef} className="story-image-wrap w-full md:w-1/2 relative aspect-square md:aspect-[4/5] rounded-2xl overflow-hidden">
+                <img 
+                  src={storyImage} // Now dynamically uses Admin Settings image
+                  alt="Crafting Perfume" 
+                  className="w-full h-full object-cover grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-700" 
+                />
+              </div>
+              <div className="w-full md:w-1/2 flex flex-col">
+                <div ref={storyHeadingRef} className="reveal-fade" style={{ '--delay': '0.1s' }}>
+                  <span className="story-divider" />
+                  <h2 className="text-4xl font-bold text-white mb-6">A Symphony of Scents</h2>
+                </div>
+                <p ref={storyP1Ref} className="reveal-right text-gray-400 text-lg leading-relaxed mb-6" style={{ '--delay': '0.2s' }}>
+                  We believe that a fragrance is more than just a scent—it is an invisible accessory, a memory trigger, and a profound expression of your personal identity.
+                </p>
+                <p ref={storyP2Ref} className="reveal-right text-gray-400 text-lg leading-relaxed mb-8" style={{ '--delay': '0.32s' }}>
+                  Every bottle in our collection represents countless hours of balancing top notes of bright citrus and fresh florals, with deep, resonant base notes of oud, amber, and rich woods.
+                </p>
+                <div ref={storyBtnRef} className="reveal-up" style={{ '--delay': '0.44s' }}>
+                  <button onClick={() => setCurrentPage('products')} className="px-6 py-3 border border-gold-400 text-gold-400 hover:bg-gold-400 hover:text-black font-bold uppercase tracking-widest transition-colors rounded-sm">
+                    Find Your Match
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+      <Footer />
+    </div>
+  );
+};
+
+export default WelcomePage;
+
+
+==================================================
+FILE: pages/ProductPage.jsx
+==================================================
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, LayoutGrid, List, ChevronDown, SlidersHorizontal, ArrowUp } from 'lucide-react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
+import ProductCard from '../components/products/ProductCard';
+import ProductFilters from '../components/products/ProductFilters';
+import ProductDetails from '../components/products/ProductDetails';
+import QuickViewModal from '../components/products/QuickViewModal';
+import PredictiveSearch from '../components/products/PredictiveSearch';
+import ProductSkeleton from '../components/products/ProductSkeleton';
+
+import { useStoreProducts } from '../hooks/useStoreProducts';
+import { useUI } from '../contexts/UIContext';
+
+const ITEMS_PER_PAGE = 18;
+const MIN_LIMIT = 0;
+const MAX_LIMIT = 20000;
+const GAP = 50;
+
+const ProductPage = () => {
+  const { searchQuery, setSearchQuery } = useUI();
+  const { products, isLoading } = useStoreProducts();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id } = useParams();
+
+  const dynamicBrands = useMemo(() => [...new Set(products.map(p => p.brand).filter(Boolean))].sort(), [products]);
+
+  const dynamicSizes = useMemo(() => {
+    const sizeSet = new Set();
+    products.forEach(p => {
+      (p.product_variants || []).forEach(v => { if (v.size) sizeSet.add(v.size); });
+    });
+    
+    return [...sizeSet].sort((a, b) => {
+      const strA = String(a || '');
+      const strB = String(b || '');
+      const numA = parseInt(strA.match(/\d+/)?.[0]) || Infinity;
+      const numB = parseInt(strB.match(/\d+/)?.[0]) || Infinity;
+      
+      if (numA !== numB) return numA - numB;
+      return strA.localeCompare(strB);
+    });
+  }, [products]);
+
+  const dynamicNotes = useMemo(() => [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))].sort(), [products]);
+
+  const getEffectivePrice = (p) => {
+    if (!p.product_variants || p.product_variants.length === 0) return 0;
+    return Math.min(...p.product_variants.map(v => Number(v.price)));
+  };
+
+  const [activePage, setActivePage]         = useState(1);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [priceRange, setPriceRange]         = useState({ min: 0, max: MAX_LIMIT });
+  const [sortOption, setSortOption]         = useState('date');
+  const [ratingFilter, setRatingFilter]     = useState(0);
+  const [viewMode, setViewMode]             = useState('large');
+  const [selectedNotes, setSelectedNotes]   = useState([]);
+  const [selectedSizes, setSelectedSizes]   = useState([]);
+  const [selectedBrands, setSelectedBrands] = useState([]);
+  const [selectedGender, setSelectedGender] = useState([]);
+  const [showOutOfStock, setShowOutOfStock] = useState(false);
+  const [isSortOpen, setIsSortOpen]         = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen]   = useState(false);
+  const [showBackToTop, setShowBackToTop]   = useState(false);
+
+  useEffect(() => {
+    if (isLoading || products.length === 0) return;
+
+    if (location.state?.reset) {
+      setSelectedProduct(null);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (location.state?.selectedProduct) {
+      setSelectedProduct(location.state.selectedProduct);
+      navigate(location.pathname, { replace: true, state: {} });
+    } else if (id) {
+      const found = products.find(p => p.id.toString() === id);
+      if (found) {
+        setSelectedProduct(found);
+      } else {
+        navigate('/not-found', { replace: true });
+      }
+    } else {
+      setSelectedProduct(null);
+    }
+  }, [id, products, isLoading, navigate, location.state, location.pathname]);
+
+  useEffect(() => {
+    const handleScroll = () => setShowBackToTop(window.scrollY > 400);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  useEffect(() => {
+    setActivePage(1);
+  }, [searchQuery, priceRange, sortOption, ratingFilter, selectedNotes, selectedSizes, selectedBrands, selectedGender, showOutOfStock]);
+
+  const getPercent = (value) => Math.round(((value - MIN_LIMIT) / (MAX_LIMIT - MIN_LIMIT)) * 100);
+
+  const handleInput = (e, type) => {
+    let val = parseInt(e.target.value) || 0;
+    if (type === 'min') {
+      if (val < MIN_LIMIT) val = MIN_LIMIT;
+      if (val > priceRange.max - GAP) val = priceRange.max - GAP;
+      setPriceRange({ ...priceRange, min: val });
+    } else {
+      if (val > MAX_LIMIT) val = MAX_LIMIT;
+      if (val < priceRange.min + GAP) val = priceRange.min + GAP;
+      setPriceRange({ ...priceRange, max: val });
+    }
+  };
+
+  const handleSliderChange = (e, type) => {
+    let val = parseInt(e.target.value);
+    if (type === 'min') {
+      if (val < MIN_LIMIT) val = MIN_LIMIT;
+      if (val > priceRange.max - GAP) val = priceRange.max - GAP;
+      setPriceRange(prev => ({ ...prev, min: val }));
+    } else {
+      if (val > MAX_LIMIT) val = MAX_LIMIT;
+      if (val < priceRange.min + GAP) val = priceRange.min + GAP;
+      setPriceRange(prev => ({ ...prev, max: val }));
+    }
+  };
+
+  const clearAllFilters = useCallback(() => {
+    setRatingFilter(0);
+    setPriceRange({ min: 0, max: MAX_LIMIT });
+    setSearchQuery('');
+    setSelectedNotes([]);
+    setSelectedSizes([]);
+    setSelectedBrands([]);
+    setSelectedGender([]);
+    setShowOutOfStock(false);
+  }, [setSearchQuery]);
+
+  const processedProducts = useMemo(() => {
+    let filtered = products.filter(product => {
+      if (!showOutOfStock && !product.available) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        if (!product.name.toLowerCase().includes(q) && !product.brand?.toLowerCase().includes(q)) return false;
+      }
+      if (ratingFilter > 0 && Math.floor(product.rating) !== ratingFilter) return false;
+
+      const effectivePrice = getEffectivePrice(product);
+      if (effectivePrice < priceRange.min || effectivePrice > priceRange.max) return false;
+
+      if (selectedNotes.length > 0 && !product.notes?.some(n => selectedNotes.includes(n))) return false;
+
+      if (selectedSizes.length > 0) {
+        const allSizes = [product.size, ...(product.product_variants || []).map(v => v.size)].filter(Boolean);
+        if (!allSizes.some(s => selectedSizes.includes(s))) return false;
+      }
+
+      if (selectedBrands.length > 0 && !selectedBrands.includes(product.brand)) return false;
+      if (selectedGender.length > 0 && product.gender && !selectedGender.includes(product.gender)) return false;
+      return true;
+    });
+
+    return filtered.sort((a, b) => {
+      if (sortOption === 'price-asc') return getEffectivePrice(a) - getEffectivePrice(b);
+      if (sortOption === 'price-desc') return getEffectivePrice(b) - getEffectivePrice(a);
+      if (sortOption === 'rating-desc') return b.rating - a.rating;
+      return 0;
+    });
+  }, [products, showOutOfStock, searchQuery, ratingFilter, priceRange, selectedNotes, selectedSizes, selectedBrands, selectedGender, sortOption]);
+
+  const hasActiveFilters = ratingFilter > 0 || priceRange.min > 0 || !!searchQuery || selectedNotes.length > 0 || selectedSizes.length > 0 || selectedBrands.length > 0;
+  const totalPages        = Math.ceil(processedProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = processedProducts.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE);
+
+  const startIdx = processedProducts.length === 0 ? 0 : (activePage - 1) * ITEMS_PER_PAGE + 1;
+  const endIdx = Math.min(activePage * ITEMS_PER_PAGE, processedProducts.length);
+
+  const sortOptions = [
+    { value: 'date',        label: 'Date: Newest' },
+    { value: 'price-asc',   label: 'Price: Low to High' },
+    { value: 'price-desc',  label: 'Price: High to Low' },
+    { value: 'rating-desc', label: 'Rating: High to Low' },
+  ];
+  const currentSortLabel = sortOptions.find(o => o.value === sortOption)?.label;
+
+  const gridClasses = viewMode === 'compact'
+    ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 relative z-0'
+    : 'grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6 relative z-0';
+
+  const changePage = (num) => {
+    setActivePage(num);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="min-h-[100dvh] bg-rich-black text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
+      <div className="relative z-50"><Header /></div>
+
+      <div className="container mx-auto px-4 md:px-6 pt-32 landscape:pt-24 lg:landscape:pt-40 lg:pt-40 pb-24 max-w-[1600px]">
+        {!selectedProduct && (
+          <PredictiveSearch products={products} searchQuery={searchQuery} setSearchQuery={setSearchQuery} onSelectProduct={(p) => navigate(`/products/${p.id}`)} />
+        )}
+
+        <div className="flex flex-col lg:flex-row">
+          {!selectedProduct && (
+            <aside 
+              className={`flex-shrink-0 transition-all duration-500 ease-in-out overflow-hidden
+                ${isFiltersOpen 
+                  ? 'lg:w-72 lg:mr-12 max-h-[2000px] lg:max-h-none opacity-100 mb-8 lg:mb-0' 
+                  : 'lg:w-0 lg:mr-0 max-h-0 lg:max-h-none opacity-0 m-0'
+                }
+              `}
+            >
+              <div className="w-full lg:w-72 pb-2">
+                <ProductFilters
+                  ratingFilter={ratingFilter} setRatingFilter={setRatingFilter}
+                  priceRange={priceRange} setPriceRange={setPriceRange}
+                  handleInput={handleInput} handleSliderChange={handleSliderChange} getPercent={getPercent}
+                  selectedGender={selectedGender} setSelectedGender={setSelectedGender}
+                  selectedNotes={selectedNotes} setSelectedNotes={setSelectedNotes}
+                  selectedSizes={selectedSizes} setSelectedSizes={setSelectedSizes}
+                  selectedBrands={selectedBrands} setSelectedBrands={setSelectedBrands}
+                  clearAllFilters={clearAllFilters} hasActiveFilters={hasActiveFilters}
+                  MIN_LIMIT={MIN_LIMIT} MAX_LIMIT={MAX_LIMIT}
+                  showOutOfStock={showOutOfStock} setShowOutOfStock={setShowOutOfStock}
+                  availableBrands={dynamicBrands} availableSizes={dynamicSizes} availableNotes={dynamicNotes}
+                />
+              </div>
+            </aside>
+          )}
+
+          <main className={`flex-1 w-full min-w-0`}>
+            {isLoading ? (
+              <div className={gridClasses}>
+                {[...Array(8)].map((_, i) => <ProductSkeleton key={i} isCompact={viewMode === 'compact'} />)}
+              </div>
+            ) : selectedProduct ? (
+              <ProductDetails
+                product={selectedProduct}
+                onBack={() => navigate('/products')} 
+                onSelect={(p) => navigate(`/products/${p.id}`)}
+                onQuickView={setQuickViewProduct}
+              />
+            ) : (
+              <>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 relative z-10 animate-fade-in">
+                  <div>
+                    <h2 className="text-3xl font-bold text-white mb-1">All Perfumes</h2>
+                    <p className="text-gray-500 text-sm">Showing {startIdx}-{endIdx} of {processedProducts.length} luxury scents</p>
+                  </div>
+
+                  <div className="relative w-full md:w-auto flex flex-wrap items-center justify-start md:justify-end gap-3">
+                    <button
+                      onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                      className={`border text-sm rounded px-4 py-2 outline-none cursor-pointer flex items-center gap-2 transition-colors ${
+                        isFiltersOpen 
+                          ? 'bg-gold-400 border-gold-400 text-black shadow-[0_0_15px_rgba(212,175,55,0.3)]' 
+                          : 'bg-black/40 border-gold-400/30 text-gold-400 hover:bg-gold-400 hover:text-black'
+                      }`}
+                    >
+                      <SlidersHorizontal size={16} />
+                      <span className="hidden sm:inline">Filters</span>
+                    </button>
+
+                    <div className="flex items-center bg-black/40 border border-gold-400/30 rounded-lg p-1">
+                      <button onClick={() => setViewMode('large')} className={`p-1.5 rounded transition-colors ${viewMode === 'large' ? 'bg-gold-400 text-black' : 'text-gray-500 hover:text-white'}`} title="Large Grid View">
+                        <LayoutGrid size={18} />
+                      </button>
+                      <button onClick={() => setViewMode('compact')} className={`p-1.5 rounded transition-colors ${viewMode === 'compact' ? 'bg-gold-400 text-black' : 'text-gray-500 hover:text-white'}`} title="Compact View">
+                        <List size={18} />
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <button
+                        onClick={() => setIsSortOpen(!isSortOpen)}
+                        onBlur={() => setTimeout(() => setIsSortOpen(false), 200)}
+                        className="bg-black/40 border border-gold-400/30 text-gold-400 text-sm rounded pl-4 pr-3 py-2 outline-none hover:border-gold-400 cursor-pointer flex items-center gap-3 transition-colors"
+                      >
+                        {currentSortLabel}
+                        <ChevronDown size={16} className={`transition-transform duration-200 ${isSortOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {isSortOpen && (
+                        <div className="absolute left-0 md:left-auto md:right-0 top-full mt-2 w-48 bg-rich-black border border-gold-400/30 rounded-lg shadow-2xl overflow-hidden animate-fade-in z-50">
+                          {sortOptions.map(option => (
+                            <div key={option.value}
+                              onClick={() => { setSortOption(option.value); setIsSortOpen(false); }}
+                              className={`px-4 py-3 text-sm cursor-pointer transition-colors ${sortOption === option.value ? 'bg-gold-400/10 text-gold-400 border-l-2 border-gold-400' : 'text-gray-400 hover:bg-white/5 hover:text-gold-300 border-l-2 border-transparent'}`}
+                            >{option.label}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className={gridClasses}>
+                  {paginatedProducts.length > 0 ? (
+                    paginatedProducts.map(product => (
+                      <ProductCard key={product.id} product={product} onSelect={(p) => navigate(`/products/${p.id}`)} onQuickView={setQuickViewProduct} isCompact={viewMode === 'compact'} />
+                    ))
+                  ) : (
+                    <div className="col-span-full py-24 text-center">
+                      <p className="text-gray-500 text-lg">No perfumes found matching your criteria.</p>
+                      <button onClick={clearAllFilters} className="text-gold-400 mt-2 hover:underline">Clear Filters</button>
+                    </div>
+                  )}
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2 mt-16 pb-12">
+                    <button disabled={activePage === 1} onClick={() => changePage(activePage - 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
+                      <ChevronLeft size={20} />
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+                      <button key={num} onClick={() => changePage(num)}
+                        className={`w-10 h-10 rounded font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                      >{num}</button>
+                    ))}
+                    <button disabled={activePage === totalPages} onClick={() => changePage(activePage + 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors">
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+        </div>
+      </div>
+
+      <QuickViewModal product={quickViewProduct} onClose={() => setQuickViewProduct(null)} />
+      <Footer />
+
+      <button
+        onClick={scrollToTop}
+        className={`fixed bottom-24 right-6 z-[35] p-3 bg-white/10 hover:bg-gold-400 hover:text-black text-white border border-white/20 hover:border-gold-400 rounded-full shadow-lg backdrop-blur-sm transition-all duration-300 ${showBackToTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
+        title="Back to top"
+      >
+        <ArrowUp size={18} />
+      </button>
+    </div>
+  );
+};
+
+export default ProductPage;
+
+
+==================================================
+FILE: pages/NotFoundPage.jsx
+==================================================
+import React from 'react';
+import { Search, Home, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
+import { useUI } from '../contexts/UIContext';
+
+const NotFoundPage = () => {
+  const navigate = useNavigate();
+  const { setCurrentPage } = useUI();
+
+  return (
+    <div className="min-h-screen bg-rich-black text-white font-sans flex flex-col selection:bg-gold-400 selection:text-black">
+      <div className="relative z-50">
+        <Header />
+      </div>
+
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-32 text-center animate-fade-in relative overflow-hidden">
+        {/* Decorative background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gold-400/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <div className="relative z-10">
+          <h1 className="text-[120px] md:text-[180px] font-bold text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-800 leading-none tracking-tighter mb-4 opacity-20">
+            404
+          </h1>
+          
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Page Not Found
+          </h2>
+          
+          <p className="text-gray-400 text-lg max-w-md mx-auto mb-10">
+            We couldn't find the perfume or page you were looking for. It might have been moved or doesn't exist.
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <button 
+              onClick={() => {
+                setCurrentPage('welcome');
+                navigate('/');
+              }}
+              className="w-full sm:w-auto px-8 py-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold uppercase tracking-widest rounded transition-all shadow-lg flex items-center justify-center gap-2"
+            >
+              <Home size={18} /> Go Home
+            </button>
+            
+            <button 
+              onClick={() => {
+                navigate('/products', { state: { reset: true } });
+              }}
+              className="w-full sm:w-auto px-8 py-4 bg-white/5 hover:bg-white/10 text-white border border-white/10 font-bold uppercase tracking-widest rounded transition-all flex items-center justify-center gap-2"
+            >
+              <Search size={18} /> View Collection
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default NotFoundPage;
+
+
+==================================================
+FILE: pages/LoginPage.jsx
+==================================================
+import React, { useState, useRef } from 'react';
+import { Loader2, AlertCircle, ArrowLeft, Mail, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthForm } from '../hooks/useAuthForm'; 
+import { useUI } from '../contexts/UIContext';
+import HCaptcha from '@hcaptcha/react-hcaptcha';
+
+const LoginPage = () => {
+  const { setCurrentPage } = useUI();
+  const navigate = useNavigate(); 
+  
+  const [view, setView] = useState('login'); 
+  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '' });
+  
+  // New states for password visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef(null);
+  
+  const { submitAuth, handleOAuthSignIn, isLoading, error, setError } = useAuthForm();
+
+  const handleInputChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+    if (error) setError(''); 
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const success = await submitAuth(view, formData, setView, captchaToken);
+    
+    // Reset captcha on failure for BOTH login and register so they can try again
+    if (!success && (view === 'register' || view === 'login') && captchaRef.current) {
+        captchaRef.current.resetCaptcha();
+        setCaptchaToken('');
+    }
+  };
+
+  // ✨ Smart Back Button Logic ✨
+  const handleBack = () => {
+    // Check if there is history within the React Router stack
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      // If they landed directly from outside, fallback to home safely
+      navigate('/', { replace: true });
+      setCurrentPage('welcome');
+    }
+  };
+
+  const renderHeader = () => {
+    switch(view) {
+      case 'register': return { title: 'Create Account', subtitle: 'Join the luxury experience' };
+      case 'forgot': return { title: 'Reset Password', subtitle: 'Enter your email to recover access' };
+      default: return { title: 'Welcome Back', subtitle: 'Sign in to continue your journey' };
+    }
+  };
+  const headerContent = renderHeader();
+
+  return (
+    <div className="min-h-screen bg-rich-black flex items-center justify-center p-6 text-gray-300 font-sans selection:bg-gold-400 selection:text-black">
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-gold-400/10 rounded-full blur-[120px] pointer-events-none"></div>
+      
+      <div className="relative w-full max-w-md bg-white/5 border border-white/10 p-8 rounded-2xl backdrop-blur-sm shadow-2xl z-10 animate-fade-in my-12">
+        
+        {view !== 'check-email' && (
+          <button onClick={handleBack} className="absolute top-6 left-6 z-20 flex items-center gap-2 text-sm text-gray-400 hover:text-gold-400 transition-colors group">
+            <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" /> Back
+          </button>
+        )}
+
+        {view === 'check-email' ? (
+          <div className="text-center py-8 animate-fade-in">
+            <div className="w-20 h-20 bg-gold-400/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-gold-400/20">
+              <Mail size={32} className="text-gold-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-4">Check Your Email</h2>
+            <p className="text-gray-400 mb-8 leading-relaxed">
+              If an account exists for <strong className="text-white">{formData.email}</strong>, we've sent a secure link to reset your password.
+            </p>
+            <p className="text-sm text-gray-500 mb-8">
+              (You can close this tab now. If you don't see the email, check your spam folder.)
+            </p>
+            <button onClick={() => { setView('login'); setError(''); setFormData({ ...formData, password: '' }); }} className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
+              <ArrowLeft size={16} /> Return to Login
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="text-center mb-8 mt-4">
+              <img src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg" alt="KL Scents" className="w-16 h-16 rounded-full object-cover mx-auto mb-4 border border-white/10 shadow-lg" />
+              <h2 className="text-2xl font-bold text-white mb-2">{headerContent.title}</h2>
+              <p className="text-sm text-gray-400">{headerContent.subtitle}</p>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 mb-6 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg">
+                <AlertCircle size={16} className="flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1.5">Email Address</label>
+                <input required type="email" name="email" placeholder="your@email.com" value={formData.email} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+              </div>
+
+              {view !== 'forgot' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-400 mb-1.5">Password</label>
+                  <div className="relative">
+                    <input required type={showPassword ? "text" : "password"} name="password" placeholder="••••••••" value={formData.password} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 pr-10 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gold-400 transition-colors">
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {view === 'register' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1.5">Confirm Password</label>
+                    <div className="relative">
+                      <input required type={showConfirmPassword ? "text" : "password"} name="confirmPassword" placeholder="••••••••" value={formData.confirmPassword} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 pr-10 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                      <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gold-400 transition-colors">
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
+                    <input required type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
+                  </div>
+                </>
+              )}
+
+              {view === 'login' && (
+                <div className="flex justify-end text-sm mt-1">
+                  <button type="button" onClick={() => { setView('forgot'); setError(''); }} className="text-gold-400 hover:text-gold-300 transition-colors">Forgot password?</button>
+                </div>
+              )}
+
+              {/* hCaptcha Component rendered for BOTH login and registration */}
+              {(view === 'login' || view === 'register') && (
+                <div className="flex justify-center mt-4">
+                  <HCaptcha
+                    ref={captchaRef}
+                    sitekey={import.meta.env.VITE_HCAPTCHA_SITE_KEY}
+                    onVerify={(token) => setCaptchaToken(token)}
+                    theme="dark"
+                  />
+                </div>
+              )}
+
+              <button type="submit" disabled={isLoading} className="w-full py-3 mt-4 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold rounded-lg transition-all shadow-lg disabled:opacity-70 flex justify-center items-center gap-2">
+                {isLoading ? <><Loader2 className="animate-spin" size={18} /> Processing...</> : view === 'login' ? 'Sign In' : view === 'register' ? 'Create Account' : 'Send Reset Link'}
+              </button>
+            </form>
+
+            {view !== 'forgot' && (
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-white/10"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="bg-rich-black px-2 text-gray-500">OR</span>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 space-y-4">
+              {view === 'forgot' ? (
+                <button onClick={() => { setView('login'); setError(''); }} className="w-full py-3 bg-white/5 hover:bg-white/10 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2">
+                  <ArrowLeft size={16} /> Back to Login
+                </button>
+              ) : (
+                <>
+                  <button onClick={() => handleOAuthSignIn('google')} disabled={isLoading} className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50">
+                    <svg className="w-5 h-5" viewBox="0 0 48 48">
+                      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path>
+                      <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path>
+                      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19 5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.618-3.229-11.303-7.518l-6.571 4.819C9.656 39.663 16.318 44 24 44z"></path>
+                      <path fill="#1976D2" d="M43.611 20.083H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C43.021 36.251 46 30.693 46 24c0-1.341-.138-2.65-.389-3.917z"></path>
+                    </svg>
+                    Sign in with Google
+                  </button>
+
+                  <button onClick={() => handleOAuthSignIn('facebook')} disabled={isLoading} className="w-full py-3 bg-[#1877F2] hover:bg-[#166bda] border border-transparent text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50">
+                    <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
+                      <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.005A9.963 9.963 0 0022 12z" />
+                    </svg>
+                    Sign in with Facebook
+                  </button>
+
+                  <div className="text-center text-sm text-gray-400 pt-4 mt-2 border-t border-white/10">
+                    {view === 'login' ? "Don't have an account? " : "Already have an account? "}
+                    <button onClick={() => { 
+                        setView(view === 'login' ? 'register' : 'login'); 
+                        setError(''); 
+                        setCaptchaToken(''); 
+                        if (captchaRef.current) captchaRef.current.resetCaptcha();
+                        // Reset visibility toggles when switching views
+                        setShowPassword(false);
+                        setShowConfirmPassword(false);
+                    }} className="text-gold-400 hover:text-gold-300 font-bold">
+                      {view === 'login' ? 'Sign up free' : 'Sign in'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default LoginPage;
+
+
+==================================================
+FILE: pages/ProfilePage.jsx
+==================================================
+import React, { useState, useEffect } from 'react';
+import { Package, Clock, LogOut, ArrowLeft, Settings, User, Phone, Lock, Loader2, Mail } from 'lucide-react';
+import { useNavigate } from 'react-router-dom'; 
+
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
+import AddressEditor from '../components/profile/AddressEditor';
+import OrderHistoryCard from '../components/profile/OrderHistoryCard';
+import UserInvoiceModal from '../components/profile/UserInvoiceModal';
+
+import { useUserOrders } from '../hooks/useUserOrders';
+import { useProfile } from '../hooks/useProfile';
+import { usePSGC } from '../hooks/usePSGC';
+import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
+
+const ProfilePage = () => {
+  const { user, handleLogout } = useAuth();
+  const { addToCart, showToast } = useShop();
+  const { setCurrentPage, setIsCartOpen } = useUI();
+  const navigate = useNavigate(); 
+
+  const { orderHistory, isLoading: ordersLoading } = useUserOrders(user?.id);
+  const [activeTab, setActiveTab] = useState('history');
+  
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
+
+  const { 
+    profileData, setProfileData, isProfileLoading, isSaving, saveProfile, errors,
+    identities, handleLinkIdentity, handleUnlinkIdentity, isLinking, handlePasswordResetRequest
+  } = useProfile(activeTab);
+  
+  const { regions, provinces, cities, barangays, getProvinces, getCities, getBarangays, isFetchingLocation } = usePSGC();
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [addressCodes, setAddressCodes] = useState({ region: '', province: '', city: '', barangay: '' });
+
+  useEffect(() => { if (!user) setCurrentPage('login'); }, [user, setCurrentPage]);
+
+  useEffect(() => {
+    if (!isProfileLoading && (!profileData.address || !profileData.address.region)) {
+      setIsEditingAddress(true);
+    }
+  }, [isProfileLoading, profileData.address]);
+
+  const handleReorder = (order) => {
+    order.order_items.forEach(item => { 
+      if (item.products) {
+        const variant = item.product_variants || {};
+        addToCart({
+          ...item.products,
+          price: item.price_at_time, 
+          size: variant.size || item.products.size || 'Standard',
+          variant_id: item.variant_id
+        }, 1, true);
+      } 
+    });
+    showToast('Cart Updated', `Items from Order #${order.id} added to your cart!`);
+    setIsCartOpen(true);
+  };
+
+  const handleSaveSettings = async (e) => {
+    e.preventDefault();
+    const success = await saveProfile();
+    if (success) {
+      setIsEditingAddress(false);
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="min-h-[100dvh] bg-rich-black text-white font-sans flex flex-col">
+      <div className="relative z-50"><Header /></div>
+
+      <div className="flex-1 container mx-auto px-6 pt-32 landscape:pt-24 lg:landscape:pt-40 lg:pt-40 pb-24 max-w-4xl animate-fade-in">
+        <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-3xl font-bold uppercase">
+              {profileData.username ? profileData.username.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-white mb-1 truncate max-w-[250px]">{profileData.username || 'My Account'}</h1>
+              <p className="text-gray-400 break-long-text">{user.email}</p>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="flex items-center gap-2 px-6 py-3 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white border border-red-500/20 rounded-lg transition-all">
+            <LogOut size={18} /> Sign Out
+          </button>
+        </div>
+
+        <div className="flex gap-4 border-b border-white/10 mb-8">
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`pb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'history' ? 'border-gold-400 text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+          >
+            <Clock size={16} /> Order History
+          </button>
+          <button
+            onClick={() => setActiveTab('settings')}
+            className={`pb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-colors border-b-2 ${activeTab === 'settings' ? 'border-gold-400 text-gold-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}
+          >
+            <Settings size={16} /> Account Settings
+          </button>
+        </div>
+
+        {activeTab === 'history' && (
+          <div className="animate-fade-in">
+            {ordersLoading ? (
+              <div className="text-center py-12 text-gray-500">Loading your history...</div>
+            ) : orderHistory.length === 0 ? (
+              <div className="text-center py-16 bg-white/5 border border-white/5 rounded-2xl">
+                <Package size={48} className="mx-auto text-gray-600 mb-4" />
+                <h3 className="text-xl font-bold text-white mb-2">No past inquiries found</h3>
+                <p className="text-gray-400 mb-6">You haven't requested any perfumes yet.</p>
+                <button onClick={() => navigate('/products')} className="text-gold-400 hover:underline inline-flex items-center gap-2">
+                  <ArrowLeft size={16} /> Browse Collection
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {orderHistory.map(order => (
+                  <OrderHistoryCard 
+                    key={order.id} 
+                    order={order} 
+                    onReorder={handleReorder} 
+                    onViewInvoice={() => setInvoiceOrder(order)} 
+                    navigate={navigate} 
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-8 animate-fade-in">
+            {isProfileLoading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="animate-spin text-gold-400" size={32} />
+              </div>
+            ) : (
+              <form onSubmit={handleSaveSettings} className="space-y-8">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Personal Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <User size={14} className="text-gold-400" /> Username
+                      </label>
+                      <input type="text" value={profileData.username} onChange={e => setProfileData({ ...profileData, username: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
+                        <Phone size={14} className="text-gold-400" /> Phone Number (Optional)
+                      </label>
+                      <input type="tel" value={profileData.phone_number} onChange={e => { const sanitized = e.target.value.replace(/[^\d+]/g, ''); setProfileData({ ...profileData, phone_number: sanitized }); }} maxLength={13} className={`w-full bg-black/40 border rounded-lg p-3 text-white focus:outline-none transition-colors ${errors?.phone_number ? 'border-red-500 focus:border-red-500' : 'border-white/10 focus:border-gold-400'}`} placeholder="09123456789 or +639..." />
+                      {errors?.phone_number && <p className="text-red-400 text-xs mt-1.5">{errors.phone_number}</p>}
+                    </div>
+
+                    <AddressEditor
+                      profileData={profileData} setProfileData={setProfileData} errors={errors} isEditingAddress={isEditingAddress} setIsEditingAddress={setIsEditingAddress} regions={regions} provinces={provinces} cities={cities} barangays={barangays} getProvinces={getProvinces} getCities={getCities} getBarangays={getBarangays} isFetchingLocation={isFetchingLocation} addressCodes={addressCodes} setAddressCodes={setAddressCodes}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2">Security</h3>
+                  <p className="text-sm text-gray-500 mb-4">Click below to receive a secure link to reset your password. You will be safely logged out.</p>
+                  <div>
+                    <button 
+                      type="button" 
+                      onClick={() => handlePasswordResetRequest(user.email)} 
+                      className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Mail size={16} /> Send Password Reset Link
+                    </button>
+                  </div>
+                </div>
+
+                {/* CONNECTED ACCOUNTS UI */}
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2 mt-8">Connected Accounts</h3>
+                  <p className="text-sm text-gray-500 mb-4">Link your social accounts to log in with one click.</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <svg className="w-6 h-6" viewBox="0 0 48 48">
+                          <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"></path>
+                          <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4C16.318 4 9.656 8.337 6.306 14.691z"></path>
+                          <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19 5.238C29.211 35.091 26.715 36 24 36c-5.222 0-9.618-3.229-11.303-7.518l-6.571 4.819C9.656 39.663 16.318 44 24 44z"></path>
+                          <path fill="#1976D2" d="M43.611 20.083H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C43.021 36.251 46 30.693 46 24c0-1.341-.138-2.65-.389-3.917z"></path>
+                        </svg>
+                        <span className="text-white font-medium">Google</span>
+                      </div>
+                      {identities.some(id => id.provider === 'google') ? (
+                        <button type="button" onClick={() => handleUnlinkIdentity('google')} className="text-sm text-red-400 hover:text-red-300">Disconnect</button>
+                      ) : (
+                        <button type="button" onClick={() => handleLinkIdentity('google')} disabled={isLinking} className="text-sm text-gold-400 hover:text-gold-300">Connect</button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <svg className="w-6 h-6" fill="#1877F2" viewBox="0 0 24 24">
+                          <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.005A9.963 9.963 0 0022 12z" />
+                        </svg>
+                        <span className="text-white font-medium">Facebook</span>
+                      </div>
+                      {identities.some(id => id.provider === 'facebook') ? (
+                        <button type="button" onClick={() => handleUnlinkIdentity('facebook')} className="text-sm text-red-400 hover:text-red-300">Disconnect</button>
+                      ) : (
+                        <button type="button" onClick={() => handleLinkIdentity('facebook')} disabled={isLinking} className="text-sm text-gold-400 hover:text-gold-300">Connect</button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-6 border-t border-white/10">
+                  <button type="submit" disabled={isSaving || isFetchingLocation} className="flex items-center gap-2 px-8 py-3 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold uppercase tracking-widest rounded transition-all shadow-lg disabled:opacity-70">
+                    {isSaving ? <><Loader2 className="animate-spin" size={18} /> Saving...</> : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        )}
+      </div>
+      
+      <Footer />
+
+      {invoiceOrder && <UserInvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} userEmail={user?.email} />}
+    </div>
+  );
+};
+
+export default ProfilePage;
+
+
+==================================================
+FILE: pages/CartPage.jsx
+==================================================
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
+import Header from '../components/common/Header';
+import Footer from '../components/common/Footer';
+
+// Cart Components
+import EmptyCart from '../components/cart/EmptyCart';
+import CartItem from '../components/cart/CartItem';
+import CartSummary from '../components/cart/CartSummary';
+import SuggestedProducts from '../components/common/SuggestedProducts';
+
+// Hooks & Contexts
+import { useShop } from '../contexts/ShopContext';
+import { useUI } from '../contexts/UIContext';
+
+const CartPage = () => {
+  const { cartItems, removeFromCart, clearCart, updateQuantity } = useShop();
+  const { setCurrentPage } = useUI(); 
+
+  const safeCartItems = cartItems || [];
+  const [localItems, setLocalItems] = useState([]);
+
+  useEffect(() => {
+    const processedItems = safeCartItems.map(item => ({
+      ...item,
+      quantity: item.quantity, 
+      isRemoving: false
+    }));
+    setLocalItems(processedItems);
+  }, [cartItems]);
+
+  const handleQuantity = (index, delta) => {
+    const newItems = [...localItems];
+    if (newItems[index].quantity + delta >= 1) {
+      newItems[index].quantity += delta;
+      setLocalItems(newItems); 
+      updateQuantity(index, delta); 
+    }
+  };
+
+  const handleRemove = (index) => {
+    const newItems = [...localItems];
+    newItems[index].isRemoving = true;
+    setLocalItems(newItems);
+
+    setTimeout(() => {
+      const filtered = localItems.filter((_, i) => i !== index);
+      setLocalItems(filtered);
+      removeFromCart(index); 
+    }, 500);
+  };
+
+  const calculateTotal = () => {
+    return localItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  };
+
+  const hasUnavailableItems = localItems.some(item => !item.available);
+  const cartNotes = localItems.flatMap(item => item.notes || []);
+  const cartGender = localItems.length > 0 ? localItems[0].gender : 'Unisex';
+  
+  if (localItems.length === 0) {
+    return <EmptyCart />; 
+  }
+
+  return (
+    <div className="min-h-[100dvh] bg-rich-black text-white font-sans selection:bg-gold-400 selection:text-black flex flex-col">
+      <div className="relative z-50">
+        <Header /> 
+      </div>
+      
+      <div className="flex-1 container mx-auto px-6 pt-32 landscape:pt-24 lg:landscape:pt-40 lg:pt-40 pb-24 max-w-[1600px]">
+        <div className="mb-12">
+          <h1 className="text-4xl font-bold mb-2">Your Selected Items</h1>
+          <p className="text-gray-400">Review your items before messaging the seller</p>
+        </div>
+        
+        <div className="flex flex-col lg:flex-row gap-12 mb-16">
+          <div className="flex-1 space-y-6">
+            {localItems.map((item, index) => (
+              <CartItem 
+                key={index} 
+                item={item} 
+                index={index} 
+                handleQuantity={handleQuantity} 
+                handleRemove={handleRemove} 
+              />
+            ))}
+
+            <button onClick={() => setCurrentPage('products')} className="flex items-center gap-2 text-gray-400 hover:text-white mt-8 transition-colors">
+              <ArrowLeft size={16} /> Continue Shopping
+            </button>
+          </div>
+
+          <CartSummary 
+            localItems={localItems}
+            calculateTotal={calculateTotal}
+            hasUnavailableItems={hasUnavailableItems}
+            onCheckoutSuccess={() => {
+              setLocalItems([]);
+              if (clearCart) clearCart(); 
+            }}
+          />
+        </div>
+
+        <SuggestedProducts 
+          currentProductId={null} 
+          referenceNotes={cartNotes}
+          referenceGender={cartGender}
+          onSelect={() => setCurrentPage('products')} 
+        />
+      </div>
+      <Footer />
+    </div>
+  );
+};
+
+export default CartPage;
+
+
+==================================================
+FILE: pages/AdminDashboard.jsx
+==================================================
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard, Package, ShoppingCart, MessageSquare, LogOut, Menu, X,
+  Tag, ClipboardList, Users, Settings, Star
+} from 'lucide-react';
+
+import AdminOverview  from '../components/admin/AdminOverview';
+import AdminOrders    from '../components/admin/AdminOrders';
+import AdminProducts  from '../components/admin/AdminProducts';
+import AdminMessages  from '../components/admin/AdminMessages';
+import AdminPromos    from '../components/admin/AdminPromos';
+import AdminLogs      from '../components/admin/AdminLogs';
+import AdminUsers     from '../components/admin/AdminUsers';
+import AdminSettings  from '../components/admin/AdminSettings';
+import AdminReviews   from '../components/admin/AdminReviews';
+
+import { useAuth } from '../contexts/AuthContext';
+import { useShop } from '../contexts/ShopContext';
+
+const NAV = [
+  { id: 'overview',  icon: <LayoutDashboard size={18} />, label: 'Overview' },
+  { id: 'orders',    icon: <ShoppingCart size={18} />,    label: 'Order Inquiries' },
+  { id: 'messages',  icon: <MessageSquare size={18} />,   label: 'Messages' },
+  { id: 'products',  icon: <Package size={18} />,         label: 'Inventory' },
+  { id: 'promos',    icon: <Tag size={18} />,             label: 'Promo Codes' },
+  { id: 'users',     icon: <Users size={18} />,           label: 'Accounts' },
+  { id: 'reviews',   icon: <Star size={18} />,            label: 'Moderate Reviews' },
+  { id: 'logs',      icon: <ClipboardList size={18} />,   label: 'Activity Log' },
+  { id: 'settings',  icon: <Settings size={18} />,        label: 'Website Settings' }, 
+];
+
+const AdminDashboard = () => {
+  const { user, handleLogout } = useAuth();
+  const { showToast } = useShop();
+  const navigate = useNavigate();
+
+  const [activeTab, setActiveTab] = useState('overview');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [targetMessageUser, setTargetMessageUser] = useState(null);
+
+  const handleTabClick = (tab, userId = null) => {
+    setActiveTab(tab);
+    if (userId) setTargetMessageUser(userId);
+    setIsMobileMenuOpen(false);
+  };
+
+  const adminLogout = async () => {
+    await handleLogout();
+  };
+
+  const tabLabel = NAV.find(n => n.id === activeTab)?.label || activeTab;
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white font-sans flex">
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-rich-black border-r border-white/10 flex flex-col h-full transform transition-transform duration-300 ease-in-out md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-white/10 flex justify-between items-center">
+          <button onClick={() => handleTabClick('overview')} className="text-left group">
+            <h1 className="text-xl font-bold tracking-widest text-white group-hover:text-gold-400 transition-colors">
+              KL<span className="text-gold-400">SCENTS</span>
+            </h1>
+            <span className="text-xs text-gray-500 block mt-0.5 group-hover:text-gray-300 transition-colors">ADMIN PORTAL</span>
+          </button>
+          <button className="md:hidden text-gray-400 hover:text-white" onClick={() => setIsMobileMenuOpen(false)}>
+            <X size={20} />
+          </button>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          {NAV.map(({ id, icon, label }) => (
+            <button
+              key={id}
+              onClick={() => handleTabClick(id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                activeTab === id
+                  ? 'bg-gold-400/10 text-gold-400 border border-gold-400/20'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-4 border-t border-white/10">
+          <div className="flex items-center gap-3 mb-4 px-2">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold uppercase">
+              {user?.email?.charAt(0) || 'A'}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold truncate">{user?.email || 'Admin Mode'}</p>
+              <p className="text-[10px] text-gold-400 uppercase tracking-widest">Administrator</p>
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/products')}
+            className="w-full flex items-center gap-3 px-4 py-2 text-gold-400 hover:bg-gold-400/10 rounded-lg transition-colors mb-2"
+          >
+            <Package size={18} /> View Collection
+          </button>
+          <button
+            onClick={adminLogout}
+            className="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+          >
+            <LogOut size={18} /> Sign Out
+          </button>
+        </div>
+      </aside>
+
+      <div className="flex-1 flex flex-col md:ml-64 min-h-screen w-full">
+        <div className="md:hidden flex items-center justify-between p-4 border-b border-white/10 bg-rich-black sticky top-0 z-30">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="text-gold-400 hover:text-white transition-colors">
+            <Menu size={24} />
+          </button>
+          <h1 className="text-lg font-bold tracking-widest text-white">KL<span className="text-gold-400">SCENTS</span></h1>
+          <div className="w-6" />
+        </div>
+
+        <main className="flex-1 p-4 md:p-8 overflow-x-hidden">
+          <header className="mb-6 md:mb-8">
+            <h2 className="text-2xl md:text-3xl font-bold text-white">{tabLabel}</h2>
+          </header>
+          <div className="min-h-[500px]">
+            {activeTab === 'overview'  && <AdminOverview />}
+            {activeTab === 'orders'    && <AdminOrders onNavigateToMessages={(userId) => handleTabClick('messages', userId)} />}
+            {activeTab === 'messages'  && <AdminMessages defaultSelectedUser={targetMessageUser} />}
+            {activeTab === 'products'  && <AdminProducts />}
+            {activeTab === 'promos'    && <AdminPromos />}
+            {activeTab === 'users'     && <AdminUsers />}
+            {activeTab === 'reviews'   && <AdminReviews />}
+            {activeTab === 'logs'      && <AdminLogs />}
+            {activeTab === 'settings'  && <AdminSettings />}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default AdminDashboard;
+
+
+==================================================
+FILE: App.jsx
+==================================================
+// src/App.jsx
+import React, { useEffect, Suspense, lazy } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { supabase } from './services/supabase';
+import { Loader2 } from 'lucide-react';
+
+import WelcomePage from './pages/WelcomePage';
+import CartDrawer from './components/common/CartDrawer';
+import WishlistDrawer from './components/common/WishlistDrawer';
+import Toast from './components/common/Toast';
+import ChatWidget from './components/common/ChatWidget';
+
+import { useAuth } from './contexts/AuthContext';
+import { useShop } from './contexts/ShopContext';
+import { useSettings } from './contexts/SettingsContext';
+
+const LoginPage         = lazy(() => import('./pages/LoginPage'));
+const ProductPage       = lazy(() => import('./pages/ProductPage'));
+const CartPage          = lazy(() => import('./pages/CartPage'));
+const ProfilePage       = lazy(() => import('./pages/ProfilePage'));
+const AdminDashboard    = lazy(() => import('./pages/AdminDashboard'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-rich-black flex items-center justify-center">
+    <Loader2 className="animate-spin text-gold-400" size={40} />
+  </div>
+);
+
+function App() {
+  const { userRole } = useAuth();
+  const { toasts, removeToast } = useShop();
+  const { settings } = useSettings();
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Securely listen for the exact moment Supabase verifies the email token
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Token verified. Navigate to reset page securely.
+        navigate('/reset-password', { replace: true });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [location.pathname]);
+
+  return (
+    <div className="min-h-screen bg-rich-black text-white font-sans">
+      <Toast toasts={toasts} removeToast={removeToast} />
+
+      {/* Hide drawers/widgets from admins entirely */}
+      {userRole !== 'admin' && <CartDrawer />}
+      {userRole !== 'admin' && settings.features?.wishlist !== false && <WishlistDrawer />}
+      {userRole !== 'admin' && settings.features?.chatWidget !== false && <ChatWidget />}
+
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/"               element={<WelcomePage />} />
+          <Route path="/products"       element={<ProductPage />} />
+          <Route path="/products/:id"   element={<ProductPage />} />
+          
+          {/* Admin Restricted Pages */}
+          <Route path="/cart"           element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <CartPage />} />
+          <Route path="/login"          element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <LoginPage />} />
+          <Route path="/profile"        element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ProfilePage />} />
+          <Route path="/reset-password" element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <ResetPasswordPage />} />
+          
+          <Route
+            path="/admin"
+            element={userRole === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />}
+          />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Suspense>
+    </div>
+  );
+}
+
+export default App;
+
+

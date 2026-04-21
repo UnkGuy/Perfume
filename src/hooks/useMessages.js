@@ -1,4 +1,3 @@
-// src/hooks/useMessages.js 
 import { useState, useEffect } from 'react'; 
 import { supabase } from '../services/supabase'; 
 import { fetchActiveChatsAPI, fetchMessagesByUserAPI, sendMessageAPI } from '../services/messageApi';
@@ -108,7 +107,6 @@ export const useMessageThread = (userId, role) => {
 
     const optimisticId = `optimistic-${Date.now()}`;
 
-    // Fix: Match exact fallback structure of DB inserted content (`''` instead of null if empty)
     const optimisticMsg = {
       id: optimisticId,
       _optimistic: true,
@@ -121,7 +119,7 @@ export const useMessageThread = (userId, role) => {
     setMessages(current => [...current, optimisticMsg]);
 
     try {
-      await sendMessageAPI({
+      const realMessage = await sendMessageAPI({
         sender_role: role,
         content: trimmedContent,
         user_id: userId,
@@ -130,7 +128,7 @@ export const useMessageThread = (userId, role) => {
 
       setMessages(current =>
         current.map(m =>
-          m.id === optimisticId ? { ...m, _optimistic: false } : m
+          m.id === optimisticId ? realMessage : m
         )
       );
 

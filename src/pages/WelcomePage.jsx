@@ -5,7 +5,7 @@ import Footer from '../components/common/Footer';
 import { ArrowRight, Sparkles, Droplets, Wind, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useUI } from '../contexts/UIContext';
 import { useStoreProducts } from '../hooks/useStoreProducts';
-import { useSettings } from '../contexts/SettingsContext'; // Added Settings Context
+import { useSettings } from '../contexts/SettingsContext';
 
 const HERO_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
@@ -43,24 +43,21 @@ const FeatureCard = ({ icon, title, description, delay }) => {
 const WelcomePage = () => {
   const { setCurrentPage } = useUI(); 
   const { products } = useStoreProducts();
-  const { settings } = useSettings(); // Hook into settings for admin images
+  const { settings } = useSettings();
   const [heroImgIdx, setHeroImgIdx] = useState(0);
 
   const heroImages = useMemo(() => {
-    // 1. Check if admin has set custom hero images in settings
     const adminHeroes = settings?.welcomeImages?.hero;
     if (adminHeroes && adminHeroes.length > 0) {
       return adminHeroes;
     }
 
-    // 2. Fallback to the original logic (product images)
     const imgs = (products || [])
       .filter(p => p.available && p.image_urls?.length > 0)
       .map(p => p.image_urls[0]);
     return imgs.length > 0 ? imgs : [HERO_IMAGE];
   }, [products, settings?.welcomeImages?.hero]);
 
-  // Admin configurable secondary/story image
   const storyImage = settings?.welcomeImages?.secondary?.[0] || HERO_IMAGE;
 
   useEffect(() => {
@@ -136,7 +133,6 @@ const WelcomePage = () => {
 
       <main className="flex-1">
         {/* HERO SECTION */}
-        {/* ✨ Modified to use min-h, flex-col, and safe top padding to prevent header overlap ✨ */}
         <section className="relative min-h-[100dvh] lg:min-h-[85vh] flex flex-col justify-center overflow-hidden pt-32 landscape:pt-24 lg:landscape:pt-0 lg:pt-0 pb-16 lg:pb-0">
           <div className="absolute inset-0 z-0 bg-rich-black">
             {heroImages.map((src, idx) => (
@@ -174,7 +170,7 @@ const WelcomePage = () => {
         </section>
 
         {/* SCROLLING MARQUEE BANNER */}
-        <div className="bg-gold-400 py-3 overflow-hidden border-y border-gold-500 shadow-lg">
+        {/* <div className="bg-gold-400 py-3 overflow-hidden border-y border-gold-500 shadow-lg">
           <div className="animate-marquee flex gap-8 md:gap-12 items-center">
             {repeatedMarquee.map((text, idx) => (
               <span 
@@ -185,7 +181,7 @@ const WelcomePage = () => {
               </span>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* FEATURES SECTION */}
         <section className="py-24 bg-white/5">
@@ -274,7 +270,7 @@ const WelcomePage = () => {
             <div className="flex flex-col md:flex-row items-center gap-16">
               <div ref={storyImageRef} className="story-image-wrap w-full md:w-1/2 relative aspect-square md:aspect-[4/5] rounded-2xl overflow-hidden">
                 <img 
-                  src={storyImage} // Now dynamically uses Admin Settings image
+                  src={storyImage} 
                   alt="Crafting Perfume" 
                   className="w-full h-full object-cover grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-700" 
                 />
