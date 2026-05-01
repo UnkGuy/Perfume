@@ -82,7 +82,9 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
           <div className="mb-6">
             <div className="flex items-center gap-3 mb-2 flex-wrap">
               <div className="flex gap-1">{[...Array(5)].map((_, i) => ( <Star key={i} size={16} className={i < Math.floor(averageRating) ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} /> ))}</div>
-              <span className="text-sm text-gray-400 hover:text-gold-400 transition-colors cursor-pointer" onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}>{averageRating} ({reviews.length} Reviews)</span>
+              <span className="text-sm text-gray-400 hover:text-gold-400 transition-colors cursor-pointer" onClick={() => document.getElementById('reviews-section')?.scrollIntoView({ behavior: 'smooth' })}>
+                {averageRating > 0 ? averageRating : 'No reviews yet'} ({reviews.length} Reviews)
+              </span>
             </div>
           </div>
 
@@ -101,9 +103,9 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
 
           <div className="mb-8 w-full flex-wrap">
             <div className="flex items-center gap-4 flex-wrap">
-              <p className="text-3xl font-light text-white truncate max-w-full">₱{displayPrice}</p>
+              <p className="text-3xl font-light text-white truncate max-w-full">₱{displayPrice.toLocaleString()}</p>
               {isDiscounted && (
-                <><p className="text-xl text-gray-500 line-through truncate max-w-full">₱{displayCompare}</p><span className="px-2 py-1 bg-gold-400/10 text-gold-400 border border-gold-400/30 text-xs font-bold rounded tracking-wide whitespace-nowrap">{percentOff}% OFF</span></>
+                <><p className="text-xl text-gray-500 line-through truncate max-w-full">₱{displayCompare.toLocaleString()}</p><span className="px-2 py-1 bg-gold-400/10 text-gold-400 border border-gold-400/30 text-xs font-bold rounded tracking-wide whitespace-nowrap">{percentOff}% OFF</span></>
               )}
             </div>
           </div>

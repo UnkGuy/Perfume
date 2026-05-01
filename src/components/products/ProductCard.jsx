@@ -71,7 +71,7 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
           <div className="flex flex-col min-w-0 max-w-full">
             <div className="flex items-end gap-2 truncate min-w-0">
               <span className={`font-medium text-white truncate min-w-0 ${isCompact ? 'text-sm md:text-base' : 'text-xl'}`}>
-                {hasPriceVariation ? `₱${minPrice} - ₱${maxPrice}` : `₱${minPrice}`}
+                {hasPriceVariation ? `₱${minPrice.toLocaleString()} - ₱${maxPrice.toLocaleString()}` : `₱${minPrice.toLocaleString()}`}
               </span>
             </div>
           </div>

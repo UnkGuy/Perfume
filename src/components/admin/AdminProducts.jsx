@@ -27,6 +27,8 @@ const AdminProducts = () => {
 
   const dynamicNotes    = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))];
   const allDisplayNotes = [...new Set([...dynamicNotes, ...formData.notes])].sort();
+  
+  const allDisplaySizes = [...new Set(products.flatMap(p => p.product_variants?.map(v => v.size) || []).filter(Boolean))].sort();
 
   useEffect(() => { setActivePage(1); setSelectedIds(new Set()); }, [searchQuery]);
 
@@ -163,8 +165,8 @@ const AdminProducts = () => {
   };
 
   const statusBadge = (available) => available
-    ? <span className="flex items-center gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
-    : <span className="flex items-center gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>;
+    ? <span className="flex items-center justify-end gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
+    : <span className="flex items-center justify-end gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>;
 
   return (
     <div className="animate-fade-in">
@@ -195,15 +197,15 @@ const AdminProducts = () => {
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl flex flex-col mb-6">
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-left border-collapse whitespace-nowrap">
+          <table className="w-full text-right border-collapse whitespace-nowrap">
             <thead>
               <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
-                <th className="p-4 w-10"><input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} className="accent-gold-400 w-4 h-4 cursor-pointer" /></th>
-                <th className="p-4 font-medium">Product</th>
+                <th className="p-4 w-10 text-left"><input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} className="accent-gold-400 w-4 h-4 cursor-pointer" /></th>
+                <th className="p-4 font-medium text-left">Product</th>
                 <th className="p-4 font-medium">Price (From)</th>
-                <th className="p-4 font-medium">Gender</th>
+                <th className="p-4 font-medium">Stock</th>
                 <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium text-right">Actions</th>
+                <th className="p-4 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm text-gray-300">
@@ -214,11 +216,12 @@ const AdminProducts = () => {
               ) : paginatedProducts.map(product => {
                 const variants = product.product_variants || [];
                 const lowestPrice = variants.length > 0 ? Math.min(...variants.map(v => v.price)) : 0;
+                const totalStock = variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
                 
                 return (
                   <tr key={product.id} className={`hover:bg-white/5 transition-colors ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}>
-                    <td className="p-4"><input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" /></td>
-                    <td className="p-4 flex items-center gap-3">
+                    <td className="p-4 text-left"><input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" /></td>
+                    <td className="p-4 flex items-center gap-3 text-left">
                       {product.image_urls?.length > 0
                         ? <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
                         : <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>}
@@ -227,10 +230,10 @@ const AdminProducts = () => {
                         <p className="text-xs text-gray-500">{product.brand} · {variants.length} Size{variants.length !== 1 ? 's' : ''}</p>
                       </div>
                     </td>
-                    <td className="p-4"><span className="text-gold-400 font-medium">₱{lowestPrice}</span></td>
-                    <td className="p-4"><span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">{product.gender}</span></td>
-                    <td className="p-4">{statusBadge(product.available)}</td>
-                    <td className="p-4 flex justify-end gap-2">
+                    <td className="p-4 text-right"><span className="text-gold-400 font-medium">₱{lowestPrice.toLocaleString()}</span></td>
+                    <td className="p-4 text-right"><span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">{totalStock}</span></td>
+                    <td className="p-4 text-right">{statusBadge(product.available)}</td>
+                    <td className="p-4 flex justify-end gap-2 text-right">
                       <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit"><Edit2 size={16} /></button>
                       <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete"><Trash2 size={16} /></button>
                     </td>
@@ -240,11 +243,8 @@ const AdminProducts = () => {
             </tbody>
           </table>
         </div>
-
-        {/* Mobile View omitted for brevity, but same logic applies for base pricing removal */}
       </div>
 
-      {/* ✨ Pagination Block Added Here ✨ */}
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mb-8">
           <button
@@ -282,7 +282,7 @@ const AdminProducts = () => {
       <ProductFormModal
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSave}
         isSaving={isSaving} editingProduct={editingProduct} formData={formData} setFormData={setFormData}
-        allDisplayNotes={allDisplayNotes} customNoteInput={customNoteInput} setCustomNoteInput={setCustomNoteInput}
+        allDisplayNotes={allDisplayNotes} allDisplaySizes={allDisplaySizes} customNoteInput={customNoteInput} setCustomNoteInput={setCustomNoteInput}
         onAddCustomNote={handleAddCustomNote} onNoteToggle={handleNoteToggle} onRemoveImage={handleRemoveImage} showToast={showToast}
         onAIGenerate={() => showToast('AI Magic', 'AI Description Generation coming in V3! 🪄')}
         onAddVariant={handleAddVariant} onRemoveVariant={handleRemoveVariant} onVariantChange={handleVariantChange}

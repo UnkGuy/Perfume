@@ -7,12 +7,12 @@ import { validatePromoCodeAPI } from '../../services/promoApi';
 import { fetchUserProfileAPI } from '../../services/userApi';
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useSettings } from '../../contexts/SettingsContext';   // ← NEW
+import { useSettings } from '../../contexts/SettingsContext';
 
 const CartSummary = ({ localItems, calculateTotal, hasUnavailableItems, onCheckoutSuccess }) => {
   const { showToast, clearCart } = useShop();
   const { user } = useAuth();
-  const { settings } = useSettings();   // ← NEW
+  const { settings } = useSettings();
   const { submitCheckout, isSending } = useCheckout();
 
   // Use dynamic options from settings (fall back to safe defaults if somehow empty)

@@ -89,12 +89,12 @@ const AdminUsers = () => {
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-x-auto w-full">
-        <table className="w-full text-left border-collapse min-w-[600px]">
+        <table className="w-full text-right border-collapse min-w-[600px]">
           <thead>
             <tr className="bg-black/40 border-b border-white/10 text-xs uppercase text-gray-500">
-              <th className="p-4 font-medium w-1/3">Email</th>
-              <th className="p-4 font-medium w-1/4">Role</th>
-              <th className="p-4 font-medium w-1/6">Status</th>
+              <th className="p-4 font-medium w-1/3 text-right">Email</th>
+              <th className="p-4 font-medium w-1/4 text-right">Role</th>
+              <th className="p-4 font-medium w-1/6 text-right">Status</th>
               <th className="p-4 font-medium text-right w-1/4">Actions</th>
             </tr>
           </thead>
@@ -104,12 +104,12 @@ const AdminUsers = () => {
               const currentRole = u.user_roles?.[0]?.role || 'customer';
               return (
                 <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 text-white font-medium break-all sm:break-words">
+                  <td className="p-4 text-white font-medium break-all sm:break-words text-right flex justify-end">
                     <div className="max-w-[150px] sm:max-w-xs md:max-w-sm lg:max-w-md truncate" title={u.email}>
                       {u.email}
                     </div>
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 text-right">
                     <select 
                       value={currentRole}
                       onChange={(e) => handleRoleChange(u.id, e.target.value)}
@@ -119,7 +119,7 @@ const AdminUsers = () => {
                       <option value="admin">Admin</option>
                     </select>
                   </td>
-                  <td className="p-4">
+                  <td className="p-4 text-right">
                     {u.is_banned 
                       ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Blocked</span>
                       : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Active</span>}

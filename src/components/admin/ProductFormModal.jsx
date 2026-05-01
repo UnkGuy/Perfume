@@ -9,7 +9,7 @@ const Counter = ({ value = '', max }) => ( <span className={`text-xs ${nearLimit
 
 const ProductFormModal = ({
   isOpen, onClose, onSave, isSaving, editingProduct, formData, setFormData,
-  allDisplayNotes, customNoteInput, setCustomNoteInput, onAddCustomNote,
+  allDisplayNotes, allDisplaySizes, customNoteInput, setCustomNoteInput, onAddCustomNote,
   onNoteToggle, onRemoveImage, showToast, onAIGenerate,
   onAddVariant, onRemoveVariant, onVariantChange
 }) => {
@@ -64,8 +64,11 @@ const ProductFormModal = ({
                 <div key={idx} className="bg-black/50 border border-white/10 rounded-lg p-3 relative group">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                     <div>
-                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size *</label>
-                      <input required type="text" value={variant.size} onChange={e => onVariantChange(idx, 'size', e.target.value)} placeholder="e.g. 30ml" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size (Add unit e.g. ml) *</label>
+                      <input list={`size-options-${idx}`} required type="text" value={variant.size} onChange={e => onVariantChange(idx, 'size', e.target.value)} placeholder="e.g. 50ml" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                      <datalist id={`size-options-${idx}`}>
+                        {allDisplaySizes && allDisplaySizes.map(s => <option key={s} value={s} />)}
+                      </datalist>
                     </div>
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Selling Price (₱) *</label>

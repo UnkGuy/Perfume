@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, Users, ShoppingBag, AlertCircle, Loader2, AlertTriangle } from 'lucide-react';
+import { TrendingUp, Users, ShoppingBag, AlertCircle, Loader2, AlertTriangle, Download } from 'lucide-react';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -12,6 +12,26 @@ const PIE_COLORS = ['#d4af37', '#60a5fa', '#34d399', '#f97316', '#a78bfa'];
 const AdminOverview = () => {
   const { stats, isLoading } = useDashboardStats();
 
+  const exportReport = () => {
+    const headers = ['Metric,Value'];
+    const rows = [
+      `Total Inquiries,${stats.inquiries}`,
+      `Est. Revenue,${stats.revenue}`,
+      `Active Customers,${stats.activeUsers}`,
+      `Unavailable Items,${stats.outOfStock}`
+    ];
+    
+    // Convert to CSV string format
+    const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `admin_report_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link); // Required for FF
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64 text-gold-400">
@@ -22,6 +42,17 @@ const AdminOverview = () => {
 
   return (
     <div className="space-y-6 md:space-y-8 animate-fade-in">
+      
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h3 className="text-2xl font-bold text-white mb-1">Dashboard Overview</h3>
+          <p className="text-gray-400 text-sm">Key metrics and sales data summary.</p>
+        </div>
+        <button onClick={exportReport} className="flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-black px-4 py-2 rounded-lg font-bold transition-colors">
+          <Download size={18} /> Export Report
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <StatCard icon={<ShoppingBag size={20} />} color="gold"   title="Total Inquiries"    value={stats.inquiries} />
         <StatCard icon={<TrendingUp size={20} />}  color="green"  title="Est. Revenue"       value={`₱${stats.revenue.toLocaleString()}`} />

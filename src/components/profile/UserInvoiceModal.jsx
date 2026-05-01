@@ -94,7 +94,7 @@ const UserInvoiceModal = ({ order, onClose, userEmail }) => {
                     <p className="text-xs text-gray-500">{variant?.size || 'Standard'}</p>
                   </td>
                   <td className="py-4 text-center">{item.quantity}</td>
-                  <td className="py-4 text-right">₱{item.price_at_time.toLocaleString()}</td>
+                  <td className="py-4 text-right">₱{Number(item.price_at_time).toLocaleString()}</td>
                   <td className="py-4 text-right font-medium">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
                 </tr>
               )

@@ -128,13 +128,13 @@ const minDateString = todayLocal.toISOString().split('T')[0];
 
       {/* Table */}
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-right border-collapse">
           <thead>
             <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
-              <th className="p-4 font-medium">Code</th>
-              <th className="p-4 font-medium">Discount</th>
-              <th className="p-4 font-medium">Uses</th>
-              <th className="p-4 font-medium">Expires</th>
+              <th className="p-4 font-medium text-right">Code</th>
+              <th className="p-4 font-medium text-right">Discount</th>
+              <th className="p-4 font-medium text-right">Uses</th>
+              <th className="p-4 font-medium text-right">Expires</th>
               <th className="p-4 font-medium text-right">Action</th>
             </tr>
           </thead>
@@ -147,14 +147,14 @@ const minDateString = todayLocal.toISOString().split('T')[0];
               const isExpired = promo.expiry_date && new Date(promo.expiry_date) < new Date();
               return (
                 <tr key={promo.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 font-bold text-white tracking-wider flex items-center gap-2">
+                  <td className="p-4 font-bold text-white tracking-wider flex items-center justify-end gap-2 text-right">
                     <Tag size={14} className="text-gold-400" /> {promo.code}
                   </td>
-                  <td className="p-4 text-green-400 font-bold">{promo.discount_percentage}% OFF</td>
-                  <td className="p-4">{promo.times_used}{promo.usage_limit ? ` / ${promo.usage_limit}` : ' uses'}</td>
-                  <td className="p-4">
+                  <td className="p-4 text-green-400 font-bold text-right">{promo.discount_percentage}% OFF</td>
+                  <td className="p-4 text-right">{promo.times_used}{promo.usage_limit ? ` / ${promo.usage_limit}` : ' uses'}</td>
+                  <td className="p-4 text-right">
                     {promo.expiry_date ? (
-                      <span className={`flex items-center gap-1.5 ${isExpired ? 'text-red-400' : 'text-gray-300'}`}>
+                      <span className={`flex items-center justify-end gap-1.5 ${isExpired ? 'text-red-400' : 'text-gray-300'}`}>
                         <Calendar size={14} /> {new Date(promo.expiry_date).toLocaleDateString()}
                         {isExpired && <span className="text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded font-bold">EXPIRED</span>}
                       </span>

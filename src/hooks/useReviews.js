@@ -14,7 +14,7 @@ export const useReviews = (productId, fallbackRating) => {
   });
 
   const reviewList = reviews || [];
-  const averageRating = reviewList.length > 0 ? (reviewList.reduce((acc, curr) => acc + curr.rating, 0) / reviewList.length).toFixed(1) : (fallbackRating || 5);
+  const averageRating = reviewList.length > 0 ? (reviewList.reduce((acc, curr) => acc + curr.rating, 0) / reviewList.length).toFixed(1) : (fallbackRating > 0 ? fallbackRating : 0);
 
   const submitMutation = useMutation({ 
     mutationFn: ({ rating, comment }) => submitReviewAPI(productId, user.id, rating, comment), 

@@ -55,7 +55,7 @@ const OrderHistoryCard = ({ order, onViewInvoice, navigate }) => {
                   <p className="text-xs text-gray-500">{prod.brand} • {displaySize}</p>
                 </div>
                 <div className="text-right text-sm text-gray-400">
-                  {item.quantity}x @ ₱{item.price_at_time}
+                  {item.quantity}x @ ₱{Number(item.price_at_time).toLocaleString()}
                 </div>
               </div>
             );

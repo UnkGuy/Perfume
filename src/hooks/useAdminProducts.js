@@ -13,8 +13,7 @@ export const useProducts = () => {
     queryFn: fetchProductsAPI,
   });
 
-  // ← Listen for the custom event fired by the bulk availability update in AdminProducts.
-  // This forces a cache invalidation without needing to pass the queryClient down as a prop.
+  // Listen for the custom event fired by the bulk availability update in AdminProducts.
   useEffect(() => {
     const handler = () => queryClient.invalidateQueries({ queryKey: ['products'] });
     window.addEventListener('klscents:products-updated', handler);

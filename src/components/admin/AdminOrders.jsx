@@ -68,11 +68,11 @@ const AdminOrders = ({ onNavigateToMessages }) => {
         </div>
 
         <div className="hidden md:block overflow-x-auto w-full">
-          <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
+          <table className="w-full text-right border-collapse whitespace-nowrap min-w-[600px]">
             <thead>
               <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
                 {['Order ID','Date','Customer','Total','Status','Actions'].map(h => (
-                  <th key={h} className={`p-4 font-medium ${h === 'Actions' ? 'text-right' : ''}`}>{h}</th>
+                  <th key={h} className="p-4 font-medium text-right">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -82,11 +82,11 @@ const AdminOrders = ({ onNavigateToMessages }) => {
               ) : filteredOrders.map(order => (
                 <React.Fragment key={order.id}>
                   <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
-                    <td className="p-4 font-mono text-gold-400">#{order.id}</td>
-                    <td className="p-4">{new Date(order.created_at).toLocaleDateString()}</td>
-                    <td className="p-4 truncate max-w-[150px]" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</td>
-                    <td className="p-4 font-bold text-white">₱{Number(order.total_amount).toLocaleString()}</td>
-                    <td className="p-4">
+                    <td className="p-4 font-mono text-gold-400 text-right">#{order.id}</td>
+                    <td className="p-4 text-right">{new Date(order.created_at).toLocaleDateString()}</td>
+                    <td className="p-4 truncate max-w-[150px] text-right" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</td>
+                    <td className="p-4 font-bold text-white text-right">₱{Number(order.total_amount).toLocaleString()}</td>
+                    <td className="p-4 text-right">
                       <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)} className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center w-full max-w-[100px] ${statusClass(order.status)}`}>
                         <option value="pending" className="bg-rich-black text-white">Pending</option>
                         <option value="shipped" className="bg-rich-black text-white">Shipped</option>
@@ -94,7 +94,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                         <option value="canceled" className="bg-rich-black text-white">Canceled</option>
                       </select>
                     </td>
-                    <td className="p-4 flex justify-end gap-2">
+                    <td className="p-4 flex justify-end gap-2 text-right">
                       <button onClick={() => setInvoiceOrder(order)} className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
                         <FileText size={16} />
                       </button>
@@ -110,17 +110,17 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                     <tr className="bg-black/40 border-b border-white/10">
                       <td colSpan="6" className="p-6">
                         <div className="bg-white/5 border border-white/10 rounded-lg p-4 w-full">
-                          <h4 className="text-xs uppercase tracking-widest text-gray-500 mb-3 font-bold">Order Items</h4>
+                          <h4 className="text-xs uppercase tracking-widest text-gray-500 mb-3 font-bold text-left">Order Items</h4>
                           {order.order_items.map((item, idx) => (
                             <div key={idx} className="flex justify-between items-center text-sm mb-1 gap-2 min-w-0">
-                              <div className="min-w-0 truncate">
+                              <div className="min-w-0 truncate text-left">
                                 <span className="text-gold-400 font-bold mr-2">{item.quantity}x</span>
                                 <span className="text-white truncate">
                                   {item.products?.name || 'Unknown'} 
                                   {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
                                 </span>
                               </div>
-                              <span className="text-gray-400 font-mono flex-shrink-0">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
+                              <span className="text-gray-400 font-mono flex-shrink-0 text-right">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
                             </div>
                           ))}
                         </div>
@@ -346,7 +346,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
                       )}
                       {isEditing && <span className="hidden print:inline">{item.quantity}</span>}
                     </td>
-                    <td className="py-4 text-right truncate">₱{item.price_at_time.toLocaleString()}</td>
+                    <td className="py-4 text-right truncate">₱{Number(item.price_at_time).toLocaleString()}</td>
                     <td className="py-4 text-right font-medium truncate">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
                   </tr>
                 )
