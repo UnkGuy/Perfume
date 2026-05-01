@@ -36,7 +36,7 @@ export const useOrders = (showToast) => {
   });
 
   const editOrderMutation = useMutation({
-    mutationFn: ({ orderId, newTotal, updatedMetadata }) => updateOrderDetailsAPI(orderId, newTotal, updatedMetadata),
+    mutationFn: ({ orderId, newTotal, updatedMetadata, newOrderItems }) => updateOrderDetailsAPI(orderId, newTotal, updatedMetadata, newOrderItems),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
       if (showToast) showToast('Success', `Order #${variables.orderId} successfully modified.`);
@@ -48,8 +48,8 @@ export const useOrders = (showToast) => {
     await statusMutation.mutateAsync({ orderId, newStatus, orderUserId, orderItems });
   };
 
-  const modifyOrder = async (orderId, newTotal, updatedMetadata) => {
-    await editOrderMutation.mutateAsync({ orderId, newTotal, updatedMetadata });
+  const modifyOrder = async (orderId, newTotal, updatedMetadata, newOrderItems = null) => {
+    await editOrderMutation.mutateAsync({ orderId, newTotal, updatedMetadata, newOrderItems });
   };
 
   return { orders: orders || [], isLoading, changeOrderStatus, modifyOrder };

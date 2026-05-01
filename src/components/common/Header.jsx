@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, User, Search, Menu, X, Heart, Sun, Moon, LayoutDashboard } from 'lucide-react';
+import { ShoppingBag, User, Search, Menu, X, Heart, LayoutDashboard } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useShop } from '../../contexts/ShopContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUI } from '../../contexts/UIContext';
+import { useSettings } from '../../contexts/SettingsContext';
 
 const Header = () => {
   const { user, userRole, handleLogout } = useAuth();
   const { cartItems, wishlistItems, showToast } = useShop();
-  const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery, theme, toggleTheme } = useUI();
+  const { setCurrentPage, setIsCartOpen, setIsWishlistOpen, searchQuery, setSearchQuery, theme } = useUI();
+  const { settings } = useSettings();
   const navigate = useNavigate();
 
   const isAdmin = userRole === 'admin';
+  const storeInfo = settings?.storeInfo || {};
+  const storeLogoUrl = storeInfo.storeLogo || "https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg";
+  const storeName = storeInfo.name || "KL SCENTS";
 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -32,7 +37,6 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Main navigation links visible to everyone
   const navLinks = [
     { id: 'welcome',  label: 'Home' },
     { id: 'products', label: 'Collection' },
@@ -74,8 +78,6 @@ const Header = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const isDark = theme === 'dark';
-
   return (
     <>
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-rich-black/95 backdrop-blur-md border-b border-white/5 py-4 shadow-lg' : 'bg-transparent py-6'}`}>
@@ -85,13 +87,13 @@ const Header = () => {
             {/* Logo */}
             <div className="cursor-pointer group flex items-center gap-3" onClick={handleLogoClick}>
               <img
-                src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
-                alt="KL Scents"
+                src={storeLogoUrl}
+                alt={storeName}
                 className="w-10 h-10 rounded-full object-cover border border-white/10 group-hover:border-gold-400/50 transition-colors shadow-lg"
               />
               <div className="hidden sm:flex flex-col leading-tight">
-                <h1 className="text-xl font-bold tracking-widest text-white group-hover:text-gold-400 transition-colors">
-                  KL<span className="text-gold-400">SCENTS</span>
+                <h1 className="text-xl font-bold tracking-widest text-white group-hover:text-gold-400 transition-colors uppercase">
+                  {storeName}
                 </h1>
                 <span className="text-[10px] uppercase tracking-[0.4em] text-gray-400 font-medium -mt-1 group-hover:text-white transition-colors">
                   {isAdmin ? 'Admin Portal' : 'Philippines'}
@@ -99,7 +101,6 @@ const Header = () => {
               </div>
             </div>
 
-            {/* Nav: Main links - visible to admins too now */}
             <nav className="hidden md:flex items-center space-x-8">
               {navLinks.map((link) => (
                 <button
@@ -113,7 +114,6 @@ const Header = () => {
               ))}
             </nav>
 
-            {/* Admin nav pill */}
             {isAdmin && (
               <nav className="hidden md:flex items-center ml-4">
                 <button
@@ -126,18 +126,12 @@ const Header = () => {
             )}
 
             <div className="flex items-center space-x-4 md:space-x-6">
-
-              {/* Search — customer only */}
               {!isAdmin && (
-                <button
-                  onClick={handleSearchClick}
-                  className="text-gray-300 hover:text-gold-400 transition-colors z-10 p-1"
-                >
+                <button onClick={handleSearchClick} className="text-gray-300 hover:text-gold-400 transition-colors z-10 p-1">
                   <Search size={20} />
                 </button>
               )}
 
-              {/* Wishlist — customer only */}
               {!isAdmin && (
                 <button className="relative text-gray-300 hover:text-gold-400 transition-colors" onClick={() => setIsWishlistOpen(true)}>
                   <Heart size={20} />
@@ -149,16 +143,9 @@ const Header = () => {
                 </button>
               )}
 
-              {/* User */}
               {user ? (
                 <div className="relative group flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      if (isAdmin) navigate('/admin');
-                      else setCurrentPage('profile');
-                    }}
-                    className="text-gray-300 hover:text-gold-400 transition-colors py-2"
-                  >
+                  <button onClick={() => { isAdmin ? navigate('/admin') : setCurrentPage('profile'); }} className="text-gray-300 hover:text-gold-400 transition-colors py-2">
                     <User size={20} />
                   </button>
                   <div className="absolute top-full right-0 mt-2 w-36 bg-rich-black border border-white/10 rounded shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
@@ -183,11 +170,8 @@ const Header = () => {
                 </button>
               )}
 
-              {/* Cart — customer only */}
               {!isAdmin && (
-                <button
-                  className="relative"
-                  onClick={(e) => {
+                <button className="relative" onClick={(e) => {
                     e.preventDefault();
                     if (!user) {
                       navigate('/login');
@@ -195,8 +179,7 @@ const Header = () => {
                       return;
                     }
                     setIsCartOpen(true);
-                  }}
-                >
+                  }}>
                   <ShoppingBag size={20} className="text-gray-300 hover:text-gold-400 transition-colors" />
                   {cartItems && cartItems.length > 0 && (
                     <span className="absolute -top-2 -right-2 bg-gold-400 text-rich-black text-[10px] font-bold h-4 w-4 flex items-center justify-center rounded-full">
@@ -206,7 +189,6 @@ const Header = () => {
                 </button>
               )}
 
-              {/* Mobile menu toggle */}
               <button className="md:hidden text-gray-300" onClick={() => setIsMobileMenuOpen(true)}>
                 <Menu size={24} />
               </button>
@@ -215,29 +197,18 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Mobile menu - visible to everyone now, controlled by same logic */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-[60] bg-rich-black/98 backdrop-blur-xl md:hidden flex flex-col items-center justify-center space-y-8 animate-fade-in">
           <button onClick={() => setIsMobileMenuOpen(false)} className="absolute top-6 right-6 text-gray-400 hover:text-white">
             <X size={32} />
           </button>
           {navLinks.map((link) => (
-            <button
-              key={link.id}
-              onClick={() => handleNavClick(link.id)}
-              className="text-2xl font-light text-white hover:text-gold-400 tracking-widest uppercase"
-            >
+            <button key={link.id} onClick={() => handleNavClick(link.id)} className="text-2xl font-light text-white hover:text-gold-400 tracking-widest uppercase">
               {link.label}
             </button>
           ))}
           {isAdmin && (
-            <button
-              onClick={() => {
-                navigate('/admin');
-                setIsMobileMenuOpen(false);
-              }}
-              className="text-2xl font-light text-gold-400 hover:text-gold-300 tracking-widest uppercase mt-4"
-            >
+            <button onClick={() => { navigate('/admin'); setIsMobileMenuOpen(false); }} className="text-2xl font-light text-gold-400 hover:text-gold-300 tracking-widest uppercase mt-4">
               Dashboard
             </button>
           )}

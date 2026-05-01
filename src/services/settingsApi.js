@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS = {
   storeInfo: { 
     name: 'KL Scents', 
     tagline: 'Experience luxury in every drop.', 
+    storeLogo: 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg',
     instagramUrl: 'https://www.instagram.com/klscentsph', 
     facebookUrl: 'https://www.facebook.com/profile.php?id=61568097239499', 
     contactEmail: '', 
@@ -18,13 +19,16 @@ export const DEFAULT_SETTINGS = {
     maxCartItems: 20, 
     spamLimitSeconds: 60, 
   }, 
+  inventory: {
+    lowStockThreshold: 10, // Added threshold setting
+  },
   announcement: { 
     enabled: false, 
     text: 'Free Shipping Nationwide • Artisan Crafted • Extrait de Parfum', 
     bgColor: '#d4af37', 
     textColor: '#000000', 
   },
-  welcomeImages: { // Added dynamic image support for welcome page
+  welcomeImages: {
     hero: [],
     secondary: []
   }
@@ -58,11 +62,10 @@ export const saveSettingsAPI = async (settings) => {
   const { data, error } = await supabase 
     .from('site_settings') 
     .upsert({ id: 1, settings, updated_at: new Date().toISOString() })
-    .select(); // ✨ THIS IS THE MAGIC WORD
+    .select(); 
 
   if (error) throw error; 
   
-  // If RLS blocked it, data will be empty. Throw an error so the frontend knows!
   if (!data || data.length === 0) {
     throw new Error("Action blocked by database security. Are you sure you are an admin?");
   }

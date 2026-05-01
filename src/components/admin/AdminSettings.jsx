@@ -1,11 +1,12 @@
 // src/components/admin/AdminSettings.jsx 
 import React, { useState, useEffect } from 'react'; 
-import { Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2, Store, CreditCard, Truck, Settings, CheckCircle, Image as ImageIcon } from 'lucide-react'; 
+import { Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2, Store, CreditCard, Truck, Settings, CheckCircle, Image as ImageIcon, Box } from 'lucide-react'; 
 import { saveSettingsAPI } from '../../services/settingsApi'; 
 import { logAdminActionAPI } from '../../services/logApi'; 
 import { useSettings } from '../../contexts/SettingsContext'; 
 import { useAuth } from '../../contexts/AuthContext'; 
 import { useShop } from '../../contexts/ShopContext';
+import ImageUploader from '../common/ImageUploader'; // Imported ImageUploader
 
 // ─── Reusable Toggle ───────────────────────────────────────────────────────── 
 const Toggle = ({ checked, onChange, label, description }) => (
@@ -88,6 +89,14 @@ const AdminSettings = () => {
   const setFeature = (key, val) => setDraft(d => ({ ...d, features: { ...d.features, [key]: val } })); 
   const setCheckout = (key, val) => setDraft(d => ({ ...d, checkout: { ...d.checkout, [key]: val } })); 
   const setStore = (key, val) => setDraft(d => ({ ...d, storeInfo: { ...d.storeInfo, [key]: val } }));
+  const setInventory = (key, val) => setDraft(d => ({ ...d, inventory: { ...d.inventory, [key]: val } }));
+
+  // Image Upload Handlers
+  const addHeroImage = (url) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: [...(d.welcomeImages?.hero || []), url] } }));
+  const removeHeroImage = (idx) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: d.welcomeImages.hero.filter((_, i) => i !== idx) } }));
+  
+  const addSecondaryImage = (url) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, secondary: [...(d.welcomeImages?.secondary || []), url] } }));
+  const removeSecondaryImage = (idx) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, secondary: d.welcomeImages.secondary.filter((_, i) => i !== idx) } }));
 
   const handleSave = async () => { 
     setIsSaving(true); 
@@ -145,7 +154,6 @@ const AdminSettings = () => {
         </div>
       </div>
 
-      {/* Unsaved changes banner */}
       {hasChanges && (
         <div className="flex items-center gap-3 px-4 py-3 bg-gold-400/10 border border-gold-400/30 rounded-lg text-sm text-gold-400 animate-fade-in">
           <Settings size={16} className="flex-shrink-0" />
@@ -153,62 +161,79 @@ const AdminSettings = () => {
         </div>
       )}
 
-      {/* ── Welcome Page Images ── */}
-      <Section
-        icon={<ImageIcon size={16} />}
-        title="Welcome Page Images"
-        description="Paste public URLs for your Hero Carousel and Secondary image."
-      >
-        <div className="space-y-4">
-          <ListEditor
-            label="Hero Carousel Images (URLs)"
-            items={draft.welcomeImages?.hero || []}
-            onChange={val => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: val } }))}
-            placeholder="https://..."
-          />
-          <ListEditor
-            label="Secondary Story Images (URLs)"
-            items={draft.welcomeImages?.secondary || []}
-            onChange={val => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, secondary: val } }))}
-            placeholder="https://..."
+      {/* ── Welcome Page Images (UPDATED WITH UPLOADER) ── */}
+      <Section icon={<ImageIcon size={16} />} title="Welcome Page Images" description="Upload images to feature on the welcome page hero carousel and story section.">
+        <div className="space-y-6">
+          
+          {/* Hero Images */}
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-widest mb-3">Hero Carousel Images</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {(draft.welcomeImages?.hero || []).map((url, idx) => (
+                <div key={idx} className="relative group aspect-[4/5] rounded-lg overflow-hidden border border-white/10">
+                  <img src={url} alt={`Hero ${idx + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button onClick={() => removeHeroImage(idx)} className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-500">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="aspect-[4/5] h-full min-h-[200px]">
+                <ImageUploader 
+                  onUploadSuccess={(url) => addHeroImage(url)} 
+                  onError={(err) => showToast('Upload Failed', err, 'error')} 
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full h-px bg-white/10"></div>
+
+          {/* Secondary Story Images */}
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-widest mb-3">Secondary Story Images</label>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {(draft.welcomeImages?.secondary || []).map((url, idx) => (
+                <div key={idx} className="relative group aspect-[4/5] rounded-lg overflow-hidden border border-white/10">
+                  <img src={url} alt={`Story ${idx + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button onClick={() => removeSecondaryImage(idx)} className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-500">
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="aspect-[4/5] h-full min-h-[200px]">
+                <ImageUploader 
+                  onUploadSuccess={(url) => addSecondaryImage(url)} 
+                  onError={(err) => showToast('Upload Failed', err, 'error')} 
+                />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </Section>
+
+      {/* ── Inventory & Stock Settings (NEW) ── */}
+      <Section icon={<Box size={16} />} title="Inventory Settings" description="Configure when stock alerts trigger in your dashboard.">
+        <div>
+          <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Low Stock Threshold</label>
+          <p className="text-xs text-gray-500 mb-3">Products with stock at or below this number will be flagged as Low Stock.</p>
+          <input
+            type="number"
+            min={0}
+            value={draft.inventory?.lowStockThreshold || 0}
+            onChange={e => setInventory('lowStockThreshold', parseInt(e.target.value) || 0)}
+            placeholder="10"
+            className="w-full md:w-1/3 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
           />
         </div>
       </Section>
 
-      {/* ── Payment Methods ── */}
-      <Section
-        icon={<CreditCard size={16} />}
-        title="Payment Methods"
-        description="These options appear in the checkout payment dropdown."
-      >
-        <ListEditor
-          label="Available Payment Options"
-          items={draft.paymentMethods}
-          onChange={val => setDraft(d => ({ ...d, paymentMethods: val }))}
-          placeholder="e.g. Maya, PayPal…"
-        />
-      </Section>
-
-      {/* ── Fulfillment Methods ── */}
-      <Section
-        icon={<Truck size={16} />}
-        title="Fulfillment Methods"
-        description="These options appear in the checkout fulfillment dropdown."
-      >
-        <ListEditor
-          label="Available Fulfillment Options"
-          items={draft.fulfillmentMethods}
-          onChange={val => setDraft(d => ({ ...d, fulfillmentMethods: val }))}
-          placeholder="e.g. Same-Day Delivery…"
-        />
-      </Section>
-
       {/* ── Store Info ── */}
-      <Section
-        icon={<Store size={16} />}
-        title="Store Information"
-        description="Basic store details used in the footer, invoices, and meta info."
-      >
+      <Section icon={<Store size={16} />} title="Store Information" description="Basic store details used in the footer, invoices, and meta info.">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
             { key: 'name',         label: 'Store Name',    placeholder: 'KL Scents' },
@@ -233,11 +258,7 @@ const AdminSettings = () => {
       </Section>
 
       {/* ── Checkout Behaviour ── */}
-      <Section
-        icon={<Settings size={16} />}
-        title="Checkout Behaviour"
-        description="Fine-tune order limits and anti-spam controls."
-      >
+      <Section icon={<Settings size={16} />} title="Checkout Behaviour" description="Fine-tune order limits and anti-spam controls.">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             { key: 'minOrderAmount',   label: 'Min. Order Amount (₱)', min: 0, placeholder: '0 = no minimum' },
@@ -258,17 +279,24 @@ const AdminSettings = () => {
           ))}
         </div>
       </Section>
+      
+      {/* ── Payment Methods ── */}
+      <Section icon={<CreditCard size={16} />} title="Payment Methods" description="These options appear in the checkout payment dropdown.">
+        <ListEditor label="Available Payment Options" items={draft.paymentMethods} onChange={val => setDraft(d => ({ ...d, paymentMethods: val }))} placeholder="e.g. Maya, PayPal…" />
+      </Section>
 
-      {/* Bottom save bar */}
+      {/* ── Fulfillment Methods ── */}
+      <Section icon={<Truck size={16} />} title="Fulfillment Methods" description="These options appear in the checkout fulfillment dropdown.">
+        <ListEditor label="Available Fulfillment Options" items={draft.fulfillmentMethods} onChange={val => setDraft(d => ({ ...d, fulfillmentMethods: val }))} placeholder="e.g. Same-Day Delivery…" />
+      </Section>
+
       <div className="flex justify-end pt-4 border-t border-white/10">
         <button
           onClick={handleSave}
           disabled={isSaving || !hasChanges}
           className="flex items-center gap-2 px-8 py-3 bg-gold-400 hover:bg-gold-300 text-black font-bold rounded-lg shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isSaving
-            ? <><Loader2 size={18} className="animate-spin" /> Saving…</>
-            : <><Save size={18} /> Save Changes</>}
+          {isSaving ? <><Loader2 size={18} className="animate-spin" /> Saving…</> : <><Save size={18} /> Save Changes</>}
         </button>
       </div>
     </div>

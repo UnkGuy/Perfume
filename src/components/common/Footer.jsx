@@ -1,5 +1,5 @@
 import React from 'react'; 
-import { Instagram, Facebook } from 'lucide-react'; 
+import { Instagram, Facebook, Mail, Phone } from 'lucide-react'; 
 import { useNavigate } from 'react-router-dom'; 
 import { useUI } from '../../contexts/UIContext'; 
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,6 +13,7 @@ const Footer = () => {
 
   const isAdmin = userRole === 'admin';
   const storeInfo = settings?.storeInfo || {};
+  const storeLogoUrl = storeInfo.storeLogo || "https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg";
 
   const handleLogoClick = () => { 
     if (isAdmin) { 
@@ -26,12 +27,9 @@ const Footer = () => {
   return (
     <footer className="w-full bg-rich-black border-t border-white/10 py-12 relative z-10 overflow-hidden">
       <div className="container mx-auto px-6 max-w-7xl flex flex-col items-center text-center">
-        <div
-          className="flex items-center gap-4 mb-6 group cursor-pointer"
-          onClick={handleLogoClick}
-        >
+        <div className="flex items-center gap-4 mb-6 group cursor-pointer" onClick={handleLogoClick}>
           <img
-            src="https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/assets-images/kl%20scents%20logo.jpg"
+            src={storeLogoUrl}
             alt={storeInfo.name || "KL Scents"}
             className="w-12 h-12 rounded-full object-cover border border-white/10 group-hover:border-gold-400/50 transition-colors shadow-lg"
           />
@@ -45,9 +43,22 @@ const Footer = () => {
           "{storeInfo.tagline || 'Experience luxury in every drop.'}"
         </p>
 
-        <div className="flex gap-6 mb-10">
-          {storeInfo.instagramUrl && <SocialIcon href={storeInfo.instagramUrl} icon={<Instagram size={20} />} />}
-          {storeInfo.facebookUrl && <SocialIcon href={storeInfo.facebookUrl} icon={<Facebook size={20} />} />}
+        <div className="flex flex-col items-center gap-3 mb-10">
+          <div className="flex gap-6 mb-2">
+            {storeInfo.instagramUrl && <SocialIcon href={storeInfo.instagramUrl} icon={<Instagram size={20} />} />}
+            {storeInfo.facebookUrl && <SocialIcon href={storeInfo.facebookUrl} icon={<Facebook size={20} />} />}
+          </div>
+          
+          {storeInfo.contactEmail && (
+            <a href={`mailto:${storeInfo.contactEmail}`} className="text-gray-400 hover:text-gold-400 transition-colors text-sm flex items-center gap-2">
+              <Mail size={14} /> {storeInfo.contactEmail}
+            </a>
+          )}
+          {storeInfo.contactPhone && (
+            <a href={`tel:${storeInfo.contactPhone}`} className="text-gray-400 hover:text-gold-400 transition-colors text-sm flex items-center gap-2">
+              <Phone size={14} /> {storeInfo.contactPhone}
+            </a>
+          )}
         </div>
 
         <div className="w-full max-w-xs h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8" />

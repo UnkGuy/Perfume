@@ -1,14 +1,18 @@
 import React from 'react';
 import { Printer } from 'lucide-react';
+import { useSettings } from '../../contexts/SettingsContext';
 
 const UserInvoiceModal = ({ order, onClose, userEmail }) => {
+  const { settings } = useSettings();
+  const storeInfo = settings?.storeInfo || {};
+
   const handlePrint = () => {
     const printContent = document.getElementById('printable-user-invoice').innerHTML;
     const printWindow = window.open('', '_blank');
     printWindow.document.write(`
       <html>
         <head>
-          <title>Receipt #${order.id}</title>
+          <title>Receipt #${order.id} - ${storeInfo.name || 'KL Scents'}</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @page { size: auto; margin: 15mm; }
@@ -43,8 +47,8 @@ const UserInvoiceModal = ({ order, onClose, userEmail }) => {
       <div className="bg-white text-black w-full max-w-2xl p-10 md:p-12 rounded-xl shadow-2xl overflow-y-auto max-h-[90vh]" id="printable-user-invoice">
         <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-widest text-gray-900">KL SCENTS</h1>
-            <p className="text-sm text-gray-500 mt-1">Premium Fragrance Collection</p>
+            <h1 className="text-3xl font-extrabold tracking-widest text-gray-900 uppercase">{storeInfo.name || 'KL SCENTS'}</h1>
+            <p className="text-sm text-gray-500 mt-1">{storeInfo.tagline || 'Premium Fragrance Collection'}</p>
           </div>
           <div className="text-right">
             <h2 className="text-xl font-bold text-gray-800">RECEIPT</h2>
@@ -120,7 +124,7 @@ const UserInvoiceModal = ({ order, onClose, userEmail }) => {
         </div>
 
         <div className="mt-16 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
-          <p>Thank you for shopping with KL Scents.</p>
+          <p>Thank you for shopping with {storeInfo.name || 'KL Scents'}.</p>
           <p className="mt-1">If you have any questions concerning this invoice, please message us via the support widget.</p>
         </div>
       </div>

@@ -1,9 +1,9 @@
-// src/components/admin/AdminOrders.jsx
 import React, { useState } from 'react'; 
-import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2, Plus, Trash2 } from 'lucide-react'; 
+import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2, Plus, Trash2, Minus } from 'lucide-react'; 
 import { useOrders } from '../../hooks/useOrders'; 
 import { useShop } from '../../contexts/ShopContext';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useProducts } from '../../hooks/useAdminProducts';
 
 const statusClass = (status) => 
   status === 'pending' 
@@ -50,20 +50,10 @@ const AdminOrders = ({ onNavigateToMessages }) => {
             </div>
             <div className="relative flex-1 min-w-[180px]">
               <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Search by email…"
-                value={emailSearch}
-                onChange={e => setEmailSearch(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
-              />
+              <input type="text" placeholder="Search by email…" value={emailSearch} onChange={e => setEmailSearch(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors" />
             </div>
 
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors"
-            >
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors">
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
               <option value="shipped">Shipped</option>
@@ -71,16 +61,12 @@ const AdminOrders = ({ onNavigateToMessages }) => {
               <option value="canceled">Canceled</option>
             </select>
 
-            <button
-              onClick={() => onNavigateToMessages?.()}
-              className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold"
-            >
+            <button onClick={() => onNavigateToMessages?.()} className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold">
               <MessageCircle size={16} /> Open Messages
             </button>
           </div>
         </div>
 
-        {/* Desktop Table */}
         <div className="hidden md:block overflow-x-auto w-full">
           <table className="w-full text-left border-collapse whitespace-nowrap min-w-[600px]">
             <thead>
@@ -101,31 +87,20 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                     <td className="p-4 truncate max-w-[150px]" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</td>
                     <td className="p-4 font-bold text-white">₱{Number(order.total_amount).toLocaleString()}</td>
                     <td className="p-4">
-                      <select
-                        value={order.status}
-                        onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
-                        className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center w-full max-w-[100px] ${statusClass(order.status)}`}
-                      >
-                        <option value="pending"   className="bg-rich-black text-white">Pending</option>
-                        <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
+                      <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)} className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center w-full max-w-[100px] ${statusClass(order.status)}`}>
+                        <option value="pending" className="bg-rich-black text-white">Pending</option>
+                        <option value="shipped" className="bg-rich-black text-white">Shipped</option>
                         <option value="completed" className="bg-rich-black text-white">Completed</option>
-                        <option value="canceled"  className="bg-rich-black text-white">Canceled</option>
+                        <option value="canceled" className="bg-rich-black text-white">Canceled</option>
                       </select>
                     </td>
                     <td className="p-4 flex justify-end gap-2">
                       <button onClick={() => setInvoiceOrder(order)} className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
                         <FileText size={16} />
                       </button>
-                      
-                      {/* Added: Desktop Message Button */}
-                      <button 
-                        onClick={() => onNavigateToMessages?.(order.user_id)} 
-                        className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" 
-                        title="Message User"
-                      >
+                      <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" title="Message User">
                         <MessageCircle size={16} />
                       </button>
-
                       <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}>
                         {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -173,26 +148,16 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                 <p className="text-xs sm:text-sm text-gray-300 truncate" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</p>
               </div>
               <div className="flex justify-between items-center gap-2 sm:gap-3 w-full">
-                <select
-                  value={order.status}
-                  onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)}
-                  className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center min-w-0 ${statusClass(order.status)}`}
-                >
-                  <option value="pending"   className="bg-rich-black text-white">Pending</option>
-                  <option value="shipped"   className="bg-rich-black text-white">Shipped</option>
+                <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)} className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center min-w-0 ${statusClass(order.status)}`}>
+                  <option value="pending" className="bg-rich-black text-white">Pending</option>
+                  <option value="shipped" className="bg-rich-black text-white">Shipped</option>
                   <option value="completed" className="bg-rich-black text-white">Completed</option>
-                  <option value="canceled"  className="bg-rich-black text-white">Canceled</option>
+                  <option value="canceled" className="bg-rich-black text-white">Canceled</option>
                 </select>
                 <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
-                  <button onClick={() => setInvoiceOrder(order)} className="p-1.5 sm:p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
-                    <FileText size={16} />
-                  </button>
-                  <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-colors">
-                    {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                  <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-1.5 sm:p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors">
-                    <MessageCircle size={16} />
-                  </button>
+                  <button onClick={() => setInvoiceOrder(order)} className="p-1.5 sm:p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice"><FileText size={16} /></button>
+                  <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-colors">{expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+                  <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-1.5 sm:p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"><MessageCircle size={16} /></button>
                 </div>
               </div>
             </div>
@@ -206,6 +171,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
 };
 
 const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => { 
+  const { products } = useProducts();
   const [isEditing, setIsEditing] = useState(false); 
   const [editData, setEditData] = useState({ 
     address: order.metadata?.address || order.metadata?.location || '', 
@@ -215,6 +181,9 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
     payment_preference: order.metadata?.payment_preference || '', 
     custom_fees: order.metadata?.custom_fees || [] 
   });
+  
+  const [editItems, setEditItems] = useState(order.order_items || []);
+  const [newItemId, setNewItemId] = useState('');
 
   const storeInfo = settings?.storeInfo || {};
 
@@ -229,7 +198,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
         <head> 
           <title>Invoice #${order.id} - ${storeInfo.name || 'KL Scents'}</title> 
           <script src="https://cdn.tailwindcss.com"></script> 
-          <style> @page { size: auto; margin: 15mm; } body { font-family: sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; color: black; } </style> 
+          <style> @page { size: auto; margin: 15mm; } body { font-family: sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; color: black; } .no-print { display: none !important; } </style> 
         </head> 
         <body class="bg-white"> 
           <div class="max-w-3xl mx-auto py-8"> 
@@ -242,11 +211,44 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
     printWindow.document.close(); 
   };
 
-  const baseTotal = order.order_items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0); 
+  const baseTotal = editItems.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0); 
   const feesTotal = editData.custom_fees.reduce((sum, fee) => sum + Number(fee.amount), 0); 
   const grandTotal = baseTotal + feesTotal;
 
   const handleFieldChange = (field, value) => setEditData({ ...editData, [field]: value });
+
+  const updateItemQty = (idx, delta) => {
+    const updated = [...editItems];
+    const newQty = updated[idx].quantity + delta;
+    if (newQty > 0) {
+      updated[idx].quantity = newQty;
+      setEditItems(updated);
+    }
+  };
+
+  const removeItem = (idx) => {
+    const updated = editItems.filter((_, i) => i !== idx);
+    setEditItems(updated);
+  };
+
+  const handleAddItem = () => {
+    if (!newItemId) return;
+    const product = products.find(p => p.id === Number(newItemId));
+    if (!product) return;
+    
+    const defaultVariant = product.product_variants?.[0];
+    const newItem = {
+      product_id: product.id,
+      variant_id: defaultVariant?.id,
+      quantity: 1,
+      price_at_time: defaultVariant?.price || 0,
+      products: product,
+      product_variants: defaultVariant
+    };
+    
+    setEditItems([...editItems, newItem]);
+    setNewItemId('');
+  };
 
   const handleAddFee = () => { 
     if (!newFeeName || !newFeeAmount) return; 
@@ -260,7 +262,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
   };
 
   const handleSave = () => { 
-    modifyOrder(order.id, grandTotal, editData); 
+    modifyOrder(order.id, grandTotal, editData, editItems); 
     setIsEditing(false); 
   };
 
@@ -269,14 +271,14 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
       <div className="absolute top-4 right-4 flex gap-2">
         {order.status === 'pending' && ( 
           <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-4 py-2 rounded font-bold shadow-lg transition-colors ${isEditing ? 'bg-red-500 text-white' : 'bg-blue-500 text-white hover:bg-blue-400'}`} > 
-            {isEditing ? 'Cancel Edit' : 'Edit Invoice'} 
+            {isEditing ? 'Cancel Edit' : 'Edit Invoice & Items'} 
           </button> 
         )} 
         <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded font-bold shadow-lg transition-colors"><Printer size={18}/> Print PDF</button>
         <button onClick={onClose} className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded font-bold transition-colors">Close</button>
       </div>
 
-      <div className="bg-gray-100 w-full max-w-4xl rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col md:flex-row">
+      <div className="bg-gray-100 w-full max-w-5xl rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col md:flex-row">
         
         <div className="flex-1 bg-white p-10 text-black min-w-0" id="printable-invoice-area">
           <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
@@ -319,20 +321,39 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-sm text-gray-800">
-              {order.order_items.map((item, idx) => {
+              {editItems.map((item, idx) => {
                 const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
                 return (
-                  <tr key={idx}>
+                  <tr key={idx} className={isEditing ? 'bg-yellow-50/50' : ''}>
                     <td className="py-4 min-w-0">
-                      <p className="font-bold truncate">{item.products?.name}</p>
+                      <p className="font-bold truncate flex items-center gap-2">
+                        {isEditing && (
+                          <button onClick={() => removeItem(idx)} className="no-print p-1 bg-red-100 text-red-600 hover:bg-red-200 rounded" title="Remove Item"><Trash2 size={12} /></button>
+                        )}
+                        {item.products?.name}
+                      </p>
                       <p className="text-xs text-gray-500 truncate">{variant?.size || 'Standard'}</p>
                     </td>
-                    <td className="py-4 text-center">{item.quantity}</td>
+                    <td className="py-4 text-center">
+                      {isEditing ? (
+                        <div className="no-print flex items-center justify-center gap-2">
+                          <button onClick={() => updateItemQty(idx, -1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Minus size={10} /></button>
+                          <span className="w-4">{item.quantity}</span>
+                          <button onClick={() => updateItemQty(idx, 1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Plus size={10} /></button>
+                        </div>
+                      ) : (
+                        item.quantity
+                      )}
+                      {isEditing && <span className="hidden print:inline">{item.quantity}</span>}
+                    </td>
                     <td className="py-4 text-right truncate">₱{item.price_at_time.toLocaleString()}</td>
                     <td className="py-4 text-right font-medium truncate">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
                   </tr>
                 )
               })}
+              {editItems.length === 0 && (
+                <tr><td colSpan="4" className="py-4 text-center text-gray-500 italic">No items left in order. Add items or cancel order.</td></tr>
+              )}
             </tbody>
           </table>
 
@@ -346,7 +367,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
                 <div key={idx} className="flex justify-between text-sm text-gray-600 group">
                   <span className="flex items-center min-w-0">
                     <span className="truncate">{fee.name}</span>
-                    {isEditing && <button onClick={() => handleRemoveFee(idx)} className="text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block flex-shrink-0" title="Remove from print view completely">Remove</button>}
+                    {isEditing && <button onClick={() => handleRemoveFee(idx)} className="no-print text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block flex-shrink-0" title="Remove fee">Remove</button>}
                   </span>
                   <span className="flex-shrink-0">{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
                 </div>
@@ -365,9 +386,13 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
         </div>
 
         {isEditing && (
-          <div className="w-full md:w-80 bg-gray-50 p-6 border-l border-gray-200 animate-fade-in flex flex-col gap-4 text-sm text-gray-800 flex-shrink-0">
+          <div className="w-full md:w-80 bg-gray-50 p-6 border-l border-gray-200 animate-fade-in flex flex-col gap-4 text-sm text-gray-800 flex-shrink-0 overflow-y-auto">
             <h3 className="font-bold text-lg border-b border-gray-200 pb-2 flex items-center gap-2"><Edit2 size={18}/> Edit Details</h3>
             
+            <div className="bg-yellow-100 text-yellow-800 p-3 rounded text-xs">
+              <strong>Order Modifying enabled.</strong> You can add products, remove items, change quantities, and modify fees.
+            </div>
+
             <div className="flex flex-col gap-1">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Address</label>
               <textarea value={editData.address} onChange={e => handleFieldChange('address', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 h-20 resize-none" />
@@ -395,6 +420,19 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
             </div>
 
             <div className="border-t border-gray-200 pt-4 mt-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Add Product</label>
+              <div className="flex gap-2">
+                <select value={newItemId} onChange={e => setNewItemId(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 flex-1 text-xs">
+                  <option value="">Select a product...</option>
+                  {products?.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} - ₱{p.product_variants?.[0]?.price || 0}</option>
+                  ))}
+                </select>
+                <button onClick={handleAddItem} className="bg-blue-600 text-white rounded px-3 py-2 hover:bg-blue-700 text-xs font-bold"><Plus size={14}/></button>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4 mt-2">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Custom Fees/Discounts</label>
               <div className="flex gap-2">
                 <input placeholder="Name" value={newFeeName} onChange={e => setNewFeeName(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/2 min-w-0" />
@@ -403,7 +441,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
               </div>
             </div>
 
-            <button onClick={handleSave} className="mt-auto bg-green-600 text-white font-bold py-3 rounded shadow hover:bg-green-700 transition-colors uppercase tracking-widest text-sm">
+            <button onClick={handleSave} className="mt-4 mb-2 bg-green-600 text-white font-bold py-3 rounded shadow hover:bg-green-700 transition-colors uppercase tracking-widest text-sm">
               Save Changes
             </button>
           </div>
