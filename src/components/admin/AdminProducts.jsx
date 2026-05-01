@@ -28,6 +28,7 @@ const AdminProducts = () => {
   const dynamicNotes    = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))];
   const allDisplayNotes = [...new Set([...dynamicNotes, ...formData.notes])].sort();
   
+  const allDisplayBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
   const allDisplaySizes = [...new Set(products.flatMap(p => p.product_variants?.map(v => v.size) || []).filter(Boolean))].sort();
 
   useEffect(() => { setActivePage(1); setSelectedIds(new Set()); }, [searchQuery]);
@@ -216,7 +217,8 @@ const AdminProducts = () => {
               ) : paginatedProducts.map(product => {
                 const variants = product.product_variants || [];
                 const lowestPrice = variants.length > 0 ? Math.min(...variants.map(v => v.price)) : 0;
-                const totalStock = variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
+                const hasInfiniteStock = variants.some(v => v.stock_count === null || v.stock_count === '');
+                const totalStock = hasInfiniteStock ? '∞' : variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
                 
                 return (
                   <tr key={product.id} className={`hover:bg-white/5 transition-colors ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}>
@@ -231,7 +233,7 @@ const AdminProducts = () => {
                       </div>
                     </td>
                     <td className="p-4 text-right"><span className="text-gold-400 font-medium">₱{lowestPrice.toLocaleString()}</span></td>
-                    <td className="p-4 text-right"><span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300">{totalStock}</span></td>
+                    <td className="p-4 text-right"><span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300 font-bold">{totalStock}</span></td>
                     <td className="p-4 text-right">{statusBadge(product.available)}</td>
                     <td className="p-4 flex justify-end gap-2 text-right">
                       <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit"><Edit2 size={16} /></button>
@@ -282,7 +284,7 @@ const AdminProducts = () => {
       <ProductFormModal
         isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSave}
         isSaving={isSaving} editingProduct={editingProduct} formData={formData} setFormData={setFormData}
-        allDisplayNotes={allDisplayNotes} allDisplaySizes={allDisplaySizes} customNoteInput={customNoteInput} setCustomNoteInput={setCustomNoteInput}
+        allDisplayBrands={allDisplayBrands} allDisplayNotes={allDisplayNotes} allDisplaySizes={allDisplaySizes} customNoteInput={customNoteInput} setCustomNoteInput={setCustomNoteInput}
         onAddCustomNote={handleAddCustomNote} onNoteToggle={handleNoteToggle} onRemoveImage={handleRemoveImage} showToast={showToast}
         onAIGenerate={() => showToast('AI Magic', 'AI Description Generation coming in V3! 🪄')}
         onAddVariant={handleAddVariant} onRemoveVariant={handleRemoveVariant} onVariantChange={handleVariantChange}

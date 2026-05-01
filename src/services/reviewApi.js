@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 export const fetchReviewsAPI = async (productId) => {
   const { data, error } = await supabase
     .from('reviews')
-    .select('*')
+    .select('*, profiles(email)')
     .eq('product_id', productId)
     .eq('status', 'approved') // Only fetch approved reviews for the frontend
     .order('created_at', { ascending: false });
@@ -16,7 +16,7 @@ export const fetchReviewsAPI = async (productId) => {
 export const fetchPendingReviewsAPI = async () => {
   const { data, error } = await supabase
     .from('reviews')
-    .select('*, products(name)') // Join product name to easily identify what is being reviewed
+    .select('*, products(name), profiles(email)') // Join product name to easily identify what is being reviewed
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
 
@@ -24,7 +24,6 @@ export const fetchPendingReviewsAPI = async () => {
   return data;
 };
 
-// Admin specific update status function
 // Admin specific update status function
 export const updateReviewStatusAPI = async (reviewId, status) => {
   const { data, error } = await supabase
@@ -60,7 +59,7 @@ export const checkUserPurchasedAPI = async (userId, productId) => {
   return data && data.length > 0;
 };
 
-export const submitReviewAPI = async (productId, userId, rating, comment) => {
+export const submitReviewAPI = async (productId, userId, rating, comment, isAnonymous) => {
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     throw new Error('Rating must be between 1 and 5.');
   }
@@ -68,13 +67,16 @@ export const submitReviewAPI = async (productId, userId, rating, comment) => {
     throw new Error('Review comment is too long (max 1000 characters).');
   }
 
+  let finalComment = comment?.trim() || '';
+  if (isAnonymous) finalComment = `[ANON]${finalComment}`;
+
   const { error } = await supabase
     .from('reviews')
     .insert([{
       product_id: productId,
       user_id: userId,
       rating,
-      comment: comment?.trim() || null,
+      comment: finalComment || null,
       status: 'pending' // Force new reviews to pending
     }]);
 

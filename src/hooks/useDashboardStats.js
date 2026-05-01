@@ -22,7 +22,8 @@ export const useDashboardStats = () => {
     products.forEach(p => {
       if (p.product_variants) {
         p.product_variants.forEach(v => {
-          if (v.stock_count <= threshold) {
+          // Ignores completely blank/null items (interpreted as infinite stock)
+          if (v.stock_count !== null && v.stock_count !== '' && v.stock_count <= threshold) {
             lowStockVariants.push({
               ...v,
               products: { name: p.name, brand: p.brand }

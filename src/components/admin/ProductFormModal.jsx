@@ -9,7 +9,7 @@ const Counter = ({ value = '', max }) => ( <span className={`text-xs ${nearLimit
 
 const ProductFormModal = ({
   isOpen, onClose, onSave, isSaving, editingProduct, formData, setFormData,
-  allDisplayNotes, allDisplaySizes, customNoteInput, setCustomNoteInput, onAddCustomNote,
+  allDisplayBrands, allDisplayNotes, allDisplaySizes, customNoteInput, setCustomNoteInput, onAddCustomNote,
   onNoteToggle, onRemoveImage, showToast, onAIGenerate,
   onAddVariant, onRemoveVariant, onVariantChange
 }) => {
@@ -36,7 +36,17 @@ const ProductFormModal = ({
               <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
                 <span>Brand</span><Counter value={formData.brand} max={LIMITS.brand} />
               </label>
-              <input required type="text" maxLength={LIMITS.brand} value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })} placeholder="e.g. Maison Francis Kurkdjian" className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.brand, LIMITS.brand)}`} />
+              <input required type="text" maxLength={LIMITS.brand} value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })} placeholder="Type a brand or select below" className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.brand, LIMITS.brand)}`} />
+              
+              {allDisplayBrands?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3 max-h-24 overflow-y-auto custom-scrollbar">
+                  {allDisplayBrands.map(b => (
+                    <button key={b} type="button" onClick={() => setFormData({ ...formData, brand: b })} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${formData.brand === b ? 'bg-gold-400 text-black border-gold-400' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50'}`}>
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Gender Focus</label>
@@ -59,16 +69,23 @@ const ProductFormModal = ({
               </button>
             </div>
 
-            <div className="space-y-3 pl-2">
+            <div className="space-y-4 pl-2">
               {formData.variants.map((variant, idx) => (
                 <div key={idx} className="bg-black/50 border border-white/10 rounded-lg p-3 relative group">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 items-start">
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size (Add unit e.g. ml) *</label>
-                      <input list={`size-options-${idx}`} required type="text" value={variant.size} onChange={e => onVariantChange(idx, 'size', e.target.value)} placeholder="e.g. 50ml" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
-                      <datalist id={`size-options-${idx}`}>
-                        {allDisplaySizes && allDisplaySizes.map(s => <option key={s} value={s} />)}
-                      </datalist>
+                      <input required type="text" value={variant.size} onChange={e => onVariantChange(idx, 'size', e.target.value)} placeholder="e.g. 50ml" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                      
+                      {allDisplaySizes?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2 max-h-20 overflow-y-auto custom-scrollbar">
+                          {allDisplaySizes.map(s => (
+                            <button key={s} type="button" onClick={() => onVariantChange(idx, 'size', s)} className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-all duration-200 ${variant.size === s ? 'bg-gold-400 text-black border-gold-400' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50'}`}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Selling Price (₱) *</label>

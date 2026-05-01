@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Plus, Trash2, Loader2, Tag, Calendar, AlertCircle } from 'lucide-react';
 import { useShop } from '../../contexts/ShopContext';
 import { usePromos } from '../../hooks/usePromos';
@@ -14,6 +14,7 @@ const AdminPromos = () => {
   const [expiry, setExpiry]   = useState('');
   const [limit, setLimit]     = useState('');
   const [formErrors, setFormErrors] = useState({});
+  const expiryRef = useRef(null);
 
   const validateForm = () => {
     const errors = {};
@@ -63,9 +64,10 @@ const AdminPromos = () => {
     formErrors[field] ? (
       <p className="flex items-center gap-1 text-red-400 text-xs mt-1"><AlertCircle size={11} />{formErrors[field]}</p>
     ) : null;
-const todayLocal = new Date();
-todayLocal.setMinutes(todayLocal.getMinutes() - todayLocal.getTimezoneOffset());
-const minDateString = todayLocal.toISOString().split('T')[0];
+    
+  const todayLocal = new Date();
+  todayLocal.setMinutes(todayLocal.getMinutes() - todayLocal.getTimezoneOffset());
+  const minDateString = todayLocal.toISOString().split('T')[0];
 
   return (
     <div className="animate-fade-in space-y-8">
@@ -77,8 +79,8 @@ const minDateString = todayLocal.toISOString().split('T')[0];
       {/* Create form */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-6">
         <h4 className="text-sm font-bold uppercase tracking-widest text-gold-400 mb-4 flex items-center gap-2">
-  Create New Code
-</h4>
+          Create New Code
+        </h4>
         <form onSubmit={handleCreate} className="flex flex-wrap items-start gap-4">
           <div className="flex-1 min-w-[150px]">
             <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Code Name</label>
@@ -100,11 +102,21 @@ const minDateString = todayLocal.toISOString().split('T')[0];
           </div>
           <div className="flex-1 min-w-[150px]">
             <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Expiry Date (Opt)</label>
-            <input type="date" value={expiry}
-  onChange={e => { setExpiry(e.target.value); setFormErrors(f => ({...f, expiry: ''})); }}
-  min={minDateString}
-  className={inputClass('expiry')}
-/>
+            <div className="relative w-full">
+              <input ref={expiryRef} type="date" value={expiry}
+                onChange={e => { setExpiry(e.target.value); setFormErrors(f => ({...f, expiry: ''})); }}
+                min={minDateString}
+                className={`${inputClass('expiry')} pr-10`}
+              />
+              <button 
+                type="button" 
+                onClick={() => expiryRef.current?.showPicker && expiryRef.current.showPicker()} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gold-400 transition-colors"
+                title="Open Calendar"
+              >
+                <Calendar size={16} />
+              </button>
+            </div>
             <ErrorMsg field="expiry" />
           </div>
           <div className="w-36">

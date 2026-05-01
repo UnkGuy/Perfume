@@ -9,6 +9,17 @@ import { useUI } from '../../contexts/UIContext';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
+const maskEmail = (email) => {
+  if (!email) return 'User';
+  const parts = email.split('@');
+  if (parts.length !== 2) return email;
+  const [name, domain] = parts;
+  if (name.length <= 2) return `${name[0]}***@${domain}`;
+  const first = name.slice(0, 2);
+  const last = name.slice(-1);
+  return `${first}***${last}@${domain}`;
+};
+
 const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
   const { user, userRole } = useAuth();
   const { addToCart, toggleWishlist, wishlistItems, showToast } = useShop();
@@ -164,19 +175,30 @@ const ProductDetails = ({ product, onBack, onSelect, onQuickView }) => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-5xl mx-auto">
-            {reviews.map(review => (
-              <div key={review.id} className="bg-white/5 p-6 rounded-xl border border-white/10 w-full min-w-0">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} size={16} className={i < review.rating ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} />
-                  ))}
+            {reviews.map(review => {
+              let displayComment = review.comment || '';
+              let isAnon = false;
+              if (displayComment.startsWith('[ANON]')) {
+                isAnon = true;
+                displayComment = displayComment.replace('[ANON]', '');
+              }
+              const reviewerName = isAnon ? 'Anonymous' : maskEmail(review.profiles?.email);
+
+              return (
+                <div key={review.id} className="bg-white/5 p-6 rounded-xl border border-white/10 w-full min-w-0">
+                  <div className="flex gap-1 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} size={16} className={i < review.rating ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} />
+                    ))}
+                  </div>
+                  <p className="text-gray-300 text-sm leading-relaxed break-words">{displayComment}</p>
+                  <div className="mt-4 pt-4 border-t border-white/10 text-xs text-gray-500 flex justify-between items-center">
+                    <span className="flex items-center gap-1.5"><UserIcon size={12} /> {reviewerName}</span>
+                    <span>Posted on {new Date(review.created_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
-                <p className="text-gray-300 text-sm leading-relaxed break-words">{review.comment}</p>
-                <div className="mt-4 pt-4 border-t border-white/10 text-xs text-gray-500">
-                  Posted on {new Date(review.created_at).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

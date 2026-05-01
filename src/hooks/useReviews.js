@@ -17,16 +17,16 @@ export const useReviews = (productId, fallbackRating) => {
   const averageRating = reviewList.length > 0 ? (reviewList.reduce((acc, curr) => acc + curr.rating, 0) / reviewList.length).toFixed(1) : (fallbackRating > 0 ? fallbackRating : 0);
 
   const submitMutation = useMutation({ 
-    mutationFn: ({ rating, comment }) => submitReviewAPI(productId, user.id, rating, comment), 
+    mutationFn: ({ rating, comment, isAnonymous }) => submitReviewAPI(productId, user.id, rating, comment, isAnonymous), 
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: ['reviews', productId] }); 
       queryClient.invalidateQueries({ queryKey: ['admin-pending-reviews'] }); 
     }, 
   });
 
-  const submitNewReview = async (rating, comment) => { 
+  const submitNewReview = async (rating, comment, isAnonymous) => { 
     if (!user) throw new Error("Must be logged in to review."); 
-    await submitMutation.mutateAsync({ rating, comment }); 
+    await submitMutation.mutateAsync({ rating, comment, isAnonymous }); 
   };
 
   const hasReviewed = user ? reviewList.some(r => r.user_id === user.id) : false; 

@@ -8,6 +8,7 @@ const ReviewModal = ({ isOpen, onClose, product, submitNewReview, showToast }) =
   const [rating, setRating]         = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment]       = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError]           = useState('');
 
@@ -22,7 +23,7 @@ const ReviewModal = ({ isOpen, onClose, product, submitNewReview, showToast }) =
 
     setIsSubmitting(true);
     try {
-      await submitNewReview(rating, comment);
+      await submitNewReview(rating, comment, isAnonymous);
       if (showToast) showToast('Success', 'Your review has been published!');
       onClose();
     } catch (err) {
@@ -81,8 +82,21 @@ const ReviewModal = ({ isOpen, onClose, product, submitNewReview, showToast }) =
               onChange={e => setComment(e.target.value)}
               maxLength={MAX_COMMENT}
               placeholder="What did you like or dislike? How long did the scent last?"
-              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors resize-none h-32"
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors resize-none h-32 custom-scrollbar"
             />
+          </div>
+
+          <div className="flex items-center gap-3 bg-white/5 p-3 rounded-lg border border-white/10">
+            <input 
+              type="checkbox" 
+              id="anonymous" 
+              checked={isAnonymous} 
+              onChange={e => setIsAnonymous(e.target.checked)} 
+              className="w-4 h-4 accent-gold-400 cursor-pointer"
+            />
+            <label htmlFor="anonymous" className="text-sm text-gray-300 cursor-pointer select-none">
+              Post anonymously <span className="text-gray-500 text-xs ml-1">(hide my email)</span>
+            </label>
           </div>
 
           <button type="submit" disabled={isSubmitting}
