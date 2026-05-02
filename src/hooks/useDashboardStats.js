@@ -4,13 +4,13 @@ import { useProducts } from './useAdminProducts';
 import { useSettings } from '../contexts/SettingsContext';
 import { useMemo } from 'react';
 
-export const useDashboardStats = () => {
+export const useDashboardStats = (days = 30) => {
   const { settings } = useSettings();
   const { products } = useProducts();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['dashboardStats'],
-    queryFn: fetchDashboardStatsAPI,
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['dashboardStats', days], // Refetch automatically when days change
+    queryFn: () => fetchDashboardStatsAPI(days),
     staleTime: 1000 * 60 * 15,
   });
 
@@ -22,7 +22,6 @@ export const useDashboardStats = () => {
     products.forEach(p => {
       if (p.product_variants) {
         p.product_variants.forEach(v => {
-          // Ignores completely blank/null items (interpreted as infinite stock)
           if (v.stock_count !== null && v.stock_count !== '' && v.stock_count <= threshold) {
             lowStockVariants.push({
               ...v,
@@ -40,10 +39,10 @@ export const useDashboardStats = () => {
   }, [products, settings?.inventory?.lowStockThreshold]);
 
   const stats = {
-    ...(data || { inquiries: 0, revenue: 0, activeUsers: 0 }),
+    ...(data || { pendingOrders: 0, unreadMessages: 0, pendingReviews: 0, revenue: 0, activeUsers: 0 }),
     outOfStock: dynamicOutOfStock, 
     lowStockProducts: dynamicLowStockProducts
   };
 
-  return { stats, isLoading };
+  return { stats, isLoading, refetch };
 };

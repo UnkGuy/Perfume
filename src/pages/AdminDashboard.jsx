@@ -133,7 +133,7 @@ const AdminDashboard = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-white">{tabLabel}</h2>
           </header>
           <div className="min-h-[500px]">
-            {activeTab === 'overview'  && <AdminOverview />}
+            {activeTab === 'overview'  && <AdminOverview onNavigate={handleTabClick} />}
             {activeTab === 'orders'    && <AdminOrders onNavigateToMessages={(userId) => handleTabClick('messages', userId)} />}
             {activeTab === 'messages'  && <AdminMessages defaultSelectedUser={targetMessageUser} />}
             {activeTab === 'products'  && <AdminProducts />}
