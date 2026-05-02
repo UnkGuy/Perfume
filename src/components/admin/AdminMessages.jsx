@@ -149,21 +149,29 @@ const AdminMessages = ({ defaultSelectedUser }) => {
             <button
               key={chat.id}
               onClick={() => setSelectedUser(chat.id)}
-              className={`w-full p-4 flex items-center gap-3 text-left transition-colors border-b border-white/5 ${selectedUser === chat.id ? 'bg-gold-400/10' : 'hover:bg-white/5'}`}
+              className={`w-full p-4 flex items-center gap-3 text-left transition-colors border-b border-white/5 relative ${selectedUser === chat.id ? 'bg-gold-400/10' : 'hover:bg-white/5'}`}
             >
               <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedUser === chat.id ? 'bg-gold-400 text-black' : 'bg-white/10 text-white'}`}>
                 <User size={16} />
               </div>
               <div className="overflow-hidden flex-1">
                 <div className="flex justify-between items-center mb-0.5">
-                  <p className={`text-sm truncate pr-2 ${selectedUser === chat.id ? 'text-gold-400 font-bold' : 'text-gray-300'}`}>
+                  <p className={`text-sm truncate pr-2 ${selectedUser === chat.id ? 'text-gold-400 font-bold' : (chat.hasUnread ? 'text-white font-bold' : 'text-gray-300')}`}>
                     {chat.email}
                   </p>
-                  <p className="text-[10px] text-gray-500 flex-shrink-0">
-                    {new Date(chat.lastActive).toLocaleDateString()}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    {/* Unread indicator */}
+                    {chat.hasUnread && selectedUser !== chat.id && (
+                      <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0 animate-pulse"></span>
+                    )}
+                    <p className="text-[10px] text-gray-500 flex-shrink-0">
+                      {new Date(chat.lastActive).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 truncate">Tap to view messages...</p>
+                <p className={`text-xs truncate ${chat.hasUnread && selectedUser !== chat.id ? 'text-gray-300 font-medium' : 'text-gray-500'}`}>
+                  {chat.hasUnread ? 'New message...' : 'Tap to view messages...'}
+                </p>
               </div>
             </button>
           ))}

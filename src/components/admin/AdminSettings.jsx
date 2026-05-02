@@ -7,8 +7,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useShop } from '../../contexts/ShopContext';
 import ImageUploader from '../common/ImageUploader';
 
-// ... (Toggle, ListEditor, and Section components remain exactly the same as your code)
-
 const Toggle = ({ checked, onChange, label, description }) => (
   <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
     <div>
@@ -84,7 +82,6 @@ const AdminSettings = () => {
   const setCheckout = (key, val) => setDraft(d => ({ ...d, checkout: { ...d.checkout, [key]: val } })); 
   const setStore = (key, val) => setDraft(d => ({ ...d, storeInfo: { ...d.storeInfo, [key]: val } }));
   const setInventory = (key, val) => setDraft(d => ({ ...d, inventory: { ...d.inventory, [key]: val } }));
-  // ✨ Helper to update legal fields
   const setLegal = (key, val) => setDraft(d => ({ ...d, legal: { ...d.legal, [key]: val } }));
 
   const addHeroImage = (url) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: [...(d.welcomeImages?.hero || []), url] } }));
@@ -176,6 +173,7 @@ const AdminSettings = () => {
               ))}
               <div className="aspect-[4/5] h-full min-h-[200px]">
                 <ImageUploader 
+                  bucketName="assets-images" // <-- ADDED BUCKET PROP
                   onUploadSuccess={(url) => addHeroImage(url)} 
                   onError={(err) => showToast('Upload Failed', err, 'error')} 
                 />
@@ -201,6 +199,7 @@ const AdminSettings = () => {
               ))}
               <div className="aspect-[4/5] h-full min-h-[200px]">
                 <ImageUploader 
+                  bucketName="assets-images" // <-- ADDED BUCKET PROP
                   onUploadSuccess={(url) => addSecondaryImage(url)} 
                   onError={(err) => showToast('Upload Failed', err, 'error')} 
                 />
@@ -285,7 +284,7 @@ const AdminSettings = () => {
         <ListEditor label="Available Fulfillment Options" items={draft.fulfillmentMethods} onChange={val => setDraft(d => ({ ...d, fulfillmentMethods: val }))} placeholder="e.g. Same-Day Delivery…" />
       </Section>
 
-{/* ✨ ── Legal Pages ── */}
+      {/* ── Legal Pages ── */}
       <Section icon={<FileText size={16} />} title="Legal & Compliance Pages" description="Content for your terms and privacy policies.">
         <div className="space-y-6">
           <Toggle 

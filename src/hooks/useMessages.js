@@ -13,6 +13,8 @@ export const useActiveChats = () => {
       email: msg.email || `Customer ${msg.user_id.substring(0, 6)}`, 
       displayName: msg.username || msg.email || 'Unknown User', 
       lastActive: msg.created_at, 
+      // If the last message wasn't from an admin, it's unread
+      hasUnread: msg.sender_role && msg.sender_role !== 'admin', 
     })); 
   };
 
