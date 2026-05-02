@@ -22,6 +22,10 @@ const AdminDashboard    = lazy(() => import('./pages/AdminDashboard'));
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
 const NotFoundPage      = lazy(() => import('./pages/NotFoundPage'));
 
+// ✨ Added lazy imports for Legal Pages
+const TermsPage         = lazy(() => import('./pages/TermsPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+
 const PageLoader = () => (
   <div className="min-h-screen bg-rich-black flex items-center justify-center">
     <Loader2 className="animate-spin text-gold-400" size={40} />
@@ -58,14 +62,18 @@ function App() {
 
       {/* Hide drawers/widgets from admins entirely */}
       {userRole !== 'admin' && <CartDrawer />}
-      {userRole !== 'admin' && settings.features?.wishlist !== false && <WishlistDrawer />}
-      {userRole !== 'admin' && settings.features?.chatWidget !== false && <ChatWidget />}
+      {userRole !== 'admin' && settings?.features?.wishlist !== false && <WishlistDrawer />}
+      {userRole !== 'admin' && settings?.features?.chatWidget !== false && <ChatWidget />}
 
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/"               element={<WelcomePage />} />
           <Route path="/products"       element={<ProductPage />} />
           <Route path="/products/:id"   element={<ProductPage />} />
+          
+          {/* ✨ Added Routes for Legal Pages */}
+          <Route path="/terms-and-conditions" element={<TermsPage />} />
+          <Route path="/privacy-policy"       element={<PrivacyPolicyPage />} />
           
           {/* Admin Restricted Pages */}
           <Route path="/cart"           element={userRole === 'admin' ? <Navigate to="/admin" replace /> : <CartPage />} />

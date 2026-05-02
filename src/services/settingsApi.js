@@ -1,4 +1,3 @@
-// src/services/settingsApi.js 
 import { supabase } from './supabase';
 
 export const DEFAULT_SETTINGS = { 
@@ -20,7 +19,7 @@ export const DEFAULT_SETTINGS = {
     spamLimitSeconds: 60, 
   }, 
   inventory: {
-    lowStockThreshold: 10, // Added threshold setting
+    lowStockThreshold: 10,
   },
   announcement: { 
     enabled: false, 
@@ -31,6 +30,12 @@ export const DEFAULT_SETTINGS = {
   welcomeImages: {
     hero: [],
     secondary: []
+  },
+  // ✨ Updated legal object with the toggle
+  legal: {
+    showLegalPages: false, // Default to false until client is ready
+    termsAndConditions: '',
+    privacyPolicy: ''
   }
 };
 

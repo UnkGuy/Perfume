@@ -2,10 +2,14 @@ import { useState } from 'react';
 import { loginAPI, registerAPI, resetPasswordAPI, fetchUserRoleAPI, signInWithOAuthAPI } from '../services/authApi';
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
+// Add this import at the top
+import { useSettings } from '../contexts/SettingsContext';
 
+// Inside your useAuthForm hook:
 export const useAuthForm = () => {
   const { showToast } = useShop();
   const { setCurrentPage } = useUI();
+  const { settings } = useSettings(); // ✨ Get settings
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -34,7 +38,6 @@ export const useAuthForm = () => {
         return false;
       }
       
-      // Explicit password feedback
       if (password.length < 8) {
         setError('Password must be at least 8 characters long.');
         return false;
@@ -49,9 +52,15 @@ export const useAuthForm = () => {
         setError('Passwords do not match.');
         return false;
       }
-    }
 
-    // Require captcha for BOTH login and registration
+      // ✨ Consent check
+      if (settings.legal?.showLegalPages && !formData.consent) {
+        setError('You must agree to the Terms & Conditions and Privacy Policy to create an account.');
+        return false;
+      }
+    }
+    
+
     if ((view === 'register' || view === 'login') && !captchaToken) {
       setError('Please complete the captcha verification.');
       return false;
@@ -80,7 +89,6 @@ export const useAuthForm = () => {
     } catch (err) {
       let message = err.message;
       
-      // Specific user feedback mappings
       if (message.includes('Invalid login')) {
          message = 'Invalid email or password. Did you originally sign up with Google or Facebook?';
       } else if (message.includes('over the email rate limit')) {

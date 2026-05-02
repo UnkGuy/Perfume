@@ -4,15 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthForm } from '../hooks/useAuthForm'; 
 import { useUI } from '../contexts/UIContext';
 import HCaptcha from '@hcaptcha/react-hcaptcha';
+import { useSettings } from '../contexts/SettingsContext';
 
 const LoginPage = () => {
   const { setCurrentPage } = useUI();
   const navigate = useNavigate(); 
   
   const [view, setView] = useState('login'); 
-  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '', consent: false });
   
-  // New states for password visibility
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
@@ -20,9 +20,11 @@ const LoginPage = () => {
   const captchaRef = useRef(null);
   
   const { submitAuth, handleOAuthSignIn, isLoading, error, setError } = useAuthForm();
-
+  const { settings } = useSettings();
+  
   const handleInputChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value, type, checked } = e.target;
+    setFormData({ ...formData, [name]: type === 'checkbox' ? checked : value });
     if (error) setError(''); 
   };
 
@@ -30,20 +32,16 @@ const LoginPage = () => {
     e.preventDefault();
     const success = await submitAuth(view, formData, setView, captchaToken);
     
-    // Reset captcha on failure for BOTH login and register so they can try again
     if (!success && (view === 'register' || view === 'login') && captchaRef.current) {
         captchaRef.current.resetCaptcha();
         setCaptchaToken('');
     }
   };
 
-  // ✨ Smart Back Button Logic ✨
   const handleBack = () => {
-    // Check if there is history within the React Router stack
     if (window.history.state && window.history.state.idx > 0) {
       navigate(-1);
     } else {
-      // If they landed directly from outside, fallback to home safely
       navigate('/', { replace: true });
       setCurrentPage('welcome');
     }
@@ -134,6 +132,26 @@ const LoginPage = () => {
                     <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
                     <input required type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
                   </div>
+                  
+                  {/* ✨ Safe Optional Chaining applied here */}
+                  {settings?.legal?.showLegalPages && (
+                    <div className="flex items-start gap-3 mt-4 animate-fade-in">
+                      <input 
+                        required 
+                        type="checkbox" 
+                        id="consent" 
+                        name="consent" 
+                        checked={formData.consent} 
+                        onChange={handleInputChange} 
+                        className="mt-1 w-4 h-4 accent-gold-400 bg-black/40 border-gray-600 rounded cursor-pointer flex-shrink-0" 
+                      />
+                      <label htmlFor="consent" className="text-xs text-gray-400 leading-relaxed select-none">
+                        I consent to the collection and processing of my personal data and agree to the{' '}
+                        <button type="button" onClick={() => navigate('/terms-and-conditions')} className="text-gold-400 hover:underline">Terms & Conditions</button> and{' '}
+                        <button type="button" onClick={() => navigate('/privacy-policy')} className="text-gold-400 hover:underline">Privacy Policy</button>.
+                      </label>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -143,7 +161,6 @@ const LoginPage = () => {
                 </div>
               )}
 
-              {/* hCaptcha Component rendered for BOTH login and registration */}
               {(view === 'login' || view === 'register') && (
                 <div className="flex justify-center mt-4">
                   <HCaptcha
@@ -188,13 +205,6 @@ const LoginPage = () => {
                     Sign in with Google
                   </button>
 
-                  <button onClick={() => handleOAuthSignIn('facebook')} disabled={isLoading} className="w-full py-3 bg-[#1877F2] hover:bg-[#166bda] border border-transparent text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-3 disabled:opacity-50">
-                    <svg className="w-5 h-5" fill="white" viewBox="0 0 24 24">
-                      <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.005A9.963 9.963 0 0022 12z" />
-                    </svg>
-                    Sign in with Facebook
-                  </button>
-
                   <div className="text-center text-sm text-gray-400 pt-4 mt-2 border-t border-white/10">
                     {view === 'login' ? "Don't have an account? " : "Already have an account? "}
                     <button onClick={() => { 
@@ -202,7 +212,6 @@ const LoginPage = () => {
                         setError(''); 
                         setCaptchaToken(''); 
                         if (captchaRef.current) captchaRef.current.resetCaptcha();
-                        // Reset visibility toggles when switching views
                         setShowPassword(false);
                         setShowConfirmPassword(false);
                     }} className="text-gold-400 hover:text-gold-300 font-bold">

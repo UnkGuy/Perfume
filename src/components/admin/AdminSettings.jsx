@@ -1,14 +1,14 @@
-// src/components/admin/AdminSettings.jsx 
 import React, { useState, useEffect } from 'react'; 
-import { Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2, Store, CreditCard, Truck, Settings, CheckCircle, Image as ImageIcon, Box } from 'lucide-react'; 
+import { Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2, Store, CreditCard, Truck, Settings, CheckCircle, Image as ImageIcon, Box, FileText } from 'lucide-react'; 
 import { saveSettingsAPI } from '../../services/settingsApi'; 
 import { logAdminActionAPI } from '../../services/logApi'; 
 import { useSettings } from '../../contexts/SettingsContext'; 
 import { useAuth } from '../../contexts/AuthContext'; 
 import { useShop } from '../../contexts/ShopContext';
-import ImageUploader from '../common/ImageUploader'; // Imported ImageUploader
+import ImageUploader from '../common/ImageUploader';
 
-// ─── Reusable Toggle ───────────────────────────────────────────────────────── 
+// ... (Toggle, ListEditor, and Section components remain exactly the same as your code)
+
 const Toggle = ({ checked, onChange, label, description }) => (
   <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
     <div>
@@ -21,22 +21,18 @@ const Toggle = ({ checked, onChange, label, description }) => (
   </div>
 );
 
-// ─── Reusable List Editor ───────────────────────────────────────────────────── 
 const ListEditor = ({ items, onChange, placeholder, label }) => { 
   const [inputVal, setInputVal] = useState('');
-
   const handleAdd = () => { 
     const trimmed = inputVal.trim(); 
     if (!trimmed || items.includes(trimmed)) return; 
     onChange([...items, trimmed]); 
     setInputVal(''); 
   };
-
   const handleRemove = (item) => { 
     if (items.length <= 1) return; 
     onChange(items.filter(i => i !== item)); 
   };
-
   return (
     <div className="mb-4">
       <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">{label}</label>
@@ -58,7 +54,6 @@ const ListEditor = ({ items, onChange, placeholder, label }) => {
   ); 
 };
 
-// ─── Section Card ───────────────────────────────────────────────────────────── 
 const Section = ({ icon, title, description, children }) => (
   <div className="bg-white/5 border border-white/10 rounded-xl p-5 sm:p-6 mb-6">
     <div className="flex items-center gap-3 mb-4">
@@ -72,7 +67,6 @@ const Section = ({ icon, title, description, children }) => (
   </div>
 );
 
-// ─── Main Component ─────────────────────────────────────────────────────────── 
 const AdminSettings = () => { 
   const { settings, setSettings } = useSettings(); 
   const { user } = useAuth(); 
@@ -90,8 +84,9 @@ const AdminSettings = () => {
   const setCheckout = (key, val) => setDraft(d => ({ ...d, checkout: { ...d.checkout, [key]: val } })); 
   const setStore = (key, val) => setDraft(d => ({ ...d, storeInfo: { ...d.storeInfo, [key]: val } }));
   const setInventory = (key, val) => setDraft(d => ({ ...d, inventory: { ...d.inventory, [key]: val } }));
+  // ✨ Helper to update legal fields
+  const setLegal = (key, val) => setDraft(d => ({ ...d, legal: { ...d.legal, [key]: val } }));
 
-  // Image Upload Handlers
   const addHeroImage = (url) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: [...(d.welcomeImages?.hero || []), url] } }));
   const removeHeroImage = (idx) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: d.welcomeImages.hero.filter((_, i) => i !== idx) } }));
   
@@ -161,7 +156,7 @@ const AdminSettings = () => {
         </div>
       )}
 
-      {/* ── Welcome Page Images (UPDATED WITH UPLOADER) ── */}
+      {/* ── Welcome Page Images ── */}
       <Section icon={<ImageIcon size={16} />} title="Welcome Page Images" description="Upload images to feature on the welcome page hero carousel and story section.">
         <div className="space-y-6">
           
@@ -216,7 +211,7 @@ const AdminSettings = () => {
         </div>
       </Section>
 
-      {/* ── Inventory & Stock Settings (NEW) ── */}
+      {/* ── Inventory & Stock Settings ── */}
       <Section icon={<Box size={16} />} title="Inventory Settings" description="Configure when stock alerts trigger in your dashboard.">
         <div>
           <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Low Stock Threshold</label>
@@ -262,7 +257,7 @@ const AdminSettings = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             { key: 'minOrderAmount',   label: 'Min. Order Amount (₱)', min: 0, placeholder: '0 = no minimum' },
-            { key: 'maxCartItems',     label: 'Max Cart Items',         min: 1, placeholder: '20' },
+            { key: 'maxCartItems',     label: 'Max Cart Items',        min: 1, placeholder: '20' },
             { key: 'spamLimitSeconds', label: 'Order Cooldown (secs)',  min: 0, placeholder: '60' },
           ].map(({ key, label, min, placeholder }) => (
             <div key={key}>
@@ -290,7 +285,40 @@ const AdminSettings = () => {
         <ListEditor label="Available Fulfillment Options" items={draft.fulfillmentMethods} onChange={val => setDraft(d => ({ ...d, fulfillmentMethods: val }))} placeholder="e.g. Same-Day Delivery…" />
       </Section>
 
-      <div className="flex justify-end pt-4 border-t border-white/10">
+{/* ✨ ── Legal Pages ── */}
+      <Section icon={<FileText size={16} />} title="Legal & Compliance Pages" description="Content for your terms and privacy policies.">
+        <div className="space-y-6">
+          <Toggle 
+            label="Enable Legal Pages & Consent" 
+            description="Show policy links in the footer and require consent on sign up." 
+            checked={draft.legal?.showLegalPages || false} 
+            onChange={val => setLegal('showLegalPages', val)} 
+          />
+          
+          <div className="w-full h-px bg-white/10"></div>
+          
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Terms & Conditions</label>
+            <textarea
+              value={draft.legal?.termsAndConditions || ''}
+              onChange={e => setLegal('termsAndConditions', e.target.value)}
+              placeholder="Paste your Terms and Conditions here..."
+              className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors h-48 custom-scrollbar resize-y"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Privacy Policy</label>
+            <textarea
+              value={draft.legal?.privacyPolicy || ''}
+              onChange={e => setLegal('privacyPolicy', e.target.value)}
+              placeholder="Paste your Privacy Policy here..."
+              className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors h-48 custom-scrollbar resize-y"
+            />
+          </div>
+        </div>
+      </Section>
+
+      <div className="flex justify-end pt-4 border-t border-white/10 pb-12">
         <button
           onClick={handleSave}
           disabled={isSaving || !hasChanges}
