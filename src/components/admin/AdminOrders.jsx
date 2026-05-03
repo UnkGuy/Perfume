@@ -68,11 +68,11 @@ const AdminOrders = ({ onNavigateToMessages }) => {
         </div>
 
         <div className="hidden md:block overflow-x-auto w-full">
-          <table className="w-full text-right border-collapse whitespace-nowrap min-w-[600px]">
+          <table className="w-full border-collapse whitespace-nowrap min-w-[600px]">
             <thead>
               <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
-                {['Order ID','Date','Customer','Total','Status','Actions'].map(h => (
-                  <th key={h} className="p-4 font-medium text-right">{h}</th>
+                {['Order ID','Date','Customer','Total','Status','Actions'].map((h, i) => (
+                  <th key={h} className={`p-4 font-medium ${i === 0 ? 'text-left' : 'text-right'}`}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -82,17 +82,19 @@ const AdminOrders = ({ onNavigateToMessages }) => {
               ) : filteredOrders.map(order => (
                 <React.Fragment key={order.id}>
                   <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
-                    <td className="p-4 font-mono text-gold-400 text-right">#{order.id}</td>
+                    <td className="p-4 font-mono text-gold-400 text-left">#{order.id}</td>
                     <td className="p-4 text-right">{new Date(order.created_at).toLocaleDateString()}</td>
                     <td className="p-4 truncate max-w-[150px] text-right" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</td>
                     <td className="p-4 font-bold text-white text-right">₱{Number(order.total_amount).toLocaleString()}</td>
                     <td className="p-4 text-right">
-                      <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)} className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center w-full max-w-[100px] ${statusClass(order.status)}`}>
-                        <option value="pending" className="bg-rich-black text-white">Pending</option>
-                        <option value="shipped" className="bg-rich-black text-white">Shipped</option>
-                        <option value="completed" className="bg-rich-black text-white">Completed</option>
-                        <option value="canceled" className="bg-rich-black text-white">Canceled</option>
-                      </select>
+                      <div className="flex justify-end">
+                        <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)} className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center w-full max-w-[100px] ${statusClass(order.status)}`}>
+                          <option value="pending" className="bg-rich-black text-white">Pending</option>
+                          <option value="shipped" className="bg-rich-black text-white">Shipped</option>
+                          <option value="completed" className="bg-rich-black text-white">Completed</option>
+                          <option value="canceled" className="bg-rich-black text-white">Canceled</option>
+                        </select>
+                      </div>
                     </td>
                     <td className="p-4 flex justify-end gap-2 text-right">
                       <button onClick={() => setInvoiceOrder(order)} className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
@@ -148,18 +150,18 @@ const AdminOrders = ({ onNavigateToMessages }) => {
           </table>
         </div>
 
-        {/* Mobile View */}
+        {/* Mobile View remains unchanged for UI responsiveness */}
         <div className="md:hidden flex flex-col divide-y divide-white/10 w-full overflow-hidden">
           {filteredOrders.map(order => (
             <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors min-w-0">
               <div className="flex justify-between items-start gap-2 min-w-0">
                 <div className="min-w-0">
-                  <span className="font-mono text-gold-400 font-bold text-base sm:text-lg truncate max-w-[120px] inline-block">#{order.id}</span>
-                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{new Date(order.created_at).toLocaleDateString()}</p>
+                  <span className="font-mono text-gold-400 font-bold text-base sm:text-lg truncate max-w-[120px] inline-block text-left">#{order.id}</span>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate text-left">{new Date(order.created_at).toLocaleDateString()}</p>
                 </div>
-                <p className="font-bold text-white text-base sm:text-lg flex-shrink-0">₱{Number(order.total_amount).toLocaleString()}</p>
+                <p className="font-bold text-white text-base sm:text-lg flex-shrink-0 text-right">₱{Number(order.total_amount).toLocaleString()}</p>
               </div>
-              <div className="bg-black/40 rounded p-2 border border-white/5 min-w-0">
+              <div className="bg-black/40 rounded p-2 border border-white/5 min-w-0 text-left">
                 <p className="text-xs sm:text-sm text-gray-300 truncate" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</p>
               </div>
               <div className="flex justify-between items-center gap-2 sm:gap-3 w-full">
@@ -169,7 +171,7 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                   <option value="completed" className="bg-rich-black text-white">Completed</option>
                   <option value="canceled" className="bg-rich-black text-white">Canceled</option>
                 </select>
-                <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
+                <div className="flex gap-1.5 sm:gap-2 flex-shrink-0 justify-end">
                   <button onClick={() => setInvoiceOrder(order)} className="p-1.5 sm:p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice"><FileText size={16} /></button>
                   <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-colors">{expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}</button>
                   <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-1.5 sm:p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"><MessageCircle size={16} /></button>
@@ -297,7 +299,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
         
         <div className="flex-1 bg-white p-10 text-black min-w-0" id="printable-invoice-area">
           <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
-            <div>
+            <div className="text-left">
               <h1 className="text-3xl font-extrabold tracking-widest text-gray-900 uppercase">{storeInfo.name || 'KL SCENTS'}</h1>
               <p className="text-sm text-gray-500 mt-1">{storeInfo.tagline || 'Premium Fragrance Collection'}</p>
             </div>
@@ -312,7 +314,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-6 mb-8">
-            <div className="min-w-0">
+            <div className="min-w-0 text-left">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed & Shipped To</h3>
               <p className="text-sm font-bold text-gray-800 truncate" title={order.profiles?.email}>{order.profiles?.email}</p>
               <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed break-words">{editData.address || 'No Address Provided'}</p>
@@ -326,11 +328,11 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
             </div>
           </div>
 
-          <table className="w-full text-left border-collapse mb-6 table-fixed">
+          <table className="w-full border-collapse mb-6 table-fixed">
             <thead>
               <tr className="border-b-2 border-gray-200 text-xs uppercase tracking-wider text-gray-500">
-                <th className="py-3 font-bold w-1/2">Item Description</th>
-                <th className="py-3 font-bold text-center w-1/6">Qty</th>
+                <th className="py-3 font-bold w-1/2 text-left">Item Description</th>
+                <th className="py-3 font-bold text-right w-1/6">Qty</th>
                 <th className="py-3 font-bold text-right w-1/6">Price</th>
                 <th className="py-3 font-bold text-right w-1/6">Total</th>
               </tr>
@@ -340,7 +342,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
                 const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
                 return (
                   <tr key={idx} className={isEditing ? 'bg-yellow-50/50' : ''}>
-                    <td className="py-4 min-w-0">
+                    <td className="py-4 min-w-0 text-left">
                       <p className="font-bold truncate flex items-center gap-2">
                         {isEditing && (
                           <button onClick={() => removeItem(idx)} className="no-print p-1 bg-red-100 text-red-600 hover:bg-red-200 rounded" title="Remove Item"><Trash2 size={12} /></button>
@@ -349,17 +351,19 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
                       </p>
                       <p className="text-xs text-gray-500 truncate">{variant?.size || 'Standard'}</p>
                     </td>
-                    <td className="py-4 text-center">
-                      {isEditing ? (
-                        <div className="no-print flex items-center justify-center gap-2">
-                          <button onClick={() => updateItemQty(idx, -1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Minus size={10} /></button>
-                          <span className="w-4">{item.quantity}</span>
-                          <button onClick={() => updateItemQty(idx, 1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Plus size={10} /></button>
-                        </div>
-                      ) : (
-                        item.quantity
-                      )}
-                      {isEditing && <span className="hidden print:inline">{item.quantity}</span>}
+                    <td className="py-4 text-right">
+                      <div className="flex justify-end">
+                        {isEditing ? (
+                          <div className="no-print flex items-center justify-end gap-2">
+                            <button onClick={() => updateItemQty(idx, -1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Minus size={10} /></button>
+                            <span className="w-4 text-center">{item.quantity}</span>
+                            <button onClick={() => updateItemQty(idx, 1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Plus size={10} /></button>
+                          </div>
+                        ) : (
+                          item.quantity
+                        )}
+                        {isEditing && <span className="hidden print:inline">{item.quantity}</span>}
+                      </div>
                     </td>
                     <td className="py-4 text-right truncate">₱{Number(item.price_at_time).toLocaleString()}</td>
                     <td className="py-4 text-right font-medium truncate">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
@@ -375,21 +379,21 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
           <div className="w-full flex justify-end">
             <div className="w-full sm:w-1/2 space-y-3">
               <div className="flex justify-between text-sm text-gray-600">
-                <span>Subtotal</span>
-                <span>₱{baseTotal.toLocaleString()}</span>
+                <span className="text-left">Subtotal</span>
+                <span className="text-right">₱{baseTotal.toLocaleString()}</span>
               </div>
               {editData.custom_fees.map((fee, idx) => (
                 <div key={idx} className="flex justify-between text-sm text-gray-600 group">
-                  <span className="flex items-center min-w-0">
+                  <span className="flex items-center min-w-0 text-left">
                     <span className="truncate">{fee.name}</span>
                     {isEditing && <button onClick={() => handleRemoveFee(idx)} className="no-print text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block flex-shrink-0" title="Remove fee">Remove</button>}
                   </span>
-                  <span className="flex-shrink-0">{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
+                  <span className="flex-shrink-0 text-right">{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
                 </div>
               ))}
               <div className="flex justify-between text-lg font-bold text-gray-900 border-t-2 border-gray-200 pt-3 mt-3">
-                <span>Total</span>
-                <span>₱{grandTotal.toLocaleString()}</span>
+                <span className="text-left">Total</span>
+                <span className="text-right">₱{grandTotal.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -408,17 +412,17 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
               <strong>Order Modifying enabled.</strong> You can add products, remove items, change quantities, and modify fees.
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 text-left">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Address</label>
               <textarea value={editData.address} onChange={e => handleFieldChange('address', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 h-20 resize-none" />
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 text-left">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</label>
               <input value={editData.contact} onChange={e => handleFieldChange('contact', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 text-left">
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fulfillment</label>
                 <input value={editData.fulfillment_method} onChange={e => handleFieldChange('fulfillment_method', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
@@ -429,12 +433,12 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1 text-left">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Promo Code</label>
               <input value={editData.promo_code} onChange={e => handleFieldChange('promo_code', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 font-mono text-yellow-600 font-bold" />
             </div>
 
-            <div className="border-t border-gray-200 pt-4 mt-2">
+            <div className="border-t border-gray-200 pt-4 mt-2 text-left">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Add Product</label>
               <div className="flex gap-2">
                 <select value={newItemId} onChange={e => setNewItemId(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 flex-1 text-xs">
@@ -447,7 +451,7 @@ const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => {
               </div>
             </div>
 
-            <div className="border-t border-gray-200 pt-4 mt-2">
+            <div className="border-t border-gray-200 pt-4 mt-2 text-left">
               <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Custom Fees/Discounts</label>
               <div className="flex gap-2">
                 <input placeholder="Name" value={newFeeName} onChange={e => setNewFeeName(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/2 min-w-0" />

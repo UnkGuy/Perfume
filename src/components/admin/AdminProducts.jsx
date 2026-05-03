@@ -19,7 +19,7 @@ const AdminProducts = () => {
 
   const lowStockThreshold = settings?.inventory?.lowStockThreshold || 0;
 
-  const [isModalOpen, setIsModalOpen]       = useState(false);
+  const [isModalOpen, setIsModalOpen]        = useState(false);
   const [editingProduct, setEditingProduct]  = useState(null);
   const [isSaving, setIsSaving]             = useState(false);
   const [searchQuery, setSearchQuery]        = useState('');
@@ -209,21 +209,21 @@ const AdminProducts = () => {
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl flex flex-col mb-6">
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full text-right border-collapse whitespace-nowrap">
+          <table className="w-full border-collapse whitespace-nowrap">
             <thead>
               <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
                 <th className="p-4 w-10 text-left"><input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} className="accent-gold-400 w-4 h-4 cursor-pointer" /></th>
-                <th className="p-4 w-10 text-center"></th>
+                <th className="p-4 w-10 text-right"></th>
                 <th className="p-4 font-medium text-left">Product</th>
-                <th className="p-4 font-medium text-center">Variants</th>
-                <th className={`p-4 font-medium cursor-pointer transition-colors ${sortConfig.key === 'date' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('date')}>
+                <th className="p-4 font-medium text-right">Variants</th>
+                <th className={`p-4 font-medium cursor-pointer transition-colors text-right ${sortConfig.key === 'date' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('date')}>
                   <div className="flex items-center justify-end gap-1">Date Added <ArrowUpDown size={12} className={sortConfig.key === 'date' ? 'text-gold-400' : ''}/></div>
                 </th>
-                <th className={`p-4 font-medium cursor-pointer transition-colors ${sortConfig.key === 'stock' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('stock')}>
+                <th className={`p-4 font-medium cursor-pointer transition-colors text-right ${sortConfig.key === 'stock' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('stock')}>
                   <div className="flex items-center justify-end gap-1">Total Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
                 </th>
-                <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium">Actions</th>
+                <th className="p-4 font-medium text-right">Status</th>
+                <th className="p-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm text-gray-300">
@@ -242,7 +242,7 @@ const AdminProducts = () => {
                   <React.Fragment key={product.id}>
                     <tr className={`hover:bg-white/5 transition-colors ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}>
                       <td className="p-4 text-left"><input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" /></td>
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-right">
                         <button onClick={() => toggleExpand(product.id)} className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors">
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </button>
@@ -256,9 +256,8 @@ const AdminProducts = () => {
                           <p className="text-xs text-gray-500">{product.brand}</p>
                         </div>
                       </td>
-                      <td className="p-4 text-center">
+                      <td className="p-4 text-right">
                         <span className="text-gray-400 font-medium">{variants.length}</span>
-                        {/* Noticeable Low Stock Warning on the Main Row */}
                         {hasLowStock && !hasInfiniteStock && (
                           <span className="ml-2 px-1.5 py-0.5 bg-red-500/20 border border-red-500/50 text-red-400 text-[10px] uppercase font-bold rounded animate-pulse">Low Stock</span>
                         )}
@@ -286,7 +285,7 @@ const AdminProducts = () => {
                             <table className="w-full text-left text-xs bg-white/5 rounded-lg overflow-hidden">
                               <thead className="bg-white/5 text-gray-400 uppercase tracking-wider">
                                 <tr>
-                                  <th className="px-4 py-2 font-medium">Variant Size</th>
+                                  <th className="px-4 py-2 font-medium text-left">Variant Size</th>
                                   <th className="px-4 py-2 font-medium text-right">Selling Price</th>
                                   <th className="px-4 py-2 font-medium text-right">Orig. Price</th>
                                   <th className="px-4 py-2 font-medium text-right">Specific Stock</th>
@@ -297,7 +296,7 @@ const AdminProducts = () => {
                                   const isVariantLow = v.stock_count !== null && v.stock_count !== '' && v.stock_count <= lowStockThreshold;
                                   return (
                                     <tr key={v.id} className="hover:bg-white/5">
-                                      <td className="px-4 py-2 font-medium text-gray-300">{v.size}</td>
+                                      <td className="px-4 py-2 font-medium text-gray-300 text-left">{v.size}</td>
                                       <td className="px-4 py-2 text-right text-gold-400">₱{v.price.toLocaleString()}</td>
                                       <td className="px-4 py-2 text-right text-gray-500">{v.compare_at_price ? `₱${v.compare_at_price.toLocaleString()}` : '-'}</td>
                                       <td className="px-4 py-2 text-right flex items-center justify-end gap-2">

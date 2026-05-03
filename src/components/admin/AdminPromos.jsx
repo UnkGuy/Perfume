@@ -76,7 +76,6 @@ const AdminPromos = () => {
         <p className="text-gray-400 text-sm">Generate and manage promotional campaigns.</p>
       </div>
 
-      {/* Create form */}
       <div className="bg-white/5 border border-white/10 rounded-xl p-6">
         <h4 className="text-sm font-bold uppercase tracking-widest text-gold-400 mb-4 flex items-center gap-2">
           Create New Code
@@ -138,12 +137,11 @@ const AdminPromos = () => {
         </form>
       </div>
 
-      {/* Table */}
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-        <table className="w-full text-right border-collapse">
+        <table className="w-full border-collapse">
           <thead>
             <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
-              <th className="p-4 font-medium text-right">Code</th>
+              <th className="p-4 font-medium text-left">Code</th>
               <th className="p-4 font-medium text-right">Discount</th>
               <th className="p-4 font-medium text-right">Uses</th>
               <th className="p-4 font-medium text-right">Expires</th>
@@ -159,7 +157,7 @@ const AdminPromos = () => {
               const isExpired = promo.expiry_date && new Date(promo.expiry_date) < new Date();
               return (
                 <tr key={promo.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 font-bold text-white tracking-wider flex items-center justify-end gap-2 text-right">
+                  <td className="p-4 font-bold text-white tracking-wider flex items-center justify-start gap-2 text-left">
                     <Tag size={14} className="text-gold-400" /> {promo.code}
                   </td>
                   <td className="p-4 text-green-400 font-bold text-right">{promo.discount_percentage}% OFF</td>
@@ -170,12 +168,14 @@ const AdminPromos = () => {
                         <Calendar size={14} /> {new Date(promo.expiry_date).toLocaleDateString()}
                         {isExpired && <span className="text-[10px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded font-bold">EXPIRED</span>}
                       </span>
-                    ) : <span className="text-gray-500 italic">Never</span>}
+                    ) : <span className="text-gray-500 italic flex justify-end">Never</span>}
                   </td>
                   <td className="p-4 text-right">
-                    <button onClick={() => handleDelete(promo.id, promo.code)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors">
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex justify-end">
+                      <button onClick={() => handleDelete(promo.id, promo.code)} className="p-2 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );

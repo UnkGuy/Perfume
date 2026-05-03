@@ -28,7 +28,6 @@ const AdminLogs = () => {
           .order('created_at', { ascending: false })
           .range(from, to);
 
-        // Client-side filter limitation: Supabase text search requires ilike
         if (searchQuery.trim()) {
           query = query.or(
             `admin_email.ilike.%${searchQuery}%,action.ilike.%${searchQuery}%,target_item.ilike.%${searchQuery}%`
@@ -65,7 +64,6 @@ const AdminLogs = () => {
         <p className="text-gray-400 text-sm">All admin actions recorded in chronological order.</p>
       </div>
 
-      {/* Search */}
       <div className="relative w-full md:w-80">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
         <input
@@ -89,12 +87,11 @@ const AdminLogs = () => {
           </div>
         ) : (
           <>
-            {/* Desktop */}
             <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-right border-collapse whitespace-nowrap">
+              <table className="w-full border-collapse whitespace-nowrap">
                 <thead>
                   <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
-                    <th className="p-4 font-medium text-right">Timestamp</th>
+                    <th className="p-4 font-medium text-left">Timestamp</th>
                     <th className="p-4 font-medium text-right">Admin</th>
                     <th className="p-4 font-medium text-right">Action</th>
                     <th className="p-4 font-medium text-right">Target</th>
@@ -103,7 +100,7 @@ const AdminLogs = () => {
                 <tbody className="divide-y divide-white/5 text-sm">
                   {logs.map(log => (
                     <tr key={log.id} className="hover:bg-white/5 transition-colors">
-                      <td className="p-4 text-gray-500 font-mono text-xs text-right">
+                      <td className="p-4 text-gray-500 font-mono text-xs text-left">
                         {new Date(log.created_at).toLocaleString('en-US', {
                           month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
                         })}
@@ -117,7 +114,6 @@ const AdminLogs = () => {
               </table>
             </div>
 
-            {/* Mobile */}
             <div className="md:hidden divide-y divide-white/10">
               {logs.map(log => (
                 <div key={log.id} className="p-4 space-y-2">
@@ -127,15 +123,14 @@ const AdminLogs = () => {
                       {new Date(log.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 truncate text-right">{log.admin_email}</p>
-                  <p className="text-xs text-gray-500 truncate text-right">{log.target_item}</p>
+                  <p className="text-xs text-gray-400 truncate text-left">{log.admin_email}</p>
+                  <p className="text-xs text-gray-500 truncate text-left">{log.target_item}</p>
                 </div>
               ))}
             </div>
           </>
         )}
 
-        {/* Pagination */}
         {!isLoading && totalPages > 1 && (
           <div className="flex justify-between items-center p-4 border-t border-white/10 bg-black/20">
             <span className="text-xs text-gray-500">{totalCount} total entries</span>

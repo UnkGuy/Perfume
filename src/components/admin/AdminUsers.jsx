@@ -43,7 +43,6 @@ const AdminUsers = () => {
       setUsers(users.map(u => u.id === userId ? { ...u, is_banned: !currentStatus } : u)); 
       showToast('Success', `Account ${!currentStatus ? 'banned' : 'unbanned'}.`); 
       
-      // Admin Log is handled inside useUserBan usually, but since this triggers separately we log it here too:
       logAdminActionAPI(adminUser?.email, !currentStatus ? 'Blocked User' : 'Unblocked User', `User ID: ${userId}`);
     } 
   };
@@ -54,7 +53,6 @@ const AdminUsers = () => {
       setUsers(users.map(u => u.id === userId ? { ...u, user_roles: [{ role: newRole }] } : u)); 
       showToast('Success', `User role updated to ${newRole}.`); 
       
-      // Admin Log for Role Change
       logAdminActionAPI(adminUser?.email, 'Changed User Role', `User ID: ${userId} to ${newRole}`);
     } catch (error) { 
       showToast('Error', 'Failed to update role.', 'error'); 
@@ -89,10 +87,10 @@ const AdminUsers = () => {
       </div>
 
       <div className="bg-white/5 border border-white/10 rounded-xl overflow-x-auto w-full">
-        <table className="w-full text-right border-collapse min-w-[600px]">
+        <table className="w-full border-collapse min-w-[600px]">
           <thead>
             <tr className="bg-black/40 border-b border-white/10 text-xs uppercase text-gray-500">
-              <th className="p-4 font-medium w-1/3 text-right">Email</th>
+              <th className="p-4 font-medium w-1/3 text-left">Email</th>
               <th className="p-4 font-medium w-1/4 text-right">Role</th>
               <th className="p-4 font-medium w-1/6 text-right">Status</th>
               <th className="p-4 font-medium text-right w-1/4">Actions</th>
@@ -104,31 +102,37 @@ const AdminUsers = () => {
               const currentRole = u.user_roles?.[0]?.role || 'customer';
               return (
                 <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                  <td className="p-4 text-white font-medium break-all sm:break-words text-right flex justify-end">
-                    <div className="max-w-[150px] sm:max-w-xs md:max-w-sm lg:max-w-md truncate" title={u.email}>
+                  <td className="p-4 text-white font-medium break-all sm:break-words text-left flex justify-start">
+                    <div className="max-w-[150px] sm:max-w-xs md:max-w-sm lg:max-w-md truncate text-left" title={u.email}>
                       {u.email}
                     </div>
                   </td>
                   <td className="p-4 text-right">
-                    <select 
-                      value={currentRole}
-                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                      className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-gray-300 uppercase tracking-wider focus:outline-none focus:border-gold-400 cursor-pointer w-full max-w-[120px]"
-                    >
-                      <option value="customer">Customer</option>
-                      <option value="admin">Admin</option>
-                    </select>
+                    <div className="flex justify-end">
+                      <select 
+                        value={currentRole}
+                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                        className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-gray-300 uppercase tracking-wider focus:outline-none focus:border-gold-400 cursor-pointer w-full max-w-[120px] text-center"
+                      >
+                        <option value="customer">Customer</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
                   </td>
                   <td className="p-4 text-right">
-                    {u.is_banned 
-                      ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Blocked</span>
-                      : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Active</span>}
+                    <div className="flex justify-end">
+                      {u.is_banned 
+                        ? <span className="bg-red-500/10 text-red-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Blocked</span>
+                        : <span className="bg-green-500/10 text-green-400 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Active</span>}
+                    </div>
                   </td>
                   <td className="p-4 text-right">
-                    <button onClick={() => handleToggleBan(u.id, u.is_banned)}
-                      className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${u.is_banned ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'}`}>
-                      {u.is_banned ? 'Unblock' : 'Block Account'}
-                    </button>
+                    <div className="flex justify-end">
+                      <button onClick={() => handleToggleBan(u.id, u.is_banned)}
+                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap ${u.is_banned ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-red-500/10 hover:bg-red-500/20 text-red-400'}`}>
+                        {u.is_banned ? 'Unblock' : 'Block Account'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
