@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 export const fetchOrdersAPI = async () => {
   const { data, error } = await supabase
     .from('orders')
-    .select(`id, created_at, status, total_amount, user_id, metadata, profiles(email), order_items(quantity, price_at_time, product_id, variant_id, products(name), product_variants(size))`)
+    .select(`id, created_at, status, total_amount, user_id, metadata, profiles(email), order_items(quantity, price_at_time, product_id, variant_id, products(name), product_variants(size)), order_status_history(status, created_at)`)
     .order('created_at', { ascending: false });
   if (error) throw error;
   return data;
@@ -12,6 +12,9 @@ export const fetchOrdersAPI = async () => {
 export const updateOrderStatusAPI = async (orderId, newStatus, orderItems = []) => {
   const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
   if (error) throw error;
+
+  // Insert into history tracking table
+  await supabase.from('order_status_history').insert([{ order_id: orderId, status: newStatus }]);
 
   if (newStatus === 'completed' && orderItems.length > 0) {
     for (const item of orderItems) {
@@ -66,7 +69,7 @@ export const updateOrderDetailsAPI = async (orderId, newTotal, updatedMetadata, 
 export const fetchUserOrdersAPI = async (userId) => {
   const { data, error } = await supabase
     .from('orders')
-    .select(`id, created_at, status, total_amount, metadata, order_items(quantity, price_at_time, variant_id, products(*), product_variants(*))`)
+    .select(`id, created_at, status, total_amount, metadata, order_items(quantity, price_at_time, variant_id, products(*), product_variants(*)), order_status_history(status, created_at)`)
     .eq('user_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;

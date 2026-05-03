@@ -8,8 +8,8 @@ export const fetchUserCartAPI = async (userId) => {
       quantity,
       product_id,
       variant_id,
-      products ( id, name, brand, gender, notes, available, image_urls, description ),
-      product_variants ( id, size, price, compare_at_price, stock_count, image_url )
+      products ( id, name, brand, gender, notes, available, image_urls, description, is_deleted ),
+      product_variants ( id, size, price, compare_at_price, stock_count, image_url, is_deleted )
     `)
     .eq('user_id', userId);
 
@@ -25,6 +25,10 @@ export const fetchUserCartAPI = async (userId) => {
 
     if (!p || !v) return null;
 
+    // Check if the item has been soft-deleted from the database
+    const isCompletelyDeleted = p.is_deleted || v.is_deleted;
+    const isCurrentlyAvailable = p.available && !isCompletelyDeleted;
+
     return {
       ...p,
       // Overwrite base details with specific variant details
@@ -34,9 +38,11 @@ export const fetchUserCartAPI = async (userId) => {
       compare_at_price: v.compare_at_price ? Number(v.compare_at_price) : null,
       stock_count: v.stock_count,
       image_urls: v.image_url ? [v.image_url] : p.image_urls,
-      // Retain cart quantities
+      // Retain cart quantities and availability state
       quantity: item.quantity,
-      cart_item_id: item.id
+      cart_item_id: item.id,
+      available: isCurrentlyAvailable,
+      is_deleted: isCompletelyDeleted 
     };
   }).filter(Boolean); // removes any null items
 };

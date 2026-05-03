@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trash2, Check, Plus, Minus, AlertCircle } from 'lucide-react';
+import { Trash2, Check, Plus, Minus, AlertCircle, XCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
@@ -33,6 +33,10 @@ const CartItem = ({ item, index, handleQuantity, handleRemove }) => {
             {item.available ? (
               <div className="flex items-center gap-1 text-green-400 text-[10px] sm:text-xs mt-1.5 bg-green-400/10 px-2 py-1 rounded w-fit whitespace-nowrap">
                 <Check size={12} /> Available
+              </div>
+            ) : item.is_deleted ? (
+              <div className="flex items-center gap-1 text-red-400 text-[10px] sm:text-xs mt-1.5 bg-red-400/10 px-2 py-1 rounded w-fit font-bold tracking-wider whitespace-nowrap">
+                <XCircle size={12} /> ITEM REMOVED
               </div>
             ) : (
               <div className="flex items-center gap-1 text-red-400 text-[10px] sm:text-xs mt-1.5 bg-red-400/10 px-2 py-1 rounded w-fit font-bold tracking-wider whitespace-nowrap">

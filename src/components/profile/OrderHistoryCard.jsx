@@ -1,9 +1,20 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
+import { FileText, CheckCircle2, Package, Truck, XCircle } from 'lucide-react';
 
 const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const OrderHistoryCard = ({ order, onViewInvoice, navigate }) => {
+  const isCanceled = order.status === 'canceled';
+  
+  // Define our timeline steps
+  const steps = [
+    { key: 'pending', label: 'Processing', icon: Package },
+    { key: 'shipped', label: 'Shipped', icon: Truck },
+    { key: 'completed', label: 'Delivered', icon: CheckCircle2 }
+  ];
+  
+  const currentStepIndex = steps.findIndex(s => s.key === order.status);
+
   return (
     <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-white/20 transition-colors">
       <div className="bg-black/40 p-5 flex flex-wrap justify-between items-center gap-4 border-b border-white/10">
@@ -14,19 +25,51 @@ const OrderHistoryCard = ({ order, onViewInvoice, navigate }) => {
           </p>
         </div>
         <div className="flex items-center gap-6">
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Status</p>
-            <p className={`text-sm font-bold ${order.status === 'pending' ? 'text-orange-400' : 'text-green-400'}`}>
-              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-            </p>
-          </div>
           <div className="text-right">
             <p className="text-xs text-gray-500 uppercase tracking-widest mb-1">Total</p>
             <p className="text-sm font-bold text-gold-400">₱{Number(order.total_amount).toLocaleString()}</p>
           </div>
         </div>
       </div>
-      <div className="p-5">
+
+      {/* VISUAL PROGRESS BAR */}
+      <div className="p-6 border-b border-white/5 bg-black/20">
+        {isCanceled ? (
+          <div className="flex items-center justify-center gap-2 text-red-400">
+            <XCircle size={20} />
+            <span className="font-bold tracking-widest uppercase text-sm">Order Canceled</span>
+          </div>
+        ) : (
+          <div className="relative flex items-center justify-between w-full max-w-lg mx-auto">
+            {/* Background Line */}
+            <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-white/10 rounded-full"></div>
+            
+            {/* Active Line */}
+            <div 
+              className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-gold-400 rounded-full transition-all duration-500"
+              style={{ width: `${(Math.max(0, currentStepIndex) / (steps.length - 1)) * 100}%` }}
+            ></div>
+
+            {/* Steps */}
+            {steps.map((step, index) => {
+              const isActive = index <= currentStepIndex;
+              const StepIcon = step.icon;
+              return (
+                <div key={step.key} className="relative z-10 flex flex-col items-center gap-2 bg-rich-black px-2">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors duration-300 ${isActive ? 'bg-gold-400 border-gold-400 text-black' : 'bg-black border-white/20 text-gray-500'}`}>
+                    <StepIcon size={14} className={isActive ? 'opacity-100' : 'opacity-50'} />
+                  </div>
+                  <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider absolute -bottom-6 whitespace-nowrap ${isActive ? 'text-gold-400' : 'text-gray-500'}`}>
+                    {step.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="p-5 pt-10">
         <div className="space-y-4 mb-6">
           {order.order_items.map((item, index) => {
             const prod = item.products;

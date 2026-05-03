@@ -123,6 +123,21 @@ const AdminOrders = ({ onNavigateToMessages }) => {
                               <span className="text-gray-400 font-mono flex-shrink-0 text-right">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
                             </div>
                           ))}
+                          
+                          {order.order_status_history && order.order_status_history.length > 0 && (
+                            <div className="mt-6 border-t border-white/10 pt-4">
+                              <h4 className="text-xs uppercase tracking-widest text-gray-500 mb-3 font-bold text-left">Status Timeline</h4>
+                              <div className="flex flex-col gap-2">
+                                {order.order_status_history.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map((hist, i) => (
+                                  <div key={i} className="text-sm flex gap-4 text-gray-300">
+                                    <span className="text-gray-500 w-36 text-left">{new Date(hist.created_at).toLocaleString()}</span>
+                                    <span className="font-bold text-white capitalize text-left">{hist.status}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                         </div>
                       </td>
                     </tr>

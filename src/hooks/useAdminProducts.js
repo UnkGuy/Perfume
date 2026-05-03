@@ -33,7 +33,7 @@ export const useProducts = () => {
     mutationFn: (id) => deleteProductAPI(id),
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      logAdminActionAPI(user?.email, 'Deleted Product', `Product ID: ${id}`);
+      logAdminActionAPI(user?.email, 'Deleted Product (Soft Delete)', `Product ID: ${id}`);
     },
   });
 

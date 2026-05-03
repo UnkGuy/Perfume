@@ -3,12 +3,16 @@ import { supabase } from './supabase';
 export const fetchUserWishlistAPI = async (userId) => {
   const { data, error } = await supabase
     .from('wishlists')
-    // ✨ FIXED: Include variants so the drawer can show prices! ✨
+    // Grab the is_deleted flag so we can filter
     .select('product_id, products(*, product_variants(*))')
     .eq('user_id', userId);
     
   if (error) throw error;
-  return data ? data.map(row => row.products) : [];
+  
+  // Map out the products and filter out any that have been soft-deleted
+  return data 
+    ? data.map(row => row.products).filter(product => product && !product.is_deleted)
+    : [];
 };
 
 export const updateWishlistAPI = async (userId, productId, isAdding) => {

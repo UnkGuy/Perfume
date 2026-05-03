@@ -173,7 +173,7 @@ const AdminProducts = () => {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
     try { await deleteProduct(id); showToast('Deleted', `${name} removed.`); } 
-    catch (err) { showToast('Cannot Delete Product', `Users already have "${name}" in their order history. Edit the product and uncheck "Available for Purchase" instead.`, 'error'); }
+    catch (err) { showToast('Cannot Delete Product', `Something went wrong. Please try again.`, 'error'); }
   };
 
   const statusBadge = (available) => available
@@ -216,10 +216,10 @@ const AdminProducts = () => {
                 <th className="p-4 w-10 text-center"></th>
                 <th className="p-4 font-medium text-left">Product</th>
                 <th className="p-4 font-medium text-center">Variants</th>
-                <th className="p-4 font-medium hover:text-white cursor-pointer transition-colors" onClick={() => handleSort('date')}>
+                <th className={`p-4 font-medium cursor-pointer transition-colors ${sortConfig.key === 'date' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('date')}>
                   <div className="flex items-center justify-end gap-1">Date Added <ArrowUpDown size={12} className={sortConfig.key === 'date' ? 'text-gold-400' : ''}/></div>
                 </th>
-                <th className="p-4 font-medium hover:text-white cursor-pointer transition-colors" onClick={() => handleSort('stock')}>
+                <th className={`p-4 font-medium cursor-pointer transition-colors ${sortConfig.key === 'stock' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('stock')}>
                   <div className="flex items-center justify-end gap-1">Total Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
                 </th>
                 <th className="p-4 font-medium">Status</th>
@@ -256,11 +256,18 @@ const AdminProducts = () => {
                           <p className="text-xs text-gray-500">{product.brand}</p>
                         </div>
                       </td>
-                      <td className="p-4 text-center"><span className="text-gray-400 font-medium">{variants.length}</span></td>
-                      <td className="p-4 text-right text-gray-500 text-xs">{new Date(product.created_at).toLocaleDateString()}</td>
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-center">
+                        <span className="text-gray-400 font-medium">{variants.length}</span>
+                        {/* Noticeable Low Stock Warning on the Main Row */}
+                        {hasLowStock && !hasInfiniteStock && (
+                          <span className="ml-2 px-1.5 py-0.5 bg-red-500/20 border border-red-500/50 text-red-400 text-[10px] uppercase font-bold rounded animate-pulse">Low Stock</span>
+                        )}
+                      </td>
+                      <td className={`p-4 text-right text-gray-500 text-xs ${sortConfig.key === 'date' ? 'bg-gold-400/5 text-gold-200' : ''}`}>
+                        {new Date(product.created_at).toLocaleDateString()}
+                      </td>
+                      <td className={`p-4 text-right ${sortConfig.key === 'stock' ? 'bg-gold-400/5' : ''}`}>
                         <div className="flex items-center justify-end gap-2">
-                          {hasLowStock && !hasInfiniteStock && <AlertTriangle size={14} className="text-orange-400" title="Low Stock on a variant" />}
                           <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300 font-bold">{totalStock}</span>
                         </div>
                       </td>

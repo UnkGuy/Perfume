@@ -5,6 +5,7 @@ export const fetchProductsAPI = async () => {
     .from('products')
     // We now fetch the reviews alongside the products to dynamically calculate ratings
     .select('*, product_variants(*), reviews(*)')
+    .eq('is_deleted', false) // Soft delete filter added here
     .order('created_at', { ascending: false });
     
   if (error) throw error;
@@ -42,8 +43,9 @@ export const saveProductAPI = async (payload, id = null) => {
   const incomingIds = variants.map(v => v.id).filter(Boolean);
   const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
 
+  // Instead of deleting the variants, we soft delete them as well if they are removed in the UI
   if (idsToDelete.length > 0) {
-    await supabase.from('product_variants').delete().in('id', idsToDelete);
+    await supabase.from('product_variants').update({ is_deleted: true }).in('id', idsToDelete);
   }
 
   if (variants && variants.length > 0) {
@@ -54,7 +56,8 @@ export const saveProductAPI = async (payload, id = null) => {
       price: v.price,
       compare_at_price: v.compare_at_price || null,
       stock_count: v.stock_count || null,
-      image_url: v.image_url || null
+      image_url: v.image_url || null,
+      is_deleted: false // Make sure re-added or new ones are not marked as deleted
     }));
     
     const { error: varError } = await supabase.from('product_variants').upsert(variantsToUpsert);
@@ -63,6 +66,7 @@ export const saveProductAPI = async (payload, id = null) => {
 };
 
 export const deleteProductAPI = async (id) => {
-  const { error } = await supabase.from('products').delete().eq('id', id);
+  // Soft Delete: update is_deleted to true and make it unavailable
+  const { error } = await supabase.from('products').update({ is_deleted: true, available: false }).eq('id', id);
   if (error) throw error;
 };
