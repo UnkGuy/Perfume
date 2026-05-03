@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Loader2, CheckCircle, XCircle, Tag, Search, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, Loader2, CheckCircle, XCircle, Search, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, AlertTriangle, ArrowUpDown } from 'lucide-react';
 import { useProducts } from '../../hooks/useAdminProducts';
 import { useShop } from '../../contexts/ShopContext';
+import { useSettings } from '../../contexts/SettingsContext';
 import { supabase } from '../../services/supabase';
 import ProductFormModal, { LIMITS } from './ProductFormModal';
 
 const ITEMS_PER_PAGE = 10;
 const EMPTY_FORM = {
   name: '', brand: '', description: '', gender: 'Unisex', notes: [], image_urls: [], available: true,
-  variants: [{ size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }], // Forces 1 variant minimum
+  variants: [{ size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }], 
 };
 
 const AdminProducts = () => {
   const { showToast } = useShop();
+  const { settings } = useSettings();
   const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
+
+  const lowStockThreshold = settings?.inventory?.lowStockThreshold || 0;
 
   const [isModalOpen, setIsModalOpen]       = useState(false);
   const [editingProduct, setEditingProduct]  = useState(null);
@@ -24,33 +28,66 @@ const AdminProducts = () => {
   const [customNoteInput, setCustomNoteInput] = useState('');
   const [selectedIds, setSelectedIds]        = useState(new Set());
   const [isBulkUpdating, setIsBulkUpdating]  = useState(false);
+  const [expandedRows, setExpandedRows]      = useState(new Set());
+  
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
   const dynamicNotes    = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))];
   const allDisplayNotes = [...new Set([...dynamicNotes, ...formData.notes])].sort();
-  
   const allDisplayBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
   const allDisplaySizes = [...new Set(products.flatMap(p => p.product_variants?.map(v => v.size) || []).filter(Boolean))].sort();
 
-  useEffect(() => { setActivePage(1); setSelectedIds(new Set()); }, [searchQuery]);
+  useEffect(() => { setActivePage(1); setSelectedIds(new Set()); setExpandedRows(new Set()); }, [searchQuery, sortConfig]);
 
-  const filteredProducts  = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.brand.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Apply Search and Sort
+  const filteredProducts = [...products]
+    .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.brand.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortConfig.key === 'date') {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+      if (sortConfig.key === 'stock') {
+        const getStock = (p) => {
+          if (!p.product_variants || p.product_variants.length === 0) return 0;
+          if (p.product_variants.some(v => v.stock_count === null || v.stock_count === '')) return Infinity;
+          return p.product_variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
+        };
+        const stockA = getStock(a);
+        const stockB = getStock(b);
+        return sortConfig.direction === 'asc' ? stockA - stockB : stockB - stockA;
+      }
+      return 0;
+    });
+
   const totalPages        = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
-  const paginatedProducts = filteredProducts.slice(
-    (activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE
-  );
+  const paginatedProducts = filteredProducts.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE);
 
   useEffect(() => {
     if (activePage > totalPages && totalPages > 0) setActivePage(totalPages);
   }, [filteredProducts.length, activePage, totalPages]);
 
-  const toggleSelect    = (id) => setSelectedIds(prev => {
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const toggleSelect = (id) => setSelectedIds(prev => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
   });
+  
+  const toggleExpand = (id) => setExpandedRows(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
   const allOnPageSelected = paginatedProducts.length > 0 && paginatedProducts.every(p => selectedIds.has(p.id));
   const toggleSelectAll = () => setSelectedIds(allOnPageSelected ? new Set() : new Set(paginatedProducts.map(p => p.id)));
 
@@ -58,10 +95,7 @@ const AdminProducts = () => {
     if (selectedIds.size === 0) return;
     setIsBulkUpdating(true);
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({ available: makeAvailable })
-        .in('id', [...selectedIds]);
+      const { error } = await supabase.from('products').update({ available: makeAvailable }).in('id', [...selectedIds]);
       if (error) throw error;
       showToast('Updated', `${selectedIds.size} product(s) marked ${makeAvailable ? 'available' : 'unavailable'}.`);
       setSelectedIds(new Set());
@@ -80,12 +114,8 @@ const AdminProducts = () => {
       gender: product.gender || 'Unisex', notes: product.notes || [],
       image_urls: product.image_urls || [], available: product.available !== false,
       variants: product.product_variants?.length > 0 ? product.product_variants.map(v => ({
-        id: v.id, // Keep the ID for upserting
-        size: v.size,
-        price: String(v.price),
-        compare_at_price: v.compare_at_price ? String(v.compare_at_price) : '',
-        stock_count: v.stock_count != null ? String(v.stock_count) : '',
-        image_url: v.image_url || '',
+        id: v.id, size: v.size, price: String(v.price), compare_at_price: v.compare_at_price ? String(v.compare_at_price) : '',
+        stock_count: v.stock_count != null ? String(v.stock_count) : '', image_url: v.image_url || '',
       })) : [{ size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }]
     } : EMPTY_FORM);
     setIsModalOpen(true);
@@ -110,12 +140,8 @@ const AdminProducts = () => {
     if (formData.name.length > LIMITS.name)   { showToast('Error', `Name max ${LIMITS.name} chars.`,  'error'); return; }
     if (formData.brand.length > LIMITS.brand) { showToast('Error', `Brand max ${LIMITS.brand} chars.`, 'error'); return; }
 
-    // Validate Variants
     const validVariants = formData.variants.filter(v => v.size.trim() && v.price);
-    if (validVariants.length === 0) {
-      showToast('Error', 'You must add at least one valid size variant with a price.', 'error');
-      return;
-    }
+    if (validVariants.length === 0) { showToast('Error', 'You must add at least one valid size variant with a price.', 'error'); return; }
 
     for (const v of validVariants) {
       const price = parseFloat(v.price);
@@ -127,20 +153,12 @@ const AdminProducts = () => {
 
     setIsSaving(true);
     const payload = {
-      name: formData.name,
-      brand: formData.brand,
-      description: formData.description.trim(),
-      gender: formData.gender,
-      notes: formData.notes,
-      image_urls: formData.image_urls,
-      available: formData.available,
+      name: formData.name, brand: formData.brand, description: formData.description.trim(),
+      gender: formData.gender, notes: formData.notes, image_urls: formData.image_urls, available: formData.available,
       variants: validVariants.map(v => ({
-        ...(v.id ? { id: v.id } : {}), // Keep ID if updating
-        size: v.size.trim(),
-        price: parseFloat(v.price),
+        ...(v.id ? { id: v.id } : {}), size: v.size.trim(), price: parseFloat(v.price),
         compare_at_price: v.compare_at_price ? parseFloat(v.compare_at_price) : null,
-        stock_count: v.stock_count !== '' ? parseInt(v.stock_count) : null,
-        image_url: v.image_url || null,
+        stock_count: v.stock_count !== '' ? parseInt(v.stock_count) : null, image_url: v.image_url || null,
       })),
     };
 
@@ -148,21 +166,14 @@ const AdminProducts = () => {
       await saveProduct(payload, editingProduct?.id ?? null);
       showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved.`);
       setIsModalOpen(false);
-    } catch (err) {
-      showToast('Error', err.message || 'Check browser console.', 'error');
-    } finally {
-      setIsSaving(false);
-    }
+    } catch (err) { showToast('Error', err.message || 'Check browser console.', 'error'); } 
+    finally { setIsSaving(false); }
   };
 
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    try { 
-      await deleteProduct(id); 
-      showToast('Deleted', `${name} removed.`); 
-    } catch (err) { 
-      showToast('Cannot Delete Product', `Users already have "${name}" in their order history. Edit the product and uncheck "Available for Purchase" to hide it from the store instead.`, 'error'); 
-    }
+    try { await deleteProduct(id); showToast('Deleted', `${name} removed.`); } 
+    catch (err) { showToast('Cannot Delete Product', `Users already have "${name}" in their order history. Edit the product and uncheck "Available for Purchase" instead.`, 'error'); }
   };
 
   const statusBadge = (available) => available
@@ -202,44 +213,102 @@ const AdminProducts = () => {
             <thead>
               <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
                 <th className="p-4 w-10 text-left"><input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} className="accent-gold-400 w-4 h-4 cursor-pointer" /></th>
+                <th className="p-4 w-10 text-center"></th>
                 <th className="p-4 font-medium text-left">Product</th>
-                <th className="p-4 font-medium">Price (From)</th>
-                <th className="p-4 font-medium">Stock</th>
+                <th className="p-4 font-medium text-center">Variants</th>
+                <th className="p-4 font-medium hover:text-white cursor-pointer transition-colors" onClick={() => handleSort('date')}>
+                  <div className="flex items-center justify-end gap-1">Date Added <ArrowUpDown size={12} className={sortConfig.key === 'date' ? 'text-gold-400' : ''}/></div>
+                </th>
+                <th className="p-4 font-medium hover:text-white cursor-pointer transition-colors" onClick={() => handleSort('stock')}>
+                  <div className="flex items-center justify-end gap-1">Total Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
+                </th>
                 <th className="p-4 font-medium">Status</th>
                 <th className="p-4 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm text-gray-300">
               {isLoading ? (
-                <tr><td colSpan="6" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
+                <tr><td colSpan="8" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
               ) : paginatedProducts.length === 0 ? (
-                <tr><td colSpan="6" className="p-8 text-center text-gray-500">No products found.</td></tr>
+                <tr><td colSpan="8" className="p-8 text-center text-gray-500">No products found.</td></tr>
               ) : paginatedProducts.map(product => {
                 const variants = product.product_variants || [];
-                const lowestPrice = variants.length > 0 ? Math.min(...variants.map(v => v.price)) : 0;
                 const hasInfiniteStock = variants.some(v => v.stock_count === null || v.stock_count === '');
                 const totalStock = hasInfiniteStock ? '∞' : variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
+                const hasLowStock = variants.some(v => v.stock_count !== null && v.stock_count !== '' && v.stock_count <= lowStockThreshold);
+                const isExpanded = expandedRows.has(product.id);
                 
                 return (
-                  <tr key={product.id} className={`hover:bg-white/5 transition-colors ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}>
-                    <td className="p-4 text-left"><input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" /></td>
-                    <td className="p-4 flex items-center gap-3 text-left">
-                      {product.image_urls?.length > 0
-                        ? <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
-                        : <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>}
-                      <div>
-                        <div className="flex items-center gap-2"><p className="font-bold text-white">{product.name}</p></div>
-                        <p className="text-xs text-gray-500">{product.brand} · {variants.length} Size{variants.length !== 1 ? 's' : ''}</p>
-                      </div>
-                    </td>
-                    <td className="p-4 text-right"><span className="text-gold-400 font-medium">₱{lowestPrice.toLocaleString()}</span></td>
-                    <td className="p-4 text-right"><span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300 font-bold">{totalStock}</span></td>
-                    <td className="p-4 text-right">{statusBadge(product.available)}</td>
-                    <td className="p-4 flex justify-end gap-2 text-right">
-                      <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit"><Edit2 size={16} /></button>
-                      <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete"><Trash2 size={16} /></button>
-                    </td>
-                  </tr>
+                  <React.Fragment key={product.id}>
+                    <tr className={`hover:bg-white/5 transition-colors ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}>
+                      <td className="p-4 text-left"><input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" /></td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => toggleExpand(product.id)} className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors">
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                      </td>
+                      <td className="p-4 flex items-center gap-3 text-left">
+                        {product.image_urls?.length > 0
+                          ? <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
+                          : <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>}
+                        <div>
+                          <div className="flex items-center gap-2"><p className="font-bold text-white">{product.name}</p></div>
+                          <p className="text-xs text-gray-500">{product.brand}</p>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center"><span className="text-gray-400 font-medium">{variants.length}</span></td>
+                      <td className="p-4 text-right text-gray-500 text-xs">{new Date(product.created_at).toLocaleDateString()}</td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {hasLowStock && !hasInfiniteStock && <AlertTriangle size={14} className="text-orange-400" title="Low Stock on a variant" />}
+                          <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300 font-bold">{totalStock}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">{statusBadge(product.available)}</td>
+                      <td className="p-4 flex justify-end gap-2 text-right">
+                        <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit"><Edit2 size={16} /></button>
+                        <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete"><Trash2 size={16} /></button>
+                      </td>
+                    </tr>
+                    
+                    {/* EXPANDED VARIANTS SUB-TABLE */}
+                    {isExpanded && (
+                      <tr className="bg-black/20 border-b border-white/5">
+                        <td colSpan="8" className="p-0">
+                          <div className="px-14 py-4">
+                            <table className="w-full text-left text-xs bg-white/5 rounded-lg overflow-hidden">
+                              <thead className="bg-white/5 text-gray-400 uppercase tracking-wider">
+                                <tr>
+                                  <th className="px-4 py-2 font-medium">Variant Size</th>
+                                  <th className="px-4 py-2 font-medium text-right">Selling Price</th>
+                                  <th className="px-4 py-2 font-medium text-right">Orig. Price</th>
+                                  <th className="px-4 py-2 font-medium text-right">Specific Stock</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {variants.map(v => {
+                                  const isVariantLow = v.stock_count !== null && v.stock_count !== '' && v.stock_count <= lowStockThreshold;
+                                  return (
+                                    <tr key={v.id} className="hover:bg-white/5">
+                                      <td className="px-4 py-2 font-medium text-gray-300">{v.size}</td>
+                                      <td className="px-4 py-2 text-right text-gold-400">₱{v.price.toLocaleString()}</td>
+                                      <td className="px-4 py-2 text-right text-gray-500">{v.compare_at_price ? `₱${v.compare_at_price.toLocaleString()}` : '-'}</td>
+                                      <td className="px-4 py-2 text-right flex items-center justify-end gap-2">
+                                        {isVariantLow && <AlertTriangle size={12} className="text-orange-400" />}
+                                        <span className={isVariantLow ? 'text-orange-400 font-bold' : 'text-gray-400'}>
+                                          {v.stock_count === null || v.stock_count === '' ? '∞' : v.stock_count}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -249,35 +318,11 @@ const AdminProducts = () => {
 
       {totalPages > 1 && (
         <div className="flex justify-center items-center gap-2 mb-8">
-          <button
-            disabled={activePage === 1}
-            onClick={() => setActivePage(prev => prev - 1)}
-            className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"
-          >
-            <ChevronLeft size={20} />
-          </button>
-
+          <button disabled={activePage === 1} onClick={() => setActivePage(prev => prev - 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"><ChevronLeft size={20} /></button>
           {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
-            <button
-              key={num}
-              onClick={() => setActivePage(num)}
-              className={`w-10 h-10 rounded font-bold transition-all ${
-                activePage === num
-                  ? 'bg-gold-400 text-black shadow-lg'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {num}
-            </button>
+            <button key={num} onClick={() => setActivePage(num)} className={`w-10 h-10 rounded font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{num}</button>
           ))}
-
-          <button
-            disabled={activePage === totalPages}
-            onClick={() => setActivePage(prev => prev + 1)}
-            className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"
-          >
-            <ChevronRight size={20} />
-          </button>
+          <button disabled={activePage === totalPages} onClick={() => setActivePage(prev => prev + 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"><ChevronRight size={20} /></button>
         </div>
       )}
 

@@ -1,0 +1,1248 @@
+
+
+================================================================================
+FILE: src/components/admin/AdminProducts.jsx
+================================================================================
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit2, Trash2, Loader2, CheckCircle, XCircle, Search, ChevronLeft, ChevronRight, ToggleLeft, ToggleRight, ChevronDown, ChevronUp, AlertTriangle, ArrowUpDown } from 'lucide-react';
+import { useProducts } from '../../hooks/useAdminProducts';
+import { useShop } from '../../contexts/ShopContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import { supabase } from '../../services/supabase';
+import ProductFormModal, { LIMITS } from './ProductFormModal';
+
+const ITEMS_PER_PAGE = 10;
+const EMPTY_FORM = {
+  name: '', brand: '', description: '', gender: 'Unisex', notes: [], image_urls: [], available: true,
+  variants: [{ size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }], 
+};
+
+const AdminProducts = () => {
+  const { showToast } = useShop();
+  const { settings } = useSettings();
+  const { products, isLoading, saveProduct, deleteProduct } = useProducts(showToast);
+
+  const lowStockThreshold = settings?.inventory?.lowStockThreshold || 0;
+
+  const [isModalOpen, setIsModalOpen]       = useState(false);
+  const [editingProduct, setEditingProduct]  = useState(null);
+  const [isSaving, setIsSaving]             = useState(false);
+  const [searchQuery, setSearchQuery]        = useState('');
+  const [activePage, setActivePage]          = useState(1);
+  const [formData, setFormData]             = useState(EMPTY_FORM);
+  const [customNoteInput, setCustomNoteInput] = useState('');
+  const [selectedIds, setSelectedIds]        = useState(new Set());
+  const [isBulkUpdating, setIsBulkUpdating]  = useState(false);
+  const [expandedRows, setExpandedRows]      = useState(new Set());
+  
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
+
+  const dynamicNotes    = [...new Set(products.flatMap(p => p.notes || []).filter(Boolean))];
+  const allDisplayNotes = [...new Set([...dynamicNotes, ...formData.notes])].sort();
+  const allDisplayBrands = [...new Set(products.map(p => p.brand).filter(Boolean))].sort();
+  const allDisplaySizes = [...new Set(products.flatMap(p => p.product_variants?.map(v => v.size) || []).filter(Boolean))].sort();
+
+  useEffect(() => { setActivePage(1); setSelectedIds(new Set()); setExpandedRows(new Set()); }, [searchQuery, sortConfig]);
+
+  // Apply Search and Sort
+  const filteredProducts = [...products]
+    .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.brand.toLowerCase().includes(searchQuery.toLowerCase()))
+    .sort((a, b) => {
+      if (sortConfig.key === 'date') {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return sortConfig.direction === 'asc' ? dateA - dateB : dateB - dateA;
+      }
+      if (sortConfig.key === 'stock') {
+        const getStock = (p) => {
+          if (!p.product_variants || p.product_variants.length === 0) return 0;
+          if (p.product_variants.some(v => v.stock_count === null || v.stock_count === '')) return Infinity;
+          return p.product_variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
+        };
+        const stockA = getStock(a);
+        const stockB = getStock(b);
+        return sortConfig.direction === 'asc' ? stockA - stockB : stockB - stockA;
+      }
+      return 0;
+    });
+
+  const totalPages        = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filteredProducts.slice((activePage - 1) * ITEMS_PER_PAGE, activePage * ITEMS_PER_PAGE);
+
+  useEffect(() => {
+    if (activePage > totalPages && totalPages > 0) setActivePage(totalPages);
+  }, [filteredProducts.length, activePage, totalPages]);
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'desc' ? 'asc' : 'desc'
+    }));
+  };
+
+  const toggleSelect = (id) => setSelectedIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  
+  const toggleExpand = (id) => setExpandedRows(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const allOnPageSelected = paginatedProducts.length > 0 && paginatedProducts.every(p => selectedIds.has(p.id));
+  const toggleSelectAll = () => setSelectedIds(allOnPageSelected ? new Set() : new Set(paginatedProducts.map(p => p.id)));
+
+  const handleBulkAvailability = async (makeAvailable) => {
+    if (selectedIds.size === 0) return;
+    setIsBulkUpdating(true);
+    try {
+      const { error } = await supabase.from('products').update({ available: makeAvailable }).in('id', [...selectedIds]);
+      if (error) throw error;
+      showToast('Updated', `${selectedIds.size} product(s) marked ${makeAvailable ? 'available' : 'unavailable'}.`);
+      setSelectedIds(new Set());
+      window.dispatchEvent(new CustomEvent('klscents:products-updated'));
+    } catch (err) {
+      showToast('Error', err.message || 'Bulk update failed.', 'error');
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
+  const handleOpenModal = (product = null) => {
+    setEditingProduct(product);
+    setFormData(product ? {
+      name: product.name, brand: product.brand, description: product.description || '',
+      gender: product.gender || 'Unisex', notes: product.notes || [],
+      image_urls: product.image_urls || [], available: product.available !== false,
+      variants: product.product_variants?.length > 0 ? product.product_variants.map(v => ({
+        id: v.id, size: v.size, price: String(v.price), compare_at_price: v.compare_at_price ? String(v.compare_at_price) : '',
+        stock_count: v.stock_count != null ? String(v.stock_count) : '', image_url: v.image_url || '',
+      })) : [{ size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }]
+    } : EMPTY_FORM);
+    setIsModalOpen(true);
+  };
+
+  const handleNoteToggle = (note) => setFormData(prev => ({ ...prev, notes: prev.notes.includes(note) ? prev.notes.filter(n => n !== note) : [...prev.notes, note] }));
+  const handleAddCustomNote = (e) => {
+    e.preventDefault();
+    if (!customNoteInput.trim()) return;
+    const formatted = customNoteInput.trim().charAt(0).toUpperCase() + customNoteInput.trim().slice(1);
+    if (!formData.notes.includes(formatted)) setFormData(prev => ({ ...prev, notes: [...prev.notes, formatted] }));
+    setCustomNoteInput('');
+  };
+  const handleRemoveImage = (i) => setFormData(prev => ({ ...prev, image_urls: prev.image_urls.filter((_, idx) => idx !== i) }));
+
+  const handleAddVariant = () => setFormData(prev => ({ ...prev, variants: [...prev.variants, { size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }] }));
+  const handleRemoveVariant = (idx) => setFormData(prev => ({ ...prev, variants: prev.variants.filter((_, i) => i !== idx) }));
+  const handleVariantChange = (idx, field, value) => setFormData(prev => ({ ...prev, variants: prev.variants.map((v, i) => i === idx ? { ...v, [field]: value } : v) }));
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (formData.name.length > LIMITS.name)   { showToast('Error', `Name max ${LIMITS.name} chars.`,  'error'); return; }
+    if (formData.brand.length > LIMITS.brand) { showToast('Error', `Brand max ${LIMITS.brand} chars.`, 'error'); return; }
+
+    const validVariants = formData.variants.filter(v => v.size.trim() && v.price);
+    if (validVariants.length === 0) { showToast('Error', 'You must add at least one valid size variant with a price.', 'error'); return; }
+
+    for (const v of validVariants) {
+      const price = parseFloat(v.price);
+      const compareAt = v.compare_at_price ? parseFloat(v.compare_at_price) : null;
+      if (isNaN(price) || price < 0) { showToast('Error', `Invalid price for size ${v.size}.`, 'error'); return; }
+      if (compareAt !== null && price >= compareAt) { showToast('Invalid Price', `Original Price must be higher than Selling Price for size ${v.size}.`, 'error'); return; }
+      if (v.stock_count !== '' && parseInt(v.stock_count) < 0) { showToast('Error', `Stock cannot be negative for size ${v.size}.`, 'error'); return; }
+    }
+
+    setIsSaving(true);
+    const payload = {
+      name: formData.name, brand: formData.brand, description: formData.description.trim(),
+      gender: formData.gender, notes: formData.notes, image_urls: formData.image_urls, available: formData.available,
+      variants: validVariants.map(v => ({
+        ...(v.id ? { id: v.id } : {}), size: v.size.trim(), price: parseFloat(v.price),
+        compare_at_price: v.compare_at_price ? parseFloat(v.compare_at_price) : null,
+        stock_count: v.stock_count !== '' ? parseInt(v.stock_count) : null, image_url: v.image_url || null,
+      })),
+    };
+
+    try {
+      await saveProduct(payload, editingProduct?.id ?? null);
+      showToast(editingProduct ? 'Updated' : 'Added', `${payload.name} saved.`);
+      setIsModalOpen(false);
+    } catch (err) { showToast('Error', err.message || 'Check browser console.', 'error'); } 
+    finally { setIsSaving(false); }
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    try { await deleteProduct(id); showToast('Deleted', `${name} removed.`); } 
+    catch (err) { showToast('Cannot Delete Product', `Users already have "${name}" in their order history. Edit the product and uncheck "Available for Purchase" instead.`, 'error'); }
+  };
+
+  const statusBadge = (available) => available
+    ? <span className="flex items-center justify-end gap-1.5 text-green-400 text-xs font-bold"><CheckCircle size={14}/> Available</span>
+    : <span className="flex items-center justify-end gap-1.5 text-red-400 text-xs font-bold"><XCircle size={14}/> Unavailable</span>;
+
+  return (
+    <div className="animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+        <div>
+          <h3 className="text-2xl font-bold text-white">Inventory Management</h3>
+          <p className="text-gray-400 text-sm mt-1">Add, edit, or set discounts for your catalog. <span className="ml-2 text-gold-400">({filteredProducts.length} total)</span></p>
+        </div>
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="relative flex-1 md:w-64">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input type="text" placeholder="Search perfumes..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors" />
+          </div>
+          <button onClick={() => handleOpenModal()} className="flex items-center gap-2 bg-gold-400 hover:bg-gold-300 text-black px-4 py-2 rounded-lg font-bold transition-colors shadow-lg flex-shrink-0"><Plus size={18} /> Add Perfume</button>
+        </div>
+      </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 mb-4 p-3 bg-gold-400/10 border border-gold-400/30 rounded-lg animate-fade-in flex-wrap">
+          <span className="text-sm text-gold-400 font-bold">{selectedIds.size} selected</span>
+          <div className="flex gap-2 ml-auto flex-wrap">
+            <button onClick={() => handleBulkAvailability(true)} disabled={isBulkUpdating} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 border border-green-500/20 rounded text-xs font-bold transition-colors disabled:opacity-50"><ToggleRight size={14} /> Mark Available</button>
+            <button onClick={() => handleBulkAvailability(false)} disabled={isBulkUpdating} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded text-xs font-bold transition-colors disabled:opacity-50"><ToggleLeft size={14} /> Mark Unavailable</button>
+            <button onClick={() => setSelectedIds(new Set())} className="text-xs text-gray-400 hover:text-white px-2">Clear</button>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white/5 border border-white/10 rounded-xl overflow-hidden shadow-xl flex flex-col mb-6">
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full text-right border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
+                <th className="p-4 w-10 text-left"><input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} className="accent-gold-400 w-4 h-4 cursor-pointer" /></th>
+                <th className="p-4 w-10 text-center"></th>
+                <th className="p-4 font-medium text-left">Product</th>
+                <th className="p-4 font-medium text-center">Variants</th>
+                <th className="p-4 font-medium hover:text-white cursor-pointer transition-colors" onClick={() => handleSort('date')}>
+                  <div className="flex items-center justify-end gap-1">Date Added <ArrowUpDown size={12} className={sortConfig.key === 'date' ? 'text-gold-400' : ''}/></div>
+                </th>
+                <th className="p-4 font-medium hover:text-white cursor-pointer transition-colors" onClick={() => handleSort('stock')}>
+                  <div className="flex items-center justify-end gap-1">Total Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
+                </th>
+                <th className="p-4 font-medium">Status</th>
+                <th className="p-4 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm text-gray-300">
+              {isLoading ? (
+                <tr><td colSpan="8" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
+              ) : paginatedProducts.length === 0 ? (
+                <tr><td colSpan="8" className="p-8 text-center text-gray-500">No products found.</td></tr>
+              ) : paginatedProducts.map(product => {
+                const variants = product.product_variants || [];
+                const hasInfiniteStock = variants.some(v => v.stock_count === null || v.stock_count === '');
+                const totalStock = hasInfiniteStock ? '∞' : variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
+                const hasLowStock = variants.some(v => v.stock_count !== null && v.stock_count !== '' && v.stock_count <= lowStockThreshold);
+                const isExpanded = expandedRows.has(product.id);
+                
+                return (
+                  <React.Fragment key={product.id}>
+                    <tr className={`hover:bg-white/5 transition-colors ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}>
+                      <td className="p-4 text-left"><input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" /></td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => toggleExpand(product.id)} className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors">
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                      </td>
+                      <td className="p-4 flex items-center gap-3 text-left">
+                        {product.image_urls?.length > 0
+                          ? <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
+                          : <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>}
+                        <div>
+                          <div className="flex items-center gap-2"><p className="font-bold text-white">{product.name}</p></div>
+                          <p className="text-xs text-gray-500">{product.brand}</p>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center"><span className="text-gray-400 font-medium">{variants.length}</span></td>
+                      <td className="p-4 text-right text-gray-500 text-xs">{new Date(product.created_at).toLocaleDateString()}</td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {hasLowStock && !hasInfiniteStock && <AlertTriangle size={14} className="text-orange-400" title="Low Stock on a variant" />}
+                          <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300 font-bold">{totalStock}</span>
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">{statusBadge(product.available)}</td>
+                      <td className="p-4 flex justify-end gap-2 text-right">
+                        <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit"><Edit2 size={16} /></button>
+                        <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete"><Trash2 size={16} /></button>
+                      </td>
+                    </tr>
+                    
+                    {/* EXPANDED VARIANTS SUB-TABLE */}
+                    {isExpanded && (
+                      <tr className="bg-black/20 border-b border-white/5">
+                        <td colSpan="8" className="p-0">
+                          <div className="px-14 py-4">
+                            <table className="w-full text-left text-xs bg-white/5 rounded-lg overflow-hidden">
+                              <thead className="bg-white/5 text-gray-400 uppercase tracking-wider">
+                                <tr>
+                                  <th className="px-4 py-2 font-medium">Variant Size</th>
+                                  <th className="px-4 py-2 font-medium text-right">Selling Price</th>
+                                  <th className="px-4 py-2 font-medium text-right">Orig. Price</th>
+                                  <th className="px-4 py-2 font-medium text-right">Specific Stock</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-white/5">
+                                {variants.map(v => {
+                                  const isVariantLow = v.stock_count !== null && v.stock_count !== '' && v.stock_count <= lowStockThreshold;
+                                  return (
+                                    <tr key={v.id} className="hover:bg-white/5">
+                                      <td className="px-4 py-2 font-medium text-gray-300">{v.size}</td>
+                                      <td className="px-4 py-2 text-right text-gold-400">₱{v.price.toLocaleString()}</td>
+                                      <td className="px-4 py-2 text-right text-gray-500">{v.compare_at_price ? `₱${v.compare_at_price.toLocaleString()}` : '-'}</td>
+                                      <td className="px-4 py-2 text-right flex items-center justify-end gap-2">
+                                        {isVariantLow && <AlertTriangle size={12} className="text-orange-400" />}
+                                        <span className={isVariantLow ? 'text-orange-400 font-bold' : 'text-gray-400'}>
+                                          {v.stock_count === null || v.stock_count === '' ? '∞' : v.stock_count}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mb-8">
+          <button disabled={activePage === 1} onClick={() => setActivePage(prev => prev - 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"><ChevronLeft size={20} /></button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+            <button key={num} onClick={() => setActivePage(num)} className={`w-10 h-10 rounded font-bold transition-all ${activePage === num ? 'bg-gold-400 text-black shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}>{num}</button>
+          ))}
+          <button disabled={activePage === totalPages} onClick={() => setActivePage(prev => prev + 1)} className="p-2 border border-white/10 rounded hover:border-gold-400 text-gray-400 hover:text-gold-400 disabled:opacity-30 transition-colors"><ChevronRight size={20} /></button>
+        </div>
+      )}
+
+      <ProductFormModal
+        isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSave={handleSave}
+        isSaving={isSaving} editingProduct={editingProduct} formData={formData} setFormData={setFormData}
+        allDisplayBrands={allDisplayBrands} allDisplayNotes={allDisplayNotes} allDisplaySizes={allDisplaySizes} customNoteInput={customNoteInput} setCustomNoteInput={setCustomNoteInput}
+        onAddCustomNote={handleAddCustomNote} onNoteToggle={handleNoteToggle} onRemoveImage={handleRemoveImage} showToast={showToast}
+        onAIGenerate={() => showToast('AI Magic', 'AI Description Generation coming in V3! 🪄')}
+        onAddVariant={handleAddVariant} onRemoveVariant={handleRemoveVariant} onVariantChange={handleVariantChange}
+      />
+    </div>
+  );
+};
+
+export default AdminProducts;
+
+================================================================================
+FILE: src/components/admin/ProductFormModal.jsx
+================================================================================
+import React from 'react';
+import { Loader2, X, Trash2, Sparkles, Plus } from 'lucide-react';
+import ImageUploader from '../common/ImageUploader';
+
+const LIMITS = { name: 100, brand: 50, description: 800 };
+const nearLimit = (val = '', max) => val.length >= max * 0.9;
+const inputBorder = (value, max) => nearLimit(value, max) ? 'border-red-500/60 focus:border-red-500' : 'border-white/10 focus:border-gold-400';
+const Counter = ({ value = '', max }) => ( <span className={`text-xs ${nearLimit(value, max) ? 'text-red-400' : 'text-gray-600'}`}>{value.length}/{max}</span> );
+
+const ProductFormModal = ({
+  isOpen, onClose, onSave, isSaving, editingProduct, formData, setFormData,
+  allDisplayBrands, allDisplayNotes, allDisplaySizes, customNoteInput, setCustomNoteInput, onAddCustomNote,
+  onNoteToggle, onRemoveImage, showToast, onAIGenerate,
+  onAddVariant, onRemoveVariant, onVariantChange
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+      <div className="bg-rich-black border border-gold-400/30 rounded-2xl max-w-3xl w-full p-6 sm:p-8 shadow-2xl overflow-y-auto max-h-[90vh] custom-scrollbar">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-white">{editingProduct ? 'Edit Perfume' : 'Add New Perfume'}</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors"><X size={24} /></button>
+        </div>
+
+        <form onSubmit={onSave} className="space-y-6">
+          {/* Core Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
+                <span>Perfume Name</span><Counter value={formData.name} max={LIMITS.name} />
+              </label>
+              <input required type="text" maxLength={LIMITS.name} value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="e.g. Baccarat Rouge 540" className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.name, LIMITS.name)}`} />
+            </div>
+            <div>
+              <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
+                <span>Brand</span><Counter value={formData.brand} max={LIMITS.brand} />
+              </label>
+              <input required type="text" maxLength={LIMITS.brand} value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })} placeholder="Type a brand or select below" className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.brand, LIMITS.brand)}`} />
+              
+              {allDisplayBrands?.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-3 max-h-24 overflow-y-auto custom-scrollbar">
+                  {allDisplayBrands.map(b => (
+                    <button key={b} type="button" onClick={() => setFormData({ ...formData, brand: b })} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${formData.brand === b ? 'bg-gold-400 text-black border-gold-400' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50'}`}>
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 uppercase tracking-widest mb-1">Gender Focus</label>
+              <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors">
+                <option>Unisex</option><option>Male</option><option>Female</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Size Variants (Mandatory Now) */}
+          <div className="bg-black/30 p-4 border border-gold-400/30 rounded-lg relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full bg-gold-400"></div>
+            <div className="flex justify-between items-center mb-4 pl-2">
+              <div>
+                <label className="block text-sm font-bold text-white uppercase tracking-widest">Pricing & Sizes</label>
+                <p className="text-[10px] text-gray-400 mt-0.5">Define your available sizes, inventory, and cost here.</p>
+              </div>
+              <button type="button" onClick={onAddVariant} className="flex items-center gap-1.5 px-3 py-1.5 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 border border-gold-400/30 rounded text-xs font-bold transition-colors">
+                <Plus size={13} /> Add Size
+              </button>
+            </div>
+
+            <div className="space-y-4 pl-2">
+              {formData.variants.map((variant, idx) => (
+                <div key={idx} className="bg-black/50 border border-white/10 rounded-lg p-3 relative group">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 items-start">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size (Add unit e.g. ml) *</label>
+                      <input required type="text" value={variant.size} onChange={e => onVariantChange(idx, 'size', e.target.value)} placeholder="e.g. 50ml" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                      
+                      {allDisplaySizes?.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2 max-h-20 overflow-y-auto custom-scrollbar">
+                          {allDisplaySizes.map(s => (
+                            <button key={s} type="button" onClick={() => onVariantChange(idx, 'size', s)} className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-all duration-200 ${variant.size === s ? 'bg-gold-400 text-black border-gold-400' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50'}`}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Selling Price (₱) *</label>
+                      <input required type="number" min="0" value={variant.price} onChange={e => onVariantChange(idx, 'price', e.target.value)} placeholder="1500" className="w-full bg-black/60 border border-gold-400/30 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Orig. Price (₱)</label>
+                      <input type="number" min="0" value={variant.compare_at_price} onChange={e => onVariantChange(idx, 'compare_at_price', e.target.value)} placeholder="Optional Sale" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Stock</label>
+                      <input type="number" min="0" value={variant.stock_count} onChange={e => onVariantChange(idx, 'stock_count', e.target.value)} placeholder="∞ if blank" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wider">Custom image:</span>
+                    {variant.image_url ? (
+                      <div className="flex items-center gap-2">
+                        <div className="relative w-10 h-10 rounded border border-white/10 overflow-hidden group/img cursor-pointer flex-shrink-0" onClick={() => onVariantChange(idx, 'image_url', '')}>
+                          <img src={variant.image_url} alt="" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/70 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity"><X size={10} className="text-red-400" /></div>
+                        </div>
+                        <span className="text-[10px] text-gray-500">Click image to remove</span>
+                      </div>
+                    ) : (
+                      <div className="flex-1 max-w-xs"><ImageUploader onUploadSuccess={url => onVariantChange(idx, 'image_url', url)} onError={err => { if (showToast) showToast('Error', err, 'error'); }} /></div>
+                    )}
+                    {formData.variants.length > 1 && (
+                      <button type="button" onClick={() => onRemoveVariant(idx)} className="ml-auto p-1.5 text-gray-600 hover:text-red-400 hover:bg-red-400/10 rounded transition-colors flex-shrink-0" title="Remove size"><Trash2 size={14} /></button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Description & Notes */}
+          <div>
+            <label className="flex justify-between items-end text-xs text-gray-400 uppercase tracking-widest mb-1">
+              <span>Description <Counter value={formData.description} max={LIMITS.description} /></span>
+            </label>
+            <textarea required maxLength={LIMITS.description} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors resize-none h-24 custom-scrollbar ${inputBorder(formData.description, LIMITS.description)}`} placeholder="Describe the scent profile..." />
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 uppercase tracking-widest mb-2">Fragrance Notes</label>
+            <div className="flex gap-2 mb-3">
+              <input type="text" placeholder="Type a new note..." value={customNoteInput} onChange={e => setCustomNoteInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') onAddCustomNote(e); }} className="flex-1 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-gold-400 outline-none" />
+              <button type="button" onClick={onAddCustomNote} className="px-4 py-2 bg-white/10 hover:bg-gold-400 text-gold-400 hover:text-black font-bold rounded-lg transition-colors text-sm">Add</button>
+            </div>
+            <div className="flex flex-wrap gap-2 p-4 bg-black/30 border border-white/5 rounded-lg max-h-48 overflow-y-auto custom-scrollbar">
+              {allDisplayNotes.map(note => (
+                <button key={note} type="button" onClick={() => onNoteToggle(note)} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${formData.notes.includes(note) ? 'bg-gold-400 text-black border-gold-400' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50'}`}>{note}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Images */}
+          <div className="bg-black/30 p-4 border border-white/5 rounded-lg">
+            <div className="flex justify-between items-end mb-4">
+              <label className="block text-xs text-gray-400 uppercase tracking-widest">Base Product Images</label>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {formData.image_urls.map((url, index) => (
+                <div key={index} className="relative group aspect-square rounded-lg border-2 border-white/10 overflow-hidden bg-white/5">
+                  <img src={url} alt={`Preview ${index + 1}`} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button type="button" onClick={() => onRemoveImage(index)} className="p-2 bg-red-500 text-white rounded-full hover:scale-110"><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              ))}
+              {formData.image_urls.length < 5 && <div className="aspect-square"><ImageUploader onUploadSuccess={url => setFormData(prev => ({ ...prev, image_urls: [...prev.image_urls, url] }))} /></div>}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 p-4 bg-white/5 border border-white/10 rounded-lg">
+            <input type="checkbox" id="available" checked={formData.available} onChange={e => setFormData({ ...formData, available: e.target.checked })} className="w-5 h-5 accent-gold-400 bg-transparent border-gray-600 rounded cursor-pointer" />
+            <label htmlFor="available" className="text-sm font-bold text-white cursor-pointer select-none">Product is Available for Purchase</label>
+          </div>
+
+          <div className="flex gap-4 pt-4 border-t border-white/10">
+            <button type="button" onClick={onClose} className="flex-1 py-3 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors font-medium">Cancel</button>
+            <button type="submit" disabled={isSaving} className="flex-1 py-3 bg-gold-400 hover:bg-gold-300 text-black font-bold rounded-lg shadow-lg flex justify-center items-center">{isSaving ? <Loader2 className="animate-spin" size={18} /> : 'Save Product'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export { LIMITS };
+export default ProductFormModal;
+
+================================================================================
+FILE: src/components/admin/AdminOrders.jsx
+================================================================================
+import React, { useState } from 'react'; 
+import { Loader2, Eye, EyeOff, MessageCircle, Search, Hash, Mail, FileText, Printer, Edit2, Plus, Trash2, Minus } from 'lucide-react'; 
+import { useOrders } from '../../hooks/useOrders'; 
+import { useShop } from '../../contexts/ShopContext';
+import { useSettings } from '../../contexts/SettingsContext';
+import { useProducts } from '../../hooks/useAdminProducts';
+
+const statusClass = (status) => 
+  status === 'pending' 
+    ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30' 
+    : status === 'shipped' 
+    ? 'bg-blue-500/10 text-blue-400 border border-blue-500/30' 
+    : status === 'canceled' 
+    ? 'bg-red-500/10 text-red-400 border border-red-500/30' 
+    : 'bg-green-500/10 text-green-400 border border-green-500/30';
+    
+const AdminOrders = ({ onNavigateToMessages }) => { 
+  const { showToast } = useShop(); 
+  const { settings } = useSettings(); 
+  const { orders, isLoading, changeOrderStatus, modifyOrder } = useOrders(showToast);
+
+  const [expandedOrderId, setExpandedOrderId] = useState(null); 
+  const [idSearch, setIdSearch] = useState(''); 
+  const [emailSearch, setEmailSearch] = useState(''); 
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [invoiceOrder, setInvoiceOrder] = useState(null);
+
+  const filteredOrders = orders.filter(order => { 
+    const matchesId = !idSearch.trim() || order.id.toString().includes(idSearch.trim()); 
+    const matchesEmail = !emailSearch.trim() || (order.profiles?.email || '').toLowerCase().includes(emailSearch.trim().toLowerCase()); 
+    const matchesStatus = statusFilter === 'all' || order.status === statusFilter; 
+    return matchesId && matchesEmail && matchesStatus; 
+  });
+
+  if (isLoading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-gold-400" /></div>;
+
+  return ( 
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h3 className="text-2xl font-bold text-white mb-1">Orders Dashboard</h3>
+            <p className="text-gray-400 text-sm">Manage fulfillment, invoicing, and messages.</p>
+          </div>
+          
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="relative flex-1 min-w-[120px]">
+              <Hash size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input type="text" inputMode="numeric" placeholder="Order ID…" value={idSearch} onChange={e => setIdSearch(e.target.value.replace(/\D/g, ''))} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors" />
+            </div>
+            <div className="relative flex-1 min-w-[180px]">
+              <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input type="text" placeholder="Search by email…" value={emailSearch} onChange={e => setEmailSearch(e.target.value)} className="w-full bg-black/50 border border-white/10 rounded-lg py-2 pl-9 pr-3 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors" />
+            </div>
+
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="w-full sm:w-auto bg-black/50 border border-white/10 rounded-lg py-2 px-4 text-sm text-white focus:outline-none focus:border-gold-400 transition-colors">
+              <option value="all">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="shipped">Shipped</option>
+              <option value="completed">Completed</option>
+              <option value="canceled">Canceled</option>
+            </select>
+
+            <button onClick={() => onNavigateToMessages?.()} className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors text-sm font-bold">
+              <MessageCircle size={16} /> Open Messages
+            </button>
+          </div>
+        </div>
+
+        <div className="hidden md:block overflow-x-auto w-full">
+          <table className="w-full text-right border-collapse whitespace-nowrap min-w-[600px]">
+            <thead>
+              <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
+                {['Order ID','Date','Customer','Total','Status','Actions'].map(h => (
+                  <th key={h} className="p-4 font-medium text-right">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 text-sm text-gray-300">
+              {filteredOrders.length === 0 ? (
+                <tr><td colSpan="6" className="p-8 text-center text-gray-500">No orders found matching your filters.</td></tr>
+              ) : filteredOrders.map(order => (
+                <React.Fragment key={order.id}>
+                  <tr className={`hover:bg-white/5 transition-colors ${expandedOrderId === order.id ? 'bg-white/5' : ''}`}>
+                    <td className="p-4 font-mono text-gold-400 text-right">#{order.id}</td>
+                    <td className="p-4 text-right">{new Date(order.created_at).toLocaleDateString()}</td>
+                    <td className="p-4 truncate max-w-[150px] text-right" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</td>
+                    <td className="p-4 font-bold text-white text-right">₱{Number(order.total_amount).toLocaleString()}</td>
+                    <td className="p-4 text-right">
+                      <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)} className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center w-full max-w-[100px] ${statusClass(order.status)}`}>
+                        <option value="pending" className="bg-rich-black text-white">Pending</option>
+                        <option value="shipped" className="bg-rich-black text-white">Shipped</option>
+                        <option value="completed" className="bg-rich-black text-white">Completed</option>
+                        <option value="canceled" className="bg-rich-black text-white">Canceled</option>
+                      </select>
+                    </td>
+                    <td className="p-4 flex justify-end gap-2 text-right">
+                      <button onClick={() => setInvoiceOrder(order)} className="p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice">
+                        <FileText size={16} />
+                      </button>
+                      <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors" title="Message User">
+                        <MessageCircle size={16} />
+                      </button>
+                      <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className={`p-2 rounded transition-colors ${expandedOrderId === order.id ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white'}`}>
+                        {expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedOrderId === order.id && (
+                    <tr className="bg-black/40 border-b border-white/10">
+                      <td colSpan="6" className="p-6">
+                        <div className="bg-white/5 border border-white/10 rounded-lg p-4 w-full">
+                          <h4 className="text-xs uppercase tracking-widest text-gray-500 mb-3 font-bold text-left">Order Items</h4>
+                          {order.order_items.map((item, idx) => (
+                            <div key={idx} className="flex justify-between items-center text-sm mb-1 gap-2 min-w-0">
+                              <div className="min-w-0 truncate text-left">
+                                <span className="text-gold-400 font-bold mr-2">{item.quantity}x</span>
+                                <span className="text-white truncate">
+                                  {item.products?.name || 'Unknown'} 
+                                  {item.product_variants?.size ? ` (${item.product_variants.size})` : ''}
+                                </span>
+                              </div>
+                              <span className="text-gray-400 font-mono flex-shrink-0 text-right">₱{(item.price_at_time * item.quantity).toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile View */}
+        <div className="md:hidden flex flex-col divide-y divide-white/10 w-full overflow-hidden">
+          {filteredOrders.map(order => (
+            <div key={order.id} className="p-4 flex flex-col gap-4 hover:bg-white/5 transition-colors min-w-0">
+              <div className="flex justify-between items-start gap-2 min-w-0">
+                <div className="min-w-0">
+                  <span className="font-mono text-gold-400 font-bold text-base sm:text-lg truncate max-w-[120px] inline-block">#{order.id}</span>
+                  <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 truncate">{new Date(order.created_at).toLocaleDateString()}</p>
+                </div>
+                <p className="font-bold text-white text-base sm:text-lg flex-shrink-0">₱{Number(order.total_amount).toLocaleString()}</p>
+              </div>
+              <div className="bg-black/40 rounded p-2 border border-white/5 min-w-0">
+                <p className="text-xs sm:text-sm text-gray-300 truncate" title={order.profiles?.email}>{order.profiles?.email || 'Unknown User'}</p>
+              </div>
+              <div className="flex justify-between items-center gap-2 sm:gap-3 w-full">
+                <select value={order.status} onChange={e => changeOrderStatus(order.id, e.target.value, order.user_id, order.order_items)} className={`flex-1 px-2 sm:px-3 py-2 rounded-md text-[10px] sm:text-xs font-bold uppercase tracking-wider outline-none cursor-pointer appearance-none text-center min-w-0 ${statusClass(order.status)}`}>
+                  <option value="pending" className="bg-rich-black text-white">Pending</option>
+                  <option value="shipped" className="bg-rich-black text-white">Shipped</option>
+                  <option value="completed" className="bg-rich-black text-white">Completed</option>
+                  <option value="canceled" className="bg-rich-black text-white">Canceled</option>
+                </select>
+                <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
+                  <button onClick={() => setInvoiceOrder(order)} className="p-1.5 sm:p-2 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded transition-colors" title="View Invoice"><FileText size={16} /></button>
+                  <button onClick={() => setExpandedOrderId(expandedOrderId === order.id ? null : order.id)} className="p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded transition-colors">{expandedOrderId === order.id ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+                  <button onClick={() => onNavigateToMessages?.(order.user_id)} className="p-1.5 sm:p-2 bg-gold-400/10 hover:bg-gold-400/20 text-gold-400 rounded transition-colors"><MessageCircle size={16} /></button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {invoiceOrder && <InvoiceModal order={invoiceOrder} onClose={() => setInvoiceOrder(null)} modifyOrder={modifyOrder} settings={settings} />}
+    </>
+  ); 
+};
+
+const InvoiceModal = ({ order, onClose, modifyOrder, settings }) => { 
+  const { products } = useProducts();
+  const [isEditing, setIsEditing] = useState(false); 
+  const [editData, setEditData] = useState({ 
+    address: order.metadata?.address || order.metadata?.location || '', 
+    contact: order.metadata?.contact || '', 
+    promo_code: order.metadata?.promo_code || '', 
+    fulfillment_method: order.metadata?.fulfillment_method || '', 
+    payment_preference: order.metadata?.payment_preference || '', 
+    custom_fees: order.metadata?.custom_fees || [] 
+  });
+  
+  const [editItems, setEditItems] = useState(order.order_items || []);
+  const [newItemId, setNewItemId] = useState('');
+
+  const storeInfo = settings?.storeInfo || {};
+
+  const [newFeeName, setNewFeeName] = useState(''); 
+  const [newFeeAmount, setNewFeeAmount] = useState('');
+
+  const handlePrint = () => { 
+    const printContent = document.getElementById('printable-invoice-area').innerHTML; 
+    const printWindow = window.open('', '_blank'); 
+    printWindow.document.write(`
+      <html> 
+        <head> 
+          <title>Invoice #${order.id} - ${storeInfo.name || 'KL Scents'}</title> 
+          <script src="https://cdn.tailwindcss.com"></script> 
+          <style> @page { size: auto; margin: 15mm; } body { font-family: sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white; color: black; } .no-print { display: none !important; } </style> 
+        </head> 
+        <body class="bg-white"> 
+          <div class="max-w-3xl mx-auto py-8"> 
+            ${printContent} 
+          </div> 
+          <script> setTimeout(() => { window.print(); window.close(); }, 750); </script> 
+        </body> 
+      </html>
+    `); 
+    printWindow.document.close(); 
+  };
+
+  const baseTotal = editItems.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0); 
+  const feesTotal = editData.custom_fees.reduce((sum, fee) => sum + Number(fee.amount), 0); 
+  const grandTotal = baseTotal + feesTotal;
+
+  const handleFieldChange = (field, value) => setEditData({ ...editData, [field]: value });
+
+  const updateItemQty = (idx, delta) => {
+    const updated = [...editItems];
+    const newQty = updated[idx].quantity + delta;
+    if (newQty > 0) {
+      updated[idx].quantity = newQty;
+      setEditItems(updated);
+    }
+  };
+
+  const removeItem = (idx) => {
+    const updated = editItems.filter((_, i) => i !== idx);
+    setEditItems(updated);
+  };
+
+  const handleAddItem = () => {
+    if (!newItemId) return;
+    const product = products.find(p => p.id === Number(newItemId));
+    if (!product) return;
+    
+    const defaultVariant = product.product_variants?.[0];
+    const newItem = {
+      product_id: product.id,
+      variant_id: defaultVariant?.id,
+      quantity: 1,
+      price_at_time: defaultVariant?.price || 0,
+      products: product,
+      product_variants: defaultVariant
+    };
+    
+    setEditItems([...editItems, newItem]);
+    setNewItemId('');
+  };
+
+  const handleAddFee = () => { 
+    if (!newFeeName || !newFeeAmount) return; 
+    setEditData({ ...editData, custom_fees: [...editData.custom_fees, { name: newFeeName, amount: Number(newFeeAmount) }] }); 
+    setNewFeeName(''); 
+    setNewFeeAmount(''); 
+  };
+
+  const handleRemoveFee = (index) => { 
+    setEditData({ ...editData, custom_fees: editData.custom_fees.filter((_, i) => i !== index) }); 
+  };
+
+  const handleSave = () => { 
+    modifyOrder(order.id, grandTotal, editData, editItems); 
+    setIsEditing(false); 
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="absolute top-4 right-4 flex gap-2">
+        {order.status === 'pending' && ( 
+          <button onClick={() => setIsEditing(!isEditing)} className={`flex items-center gap-2 px-4 py-2 rounded font-bold shadow-lg transition-colors ${isEditing ? 'bg-red-500 text-white' : 'bg-blue-500 text-white hover:bg-blue-400'}`} > 
+            {isEditing ? 'Cancel Edit' : 'Edit Invoice & Items'} 
+          </button> 
+        )} 
+        <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded font-bold shadow-lg transition-colors"><Printer size={18}/> Print PDF</button>
+        <button onClick={onClose} className="bg-red-500 hover:bg-red-400 text-white px-4 py-2 rounded font-bold transition-colors">Close</button>
+      </div>
+
+      <div className="bg-gray-100 w-full max-w-5xl rounded-xl shadow-2xl overflow-y-auto max-h-[90vh] flex flex-col md:flex-row">
+        
+        <div className="flex-1 bg-white p-10 text-black min-w-0" id="printable-invoice-area">
+          <div className="flex justify-between items-start border-b-2 border-gray-200 pb-6 mb-6">
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-widest text-gray-900 uppercase">{storeInfo.name || 'KL SCENTS'}</h1>
+              <p className="text-sm text-gray-500 mt-1">{storeInfo.tagline || 'Premium Fragrance Collection'}</p>
+            </div>
+            <div className="text-right">
+              <h2 className="text-xl font-bold text-gray-800">INVOICE</h2>
+              <p className="text-sm text-gray-500 font-mono mt-1">#{order.id}</p>
+              <p className="text-sm text-gray-500">{new Date(order.created_at).toLocaleDateString()}</p>
+              <span className={`inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase rounded ${order.status === 'pending' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100 text-gray-800'}`}>
+                {order.status}
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-6 mb-8">
+            <div className="min-w-0">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Billed & Shipped To</h3>
+              <p className="text-sm font-bold text-gray-800 truncate" title={order.profiles?.email}>{order.profiles?.email}</p>
+              <p className="text-sm text-gray-600 mt-1 max-w-[200px] leading-relaxed break-words">{editData.address || 'No Address Provided'}</p>
+              <p className="text-sm text-gray-600 mt-1 truncate">{editData.contact || 'No Contact Provided'}</p>
+            </div>
+            <div className="text-right min-w-0">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Order Specifics</h3>
+              {editData.promo_code && <p className="text-sm text-gray-600 mt-1 truncate">Promo: <span className="font-bold text-yellow-600">{editData.promo_code}</span></p>}
+              <p className="text-sm text-gray-600 mt-1 truncate">Fulfillment: <span className="font-bold capitalize">{editData.fulfillment_method || 'N/A'}</span></p>
+              <p className="text-sm text-gray-600 mt-1 truncate">Payment: <span className="font-bold capitalize">{editData.payment_preference || 'N/A'}</span></p>
+            </div>
+          </div>
+
+          <table className="w-full text-left border-collapse mb-6 table-fixed">
+            <thead>
+              <tr className="border-b-2 border-gray-200 text-xs uppercase tracking-wider text-gray-500">
+                <th className="py-3 font-bold w-1/2">Item Description</th>
+                <th className="py-3 font-bold text-center w-1/6">Qty</th>
+                <th className="py-3 font-bold text-right w-1/6">Price</th>
+                <th className="py-3 font-bold text-right w-1/6">Total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 text-sm text-gray-800">
+              {editItems.map((item, idx) => {
+                const variant = Array.isArray(item.product_variants) ? item.product_variants[0] : item.product_variants;
+                return (
+                  <tr key={idx} className={isEditing ? 'bg-yellow-50/50' : ''}>
+                    <td className="py-4 min-w-0">
+                      <p className="font-bold truncate flex items-center gap-2">
+                        {isEditing && (
+                          <button onClick={() => removeItem(idx)} className="no-print p-1 bg-red-100 text-red-600 hover:bg-red-200 rounded" title="Remove Item"><Trash2 size={12} /></button>
+                        )}
+                        {item.products?.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{variant?.size || 'Standard'}</p>
+                    </td>
+                    <td className="py-4 text-center">
+                      {isEditing ? (
+                        <div className="no-print flex items-center justify-center gap-2">
+                          <button onClick={() => updateItemQty(idx, -1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Minus size={10} /></button>
+                          <span className="w-4">{item.quantity}</span>
+                          <button onClick={() => updateItemQty(idx, 1)} className="p-1 bg-gray-200 rounded hover:bg-gray-300"><Plus size={10} /></button>
+                        </div>
+                      ) : (
+                        item.quantity
+                      )}
+                      {isEditing && <span className="hidden print:inline">{item.quantity}</span>}
+                    </td>
+                    <td className="py-4 text-right truncate">₱{Number(item.price_at_time).toLocaleString()}</td>
+                    <td className="py-4 text-right font-medium truncate">₱{(item.price_at_time * item.quantity).toLocaleString()}</td>
+                  </tr>
+                )
+              })}
+              {editItems.length === 0 && (
+                <tr><td colSpan="4" className="py-4 text-center text-gray-500 italic">No items left in order. Add items or cancel order.</td></tr>
+              )}
+            </tbody>
+          </table>
+
+          <div className="w-full flex justify-end">
+            <div className="w-full sm:w-1/2 space-y-3">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Subtotal</span>
+                <span>₱{baseTotal.toLocaleString()}</span>
+              </div>
+              {editData.custom_fees.map((fee, idx) => (
+                <div key={idx} className="flex justify-between text-sm text-gray-600 group">
+                  <span className="flex items-center min-w-0">
+                    <span className="truncate">{fee.name}</span>
+                    {isEditing && <button onClick={() => handleRemoveFee(idx)} className="no-print text-[10px] text-red-500 ml-2 px-1 border border-red-500 rounded hover:bg-red-50 hidden group-hover:block flex-shrink-0" title="Remove fee">Remove</button>}
+                  </span>
+                  <span className="flex-shrink-0">{fee.amount < 0 ? '-' : ''}₱{Math.abs(fee.amount).toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="flex justify-between text-lg font-bold text-gray-900 border-t-2 border-gray-200 pt-3 mt-3">
+                <span>Total</span>
+                <span>₱{grandTotal.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-16 pt-6 border-t border-gray-100 text-center text-xs text-gray-400">
+            <p>Thank you for shopping with {storeInfo.name || 'KL Scents'}.</p>
+            <p className="mt-1">If you have any questions concerning this invoice, please message us at {storeInfo.contactEmail || 'our support page'}.</p>
+          </div>
+        </div>
+
+        {isEditing && (
+          <div className="w-full md:w-80 bg-gray-50 p-6 border-l border-gray-200 animate-fade-in flex flex-col gap-4 text-sm text-gray-800 flex-shrink-0 overflow-y-auto">
+            <h3 className="font-bold text-lg border-b border-gray-200 pb-2 flex items-center gap-2"><Edit2 size={18}/> Edit Details</h3>
+            
+            <div className="bg-yellow-100 text-yellow-800 p-3 rounded text-xs">
+              <strong>Order Modifying enabled.</strong> You can add products, remove items, change quantities, and modify fees.
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Address</label>
+              <textarea value={editData.address} onChange={e => handleFieldChange('address', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 h-20 resize-none" />
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</label>
+              <input value={editData.contact} onChange={e => handleFieldChange('contact', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fulfillment</label>
+                <input value={editData.fulfillment_method} onChange={e => handleFieldChange('fulfillment_method', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Payment</label>
+                <input value={editData.payment_preference} onChange={e => handleFieldChange('payment_preference', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500" />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Promo Code</label>
+              <input value={editData.promo_code} onChange={e => handleFieldChange('promo_code', e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 font-mono text-yellow-600 font-bold" />
+            </div>
+
+            <div className="border-t border-gray-200 pt-4 mt-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Add Product</label>
+              <div className="flex gap-2">
+                <select value={newItemId} onChange={e => setNewItemId(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 flex-1 text-xs">
+                  <option value="">Select a product...</option>
+                  {products?.map(p => (
+                    <option key={p.id} value={p.id}>{p.name} - ₱{p.product_variants?.[0]?.price || 0}</option>
+                  ))}
+                </select>
+                <button onClick={handleAddItem} className="bg-blue-600 text-white rounded px-3 py-2 hover:bg-blue-700 text-xs font-bold"><Plus size={14}/></button>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 pt-4 mt-2">
+              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">Custom Fees/Discounts</label>
+              <div className="flex gap-2">
+                <input placeholder="Name" value={newFeeName} onChange={e => setNewFeeName(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/2 min-w-0" />
+                <input placeholder="Amt (- for discount)" type="number" value={newFeeAmount} onChange={e => setNewFeeAmount(e.target.value)} className="p-2 border rounded bg-white focus:outline-blue-500 w-1/3 min-w-0" />
+                <button onClick={handleAddFee} className="bg-gray-800 text-white rounded p-2 flex-1 hover:bg-gray-700 flex justify-center flex-shrink-0"><Plus size={16}/></button>
+              </div>
+            </div>
+
+            <button onClick={handleSave} className="mt-4 mb-2 bg-green-600 text-white font-bold py-3 rounded shadow hover:bg-green-700 transition-colors uppercase tracking-widest text-sm">
+              Save Changes
+            </button>
+          </div>
+        )}
+
+      </div>
+    </div>
+  ); 
+};
+
+export default AdminOrders;
+
+================================================================================
+FILE: src/hooks/useAdminProducts.js
+================================================================================
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { fetchProductsAPI, saveProductAPI, deleteProductAPI } from '../services/productApi';
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
+
+export const useProducts = () => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: products, isLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: fetchProductsAPI,
+  });
+
+  // Listen for the custom event fired by the bulk availability update in AdminProducts.
+  useEffect(() => {
+    const handler = () => queryClient.invalidateQueries({ queryKey: ['products'] });
+    window.addEventListener('klscents:products-updated', handler);
+    return () => window.removeEventListener('klscents:products-updated', handler);
+  }, [queryClient]);
+
+  const saveMutation = useMutation({
+    mutationFn: ({ payload, id }) => saveProductAPI(payload, id),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      const actionType = variables.id ? 'Edited Product' : 'Added New Product';
+      logAdminActionAPI(user?.email, actionType, variables.payload.name);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => deleteProductAPI(id),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      logAdminActionAPI(user?.email, 'Deleted Product', `Product ID: ${id}`);
+    },
+  });
+
+  const saveProduct   = async (payload, id = null) => await saveMutation.mutateAsync({ payload, id });
+  const deleteProduct = async (id) => await deleteMutation.mutateAsync(id);
+
+  return { products: products || [], isLoading, saveProduct, deleteProduct };
+};
+
+================================================================================
+FILE: src/hooks/useOrders.js
+================================================================================
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchOrdersAPI, updateOrderStatusAPI, updateOrderDetailsAPI } from '../services/orderApi';
+import { sendMessageAPI } from '../services/messageApi';
+import { logAdminActionAPI } from '../services/logApi';
+import { useAuth } from '../contexts/AuthContext';
+
+const STATUS_MESSAGES = {
+  shipped: (orderId) => `📦 Your order #${orderId} has been marked as shipped! We'll be in touch with delivery details shortly.`,
+  completed: (orderId) => `✅ Your order #${orderId} has been completed. We hope you love your new scent!`,
+  canceled: (orderId) => `❌ Your order #${orderId} has been canceled. Please reply if you have questions.`,
+};
+
+export const useOrders = (showToast) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { data: orders, isLoading } = useQuery({
+    queryKey: ['adminOrders'],
+    queryFn: fetchOrdersAPI,
+  });
+
+  const statusMutation = useMutation({
+    mutationFn: ({ orderId, newStatus, orderItems }) => updateOrderStatusAPI(orderId, newStatus, orderItems),
+    onSuccess: async (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
+      if (showToast) showToast('Success', `Order #${variables.orderId} updated to ${variables.newStatus}`);
+      logAdminActionAPI(user?.email, `Updated Order Status to ${variables.newStatus}`, `Order #${variables.orderId}`);
+      
+      const messageTemplate = STATUS_MESSAGES[variables.newStatus];
+      if (messageTemplate && variables.orderUserId) {
+        try { await sendMessageAPI({ sender_role: 'admin', content: messageTemplate(variables.orderId), user_id: variables.orderUserId }); } 
+        catch (err) { console.warn('Notification failed:', err); }
+      }
+    }
+  });
+
+  const editOrderMutation = useMutation({
+    mutationFn: ({ orderId, newTotal, updatedMetadata, newOrderItems }) => updateOrderDetailsAPI(orderId, newTotal, updatedMetadata, newOrderItems),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      if (showToast) showToast('Success', `Order #${variables.orderId} successfully modified.`);
+      logAdminActionAPI(user?.email, `Modified Order Details`, `Order #${variables.orderId}`);
+    }
+  });
+
+  const changeOrderStatus = async (orderId, newStatus, orderUserId, orderItems = []) => {
+    await statusMutation.mutateAsync({ orderId, newStatus, orderUserId, orderItems });
+  };
+
+  const modifyOrder = async (orderId, newTotal, updatedMetadata, newOrderItems = null) => {
+    await editOrderMutation.mutateAsync({ orderId, newTotal, updatedMetadata, newOrderItems });
+  };
+
+  return { orders: orders || [], isLoading, changeOrderStatus, modifyOrder };
+};
+
+================================================================================
+FILE: src/services/productApi.js
+================================================================================
+import { supabase } from './supabase';
+
+export const fetchProductsAPI = async () => {
+  const { data, error } = await supabase
+    .from('products')
+    // We now fetch the reviews alongside the products to dynamically calculate ratings
+    .select('*, product_variants(*), reviews(*)')
+    .order('created_at', { ascending: false });
+    
+  if (error) throw error;
+
+  // Process the rating on the fly so it's always accurate across the whole app!
+  return data.map(product => {
+    const approvedReviews = (product.reviews || []).filter(r => r.status === 'approved');
+    const avgRating = approvedReviews.length > 0
+      ? (approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length).toFixed(1)
+      : 0;
+
+    return {
+      ...product,
+      rating: avgRating, 
+    };
+  });
+};
+
+export const saveProductAPI = async (payload, id = null) => {
+  const { variants, ...productData } = payload;
+  let productId = id;
+
+  if (id) {
+    const { error } = await supabase.from('products').update(productData).eq('id', id);
+    if (error) throw error;
+  } else {
+    const { data, error } = await supabase.from('products').insert([productData]).select().single();
+    if (error) throw error;
+    productId = data.id;
+  }
+
+  const { data: existingVariants } = await supabase.from('product_variants').select('id').eq('product_id', productId);
+  const existingIds = existingVariants?.map(v => v.id) || [];
+  
+  const incomingIds = variants.map(v => v.id).filter(Boolean);
+  const idsToDelete = existingIds.filter(id => !incomingIds.includes(id));
+
+  if (idsToDelete.length > 0) {
+    await supabase.from('product_variants').delete().in('id', idsToDelete);
+  }
+
+  if (variants && variants.length > 0) {
+    const variantsToUpsert = variants.map(v => ({
+      ...(v.id ? { id: v.id } : {}),
+      product_id: productId,
+      size: v.size,
+      price: v.price,
+      compare_at_price: v.compare_at_price || null,
+      stock_count: v.stock_count || null,
+      image_url: v.image_url || null
+    }));
+    
+    const { error: varError } = await supabase.from('product_variants').upsert(variantsToUpsert);
+    if (varError) throw varError;
+  }
+};
+
+export const deleteProductAPI = async (id) => {
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) throw error;
+};
+
+================================================================================
+FILE: src/services/orderApi.js
+================================================================================
+import { supabase } from './supabase';
+
+export const fetchOrdersAPI = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`id, created_at, status, total_amount, user_id, metadata, profiles(email), order_items(quantity, price_at_time, product_id, variant_id, products(name), product_variants(size))`)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};
+
+export const updateOrderStatusAPI = async (orderId, newStatus, orderItems = []) => {
+  const { error } = await supabase.from('orders').update({ status: newStatus }).eq('id', orderId);
+  if (error) throw error;
+
+  if (newStatus === 'completed' && orderItems.length > 0) {
+    for (const item of orderItems) {
+      if (!item.variant_id) continue; 
+      try {
+        const { data: variant } = await supabase.from('product_variants').select('stock_count').eq('id', item.variant_id).single();
+        if (variant?.stock_count != null) {
+          const newStock = Math.max(0, variant.stock_count - item.quantity);
+          await supabase.from('product_variants').update({ stock_count: newStock }).eq('id', item.variant_id);
+        }
+      } catch (err) { console.error(`Stock update failed`, err); }
+    }
+  }
+};
+
+export const updateOrderDetailsAPI = async (orderId, newTotal, updatedMetadata, newOrderItems = null) => {
+  const { data: currentOrder } = await supabase.from('orders').select('metadata').eq('id', orderId).single();
+  const currentMeta = currentOrder?.metadata || {};
+
+  const { error: orderError } = await supabase
+    .from('orders')
+    .update({ 
+      total_amount: newTotal,
+      metadata: { ...currentMeta, ...updatedMetadata }
+    })
+    .eq('id', orderId);
+
+  if (orderError) throw orderError;
+
+  // Sync new order items if modified
+  if (newOrderItems) {
+    // 1. Clear old items
+    const { error: deleteError } = await supabase.from('order_items').delete().eq('order_id', orderId);
+    if (deleteError) throw deleteError;
+
+    // 2. Insert updated items
+    if (newOrderItems.length > 0) {
+      const itemsToInsert = newOrderItems.map(item => ({
+        order_id: orderId,
+        product_id: item.product_id || item.products?.id,
+        variant_id: item.variant_id || (Array.isArray(item.product_variants) ? item.product_variants[0]?.id : item.product_variants?.id),
+        quantity: item.quantity,
+        price_at_time: item.price_at_time
+      }));
+      
+      const { error: insertError } = await supabase.from('order_items').insert(itemsToInsert);
+      if (insertError) throw insertError;
+    }
+  }
+};
+
+export const fetchUserOrdersAPI = async (userId) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`id, created_at, status, total_amount, metadata, order_items(quantity, price_at_time, variant_id, products(*), product_variants(*))`)
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data;
+};

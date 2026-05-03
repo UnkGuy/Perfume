@@ -8,7 +8,7 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
     dateLimit.setDate(dateLimit.getDate() - days);
   }
 
-  // 1. Pending Orders (Previously mislabeled as Inquiries)
+  // 1. Pending Orders
   const { count: pendingOrders } = await supabase
     .from('orders').select('*', { count: 'exact', head: true }).eq('status', 'pending');
 
@@ -27,12 +27,24 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
   
   const revenue = recentOrders?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
 
-  // Build Chart Data
+  // Build Chart Data - FIXED: Pre-fill dates to prevent "Not Enough Data" on zero-sale days
   const chartDataMap = {};
+  
+  if (days !== 'all') {
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      chartDataMap[dateStr] = 0;
+    }
+  }
+
   recentOrders?.forEach(order => {
     const date = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    if (!chartDataMap[date]) chartDataMap[date] = 0;
-    chartDataMap[date] += Number(order.total_amount);
+    if (chartDataMap[date] !== undefined || days === 'all') {
+      if (!chartDataMap[date]) chartDataMap[date] = 0;
+      chartDataMap[date] += Number(order.total_amount);
+    }
   });
 
   const chartData = Object.keys(chartDataMap).map(date => ({
@@ -40,7 +52,7 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
     revenue: chartDataMap[date],
   }));
 
-  // 3. Unread Messages (Where customer sent the last message)
+  // 3. Unread Messages 
   const { count: unreadMessages } = await supabase
     .from('latest_messages_per_user')
     .select('*', { count: 'exact', head: true })
@@ -78,14 +90,7 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
-  // 7. Low Stock
-  const { data: lowStockProducts } = await supabase
-    .from('product_variants')
-    .select('id, size, stock_count, products(name, brand)')
-    .not('stock_count', 'is', null) 
-    .lt('stock_count', 5)
-    .order('stock_count', { ascending: true })
-    .limit(10);
+  // 7. Low Stock (Removed hardcoded API call, now handled dynamically by useDashboardStats hook for accuracy)
 
   return {
     pendingOrders: pendingOrders || 0,
@@ -96,6 +101,6 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
     outOfStock: outOfStock || 0,
     chartData,
     bestSellers,
-    lowStockProducts: lowStockProducts || [],
+    lowStockProducts: [], // Handled by useDashboardStats to respect Admin Settings threshold
   };
 };
