@@ -22,7 +22,7 @@ const AdminOverview = ({ onNavigate }) => {
     csvContent += `Pending Orders,${stats.pendingOrders}\n`;
     csvContent += `Est. Revenue,${stats.revenue}\n`;
     csvContent += `Active Customers,${stats.activeUsers}\n`;
-    csvContent += `Unread Messages,${stats.unreadMessages}\n`;
+    csvContent += `Unreplied Messages,${stats.unreadMessages}\n`;
     csvContent += `Pending Reviews,${stats.pendingReviews}\n`;
     csvContent += `Unavailable Items,${stats.outOfStock}\n\n`;
 
@@ -119,7 +119,7 @@ const AdminOverview = ({ onNavigate }) => {
         <StatCard 
           icon={<MessageCircle size={20} />} 
           color="blue" 
-          title="Unread Messages" 
+          title="Unreplied Messages" 
           value={stats.unreadMessages} 
           onClick={() => onNavigate('messages')}
           clickable

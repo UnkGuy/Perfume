@@ -14,33 +14,45 @@ export const useDashboardStats = (days = 30) => {
     staleTime: 1000 * 60 * 15,
   });
 
-  const { dynamicOutOfStock, dynamicLowStockProducts } = useMemo(() => {
-    if (!products) return { dynamicOutOfStock: 0, dynamicLowStockProducts: [] };
+  const { dynamicUnavailableCount, dynamicLowStockProducts } = useMemo(() => {
+    if (!products) return { dynamicUnavailableCount: 0, dynamicLowStockProducts: [] };
     const threshold = settings?.inventory?.lowStockThreshold || 0;
     const lowStockVariants = [];
+    let unavailableCount = 0;
 
     products.forEach(p => {
+      // If the parent product is unavailable, count all its variants as unavailable
+      if (p.available === false) {
+        unavailableCount += (p.product_variants?.length || 1);
+      }
+
       if (p.product_variants) {
         p.product_variants.forEach(v => {
+          // Track low stock threshold items
           if (v.stock_count !== null && v.stock_count !== '' && v.stock_count <= threshold) {
             lowStockVariants.push({
               ...v,
               products: { name: p.name, brand: p.brand }
             });
           }
+          
+          // If product IS available, but this specific variant has 0 stock, count it as unavailable
+          if (p.available !== false && v.stock_count === 0) {
+            unavailableCount++;
+          }
         });
       }
     });
 
     return {
-      dynamicOutOfStock: lowStockVariants.length,
+      dynamicUnavailableCount: unavailableCount,
       dynamicLowStockProducts: lowStockVariants
     };
   }, [products, settings?.inventory?.lowStockThreshold]);
 
   const stats = {
     ...(data || { pendingOrders: 0, unreadMessages: 0, pendingReviews: 0, revenue: 0, activeUsers: 0 }),
-    outOfStock: dynamicOutOfStock, 
+    outOfStock: dynamicUnavailableCount, 
     lowStockProducts: dynamicLowStockProducts
   };
 

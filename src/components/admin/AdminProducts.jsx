@@ -53,7 +53,8 @@ const AdminProducts = () => {
         const getStock = (p) => {
           if (!p.product_variants || p.product_variants.length === 0) return 0;
           if (p.product_variants.some(v => v.stock_count === null || v.stock_count === '')) return Infinity;
-          return p.product_variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
+          // SORT BY LOWEST VARIANT STOCK: Ensures products with a low variant bubble up to the top!
+          return Math.min(...p.product_variants.map(v => v.stock_count || 0));
         };
         const stockA = getStock(a);
         const stockB = getStock(b);
@@ -220,7 +221,7 @@ const AdminProducts = () => {
                   <div className="flex items-center justify-end gap-1">Date Added <ArrowUpDown size={12} className={sortConfig.key === 'date' ? 'text-gold-400' : ''}/></div>
                 </th>
                 <th className={`p-4 font-medium cursor-pointer transition-colors text-right ${sortConfig.key === 'stock' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('stock')}>
-                  <div className="flex items-center justify-end gap-1">Total Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
+                  <div className="flex items-center justify-end gap-1">Min. Variant Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
                 </th>
                 <th className="p-4 font-medium text-right">Status</th>
                 <th className="p-4 font-medium text-right">Actions</th>
