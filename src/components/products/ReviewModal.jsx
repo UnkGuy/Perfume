@@ -85,7 +85,7 @@ const ReviewModal = ({ isOpen, onClose, product, submitNewReview, showToast }) =
               className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors resize-none h-32 custom-scrollbar"
             />
           </div>
-
+{/* 
           <div className="flex items-center gap-3 bg-white/5 p-3 rounded-lg border border-white/10">
             <input 
               type="checkbox" 
@@ -97,7 +97,7 @@ const ReviewModal = ({ isOpen, onClose, product, submitNewReview, showToast }) =
             <label htmlFor="anonymous" className="text-sm text-gray-300 cursor-pointer select-none">
               Post anonymously <span className="text-gray-500 text-xs ml-1">(hide my email)</span>
             </label>
-          </div>
+          </div> */}
 
           <button type="submit" disabled={isSubmitting}
             className="w-full py-4 mt-2 bg-gold-400 hover:bg-gold-300 text-rich-black font-bold tracking-widest uppercase rounded-lg transition-colors disabled:opacity-50 flex justify-center items-center gap-2"

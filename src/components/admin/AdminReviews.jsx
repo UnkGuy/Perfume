@@ -3,6 +3,17 @@ import { Check, X, Star, Loader2 } from 'lucide-react';
 import { useAdminReviews } from '../../hooks/useReviews';
 import { useShop } from '../../contexts/ShopContext';
 
+// Helper to mask emails (GCash style: jo***@gmail.com)
+const maskEmail = (email) => {
+  if (!email) return 'Customer';
+  const [name, domain] = email.split('@');
+  if (!domain) return email;
+  const maskedName = name.length > 2 
+    ? name.substring(0, 2) + '*'.repeat(name.length - 2) 
+    : name + '***';
+  return `${maskedName}@${domain}`;
+};
+
 const AdminReviews = () => {
   const { pendingReviews, isLoading, updateReviewStatus } = useAdminReviews();
   const { showToast } = useShop();
@@ -36,37 +47,49 @@ const AdminReviews = () => {
 
   return (
     <div className="space-y-4">
-      {pendingReviews.map(review => (
-        <div key={review.id} className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col md:flex-row justify-between gap-6 items-start md:items-center">
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-gold-400 font-bold text-lg">{review.products?.name || 'Unknown Product'}</span>
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} size={14} className={i < review.rating ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} />
-                ))}
+      {pendingReviews.map(review => {
+        // Parse the anonymous tag we injected during submission
+        const isAnon = review.comment?.startsWith('[ANON]');
+        const cleanComment = isAnon ? review.comment.replace('[ANON]', '') : review.comment;
+        const reviewerIdentity = isAnon ? 'Customer' : maskEmail(review.profiles?.email);
+
+        return (
+          <div key={review.id} className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col md:flex-row justify-between gap-6 items-start md:items-center">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-gold-400 font-bold text-lg">{review.products?.name || 'Unknown Product'}</span>
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} size={14} className={i < review.rating ? 'fill-gold-400 text-gold-400' : 'fill-gray-700 text-gray-700'} />
+                  ))}
+                </div>
+              </div>
+              <p className="text-gray-300 mb-2">"{cleanComment}"</p>
+              <div className="flex gap-2 items-center text-xs text-gray-500">
+                <span className="font-medium text-gray-400">{reviewerIdentity}</span>
+                <span>•</span>
+                <span>Submitted: {new Date(review.created_at).toLocaleDateString()}</span>
+                {isAnon && <span className="bg-white/10 px-2 py-0.5 rounded text-[10px]">Anonymous</span>}
               </div>
             </div>
-            <p className="text-gray-300 mb-2">"{review.comment}"</p>
-            <p className="text-xs text-gray-500">Submitted: {new Date(review.created_at).toLocaleDateString()}</p>
+            
+            <div className="flex gap-3 w-full md:w-auto">
+              <button 
+                onClick={() => handleAction(review.id, 'approved')}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500 hover:text-black rounded transition-colors"
+              >
+                <Check size={18} /> Accept
+              </button>
+              <button 
+                onClick={() => handleAction(review.id, 'rejected')}
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white rounded transition-colors"
+              >
+                <X size={18} /> Deny
+              </button>
+            </div>
           </div>
-          
-          <div className="flex gap-3 w-full md:w-auto">
-            <button 
-              onClick={() => handleAction(review.id, 'approved')}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500 hover:text-black rounded transition-colors"
-            >
-              <Check size={18} /> Accept
-            </button>
-            <button 
-              onClick={() => handleAction(review.id, 'rejected')}
-              className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500 hover:text-white rounded transition-colors"
-            >
-              <X size={18} /> Deny
-            </button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };

@@ -5,22 +5,31 @@ export const fetchReviewsAPI = async (productId) => {
     .from('reviews')
     .select('*, profiles(email)')
     .eq('product_id', productId)
-    .eq('status', 'approved') // Only fetch approved reviews for the frontend
+    .eq('status', 'approved')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('🔥 Fetch Approved Reviews Error:', error.message, error.details);
+    throw error;
+  }
   return data;
 };
 
 // Admin specific fetcher for pending reviews
 export const fetchPendingReviewsAPI = async () => {
+  console.log("🔍 Admin attempting to fetch pending reviews...");
   const { data, error } = await supabase
     .from('reviews')
-    .select('*, products(name), profiles(email)') // Join product name to easily identify what is being reviewed
+    .select('*, products(name), profiles(email)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
+  if (error) {
+    console.error('🔥 Fetch Pending Reviews Error:', error.message, error.details);
+    throw error;
+  }
+  
+  console.log("✅ Admin fetch successful. Pending reviews found:", data?.length);
   return data;
 };
 
@@ -30,11 +39,13 @@ export const updateReviewStatusAPI = async (reviewId, status) => {
     .from('reviews')
     .update({ status })
     .eq('id', reviewId)
-    .select(); // Force Supabase to return the updated row
+    .select();
 
-  if (error) throw error;
+  if (error) {
+    console.error('🔥 Status Update Error:', error.message);
+    throw error;
+  }
   
-  // If RLS blocks the update, no error is thrown but data will be empty
   if (!data || data.length === 0) {
     throw new Error('Action blocked: You do not have permission to update this review.');
   }
@@ -42,43 +53,32 @@ export const updateReviewStatusAPI = async (reviewId, status) => {
   return data;
 };
 
-export const checkUserPurchasedAPI = async (userId, productId) => {
-  if (!userId || !productId) return false;
-
-  const { data, error } = await supabase
-    .from('order_items')
-    .select('id, orders!inner(user_id)')
-    .eq('product_id', productId)
-    .eq('orders.user_id', userId)
-    .limit(1);
-
-  if (error) {
-    console.error('Purchase check error:', error);
-    return false; 
-  }
-  return data && data.length > 0;
-};
-
 export const submitReviewAPI = async (productId, userId, rating, comment, isAnonymous) => {
+  console.log("🚀 Attempting to submit review:", { productId, userId, rating, isAnonymous });
+
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     throw new Error('Rating must be between 1 and 5.');
-  }
-  if (comment && comment.length > 1000) {
-    throw new Error('Review comment is too long (max 1000 characters).');
   }
 
   let finalComment = comment?.trim() || '';
   if (isAnonymous) finalComment = `[ANON]${finalComment}`;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('reviews')
     .insert([{
       product_id: productId,
       user_id: userId,
       rating,
       comment: finalComment || null,
-      status: 'pending' // Force new reviews to pending
-    }]);
+      status: 'pending'
+    }])
+    .select(); // We force .select() here to ensure Supabase hands us back the created row
 
-  if (error) throw error;
+  if (error) {
+    console.error('🔥 Submit Review Error:', error.message, error.details);
+    throw error;
+  }
+  
+  console.log("✅ Review successfully inserted into database:", data);
+  return data;
 };

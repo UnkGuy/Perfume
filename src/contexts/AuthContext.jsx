@@ -1,5 +1,4 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-// ✨ REMOVE direct supabase import ✨
 import { fetchUserRoleAPI, logoutAPI, getSessionAPI, onAuthStateChangeAPI } from '../services/authApi'; 
 
 const AuthContext = createContext({});
@@ -16,7 +15,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     };
 
-    // ✨ Use the API wrappers! ✨
     getSessionAPI().then(({ data: { session } }) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
