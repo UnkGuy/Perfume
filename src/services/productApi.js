@@ -55,7 +55,8 @@ export const saveProductAPI = async (payload, id = null) => {
       size: v.size,
       price: v.price,
       compare_at_price: v.compare_at_price || null,
-      stock_count: v.stock_count || null,
+      stock_count: v.stock_count !== undefined ? v.stock_count : null,
+      low_stock_threshold: v.low_stock_threshold !== undefined ? v.low_stock_threshold : null,
       image_url: v.image_url || null,
       is_deleted: false // Make sure re-added or new ones are not marked as deleted
     }));

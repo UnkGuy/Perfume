@@ -9,7 +9,7 @@ import ProductFormModal, { LIMITS } from './ProductFormModal';
 const ITEMS_PER_PAGE = 10;
 const EMPTY_FORM = {
   name: '', brand: '', description: '', gender: 'Unisex', notes: [], image_urls: [], available: true,
-  variants: [{ size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }], 
+  variants: [{ size: '', price: '', compare_at_price: '', stock_count: '', low_stock_threshold: '', image_url: '' }], 
 };
 
 const AdminProducts = () => {
@@ -116,8 +116,10 @@ const AdminProducts = () => {
       image_urls: product.image_urls || [], available: product.available !== false,
       variants: product.product_variants?.length > 0 ? product.product_variants.map(v => ({
         id: v.id, size: v.size, price: String(v.price), compare_at_price: v.compare_at_price ? String(v.compare_at_price) : '',
-        stock_count: v.stock_count != null ? String(v.stock_count) : '', image_url: v.image_url || '',
-      })) : [{ size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }]
+        stock_count: v.stock_count != null ? String(v.stock_count) : '', 
+        low_stock_threshold: v.low_stock_threshold != null ? String(v.low_stock_threshold) : '',
+        image_url: v.image_url || '',
+      })) : [{ size: '', price: '', compare_at_price: '', stock_count: '', low_stock_threshold: '', image_url: '' }]
     } : EMPTY_FORM);
     setIsModalOpen(true);
   };
@@ -132,7 +134,7 @@ const AdminProducts = () => {
   };
   const handleRemoveImage = (i) => setFormData(prev => ({ ...prev, image_urls: prev.image_urls.filter((_, idx) => idx !== i) }));
 
-  const handleAddVariant = () => setFormData(prev => ({ ...prev, variants: [...prev.variants, { size: '', price: '', compare_at_price: '', stock_count: '', image_url: '' }] }));
+  const handleAddVariant = () => setFormData(prev => ({ ...prev, variants: [...prev.variants, { size: '', price: '', compare_at_price: '', stock_count: '', low_stock_threshold: '', image_url: '' }] }));
   const handleRemoveVariant = (idx) => setFormData(prev => ({ ...prev, variants: prev.variants.filter((_, i) => i !== idx) }));
   const handleVariantChange = (idx, field, value) => setFormData(prev => ({ ...prev, variants: prev.variants.map((v, i) => i === idx ? { ...v, [field]: value } : v) }));
 
@@ -159,7 +161,9 @@ const AdminProducts = () => {
       variants: validVariants.map(v => ({
         ...(v.id ? { id: v.id } : {}), size: v.size.trim(), price: parseFloat(v.price),
         compare_at_price: v.compare_at_price ? parseFloat(v.compare_at_price) : null,
-        stock_count: v.stock_count !== '' ? parseInt(v.stock_count) : null, image_url: v.image_url || null,
+        stock_count: v.stock_count !== '' ? parseInt(v.stock_count) : null, 
+        low_stock_threshold: v.low_stock_threshold !== '' ? parseInt(v.low_stock_threshold) : null,
+        image_url: v.image_url || null,
       })),
     };
 
@@ -236,7 +240,8 @@ const AdminProducts = () => {
                 const variants = product.product_variants || [];
                 const hasInfiniteStock = variants.some(v => v.stock_count === null || v.stock_count === '');
                 const totalStock = hasInfiniteStock ? '∞' : variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
-                const hasLowStock = variants.some(v => v.stock_count !== null && v.stock_count !== '' && v.stock_count <= lowStockThreshold);
+                // UPDATED THIS LINE for custom fallback:
+                const hasLowStock = variants.some(v => v.stock_count !== null && v.stock_count !== '' && v.stock_count <= (v.low_stock_threshold ?? lowStockThreshold));
                 const isExpanded = expandedRows.has(product.id);
                 
                 return (
@@ -294,7 +299,8 @@ const AdminProducts = () => {
                               </thead>
                               <tbody className="divide-y divide-white/5">
                                 {variants.map(v => {
-                                  const isVariantLow = v.stock_count !== null && v.stock_count !== '' && v.stock_count <= lowStockThreshold;
+                                  // UPDATED THIS LINE for custom fallback:
+                                  const isVariantLow = v.stock_count !== null && v.stock_count !== '' && v.stock_count <= (v.low_stock_threshold ?? lowStockThreshold);
                                   return (
                                     <tr key={v.id} className="hover:bg-white/5">
                                       <td className="px-4 py-2 font-medium text-gray-300 text-left">{v.size}</td>
@@ -340,6 +346,7 @@ const AdminProducts = () => {
         onAddCustomNote={handleAddCustomNote} onNoteToggle={handleNoteToggle} onRemoveImage={handleRemoveImage} showToast={showToast}
         onAIGenerate={() => showToast('AI Magic', 'AI Description Generation coming in V3! 🪄')}
         onAddVariant={handleAddVariant} onRemoveVariant={handleRemoveVariant} onVariantChange={handleVariantChange}
+        globalLowStock={lowStockThreshold} // <-- ADDED PROP
       />
     </div>
   );

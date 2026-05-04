@@ -16,7 +16,7 @@ export const useDashboardStats = (days = 30) => {
 
   const { dynamicUnavailableCount, dynamicLowStockProducts } = useMemo(() => {
     if (!products) return { dynamicUnavailableCount: 0, dynamicLowStockProducts: [] };
-    const threshold = settings?.inventory?.lowStockThreshold || 0;
+    const globalThreshold = settings?.inventory?.lowStockThreshold || 0;
     const lowStockVariants = [];
     let unavailableCount = 0;
 
@@ -28,8 +28,10 @@ export const useDashboardStats = (days = 30) => {
 
       if (p.product_variants) {
         p.product_variants.forEach(v => {
-          // Track low stock threshold items
-          if (v.stock_count !== null && v.stock_count !== '' && v.stock_count <= threshold) {
+          // Track low stock threshold items (Uses variant specific threshold, falls back to global)
+          const currentThreshold = v.low_stock_threshold ?? globalThreshold;
+          
+          if (v.stock_count !== null && v.stock_count !== '' && v.stock_count <= currentThreshold) {
             lowStockVariants.push({
               ...v,
               products: { name: p.name, brand: p.brand }

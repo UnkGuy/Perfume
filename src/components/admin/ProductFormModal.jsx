@@ -11,7 +11,8 @@ const ProductFormModal = ({
   isOpen, onClose, onSave, isSaving, editingProduct, formData, setFormData,
   allDisplayBrands, allDisplayNotes, allDisplaySizes, customNoteInput, setCustomNoteInput, onAddCustomNote,
   onNoteToggle, onRemoveImage, showToast, onAIGenerate,
-  onAddVariant, onRemoveVariant, onVariantChange
+  onAddVariant, onRemoveVariant, onVariantChange,
+  globalLowStock
 }) => {
   if (!isOpen) return null;
 
@@ -56,7 +57,7 @@ const ProductFormModal = ({
             </div>
           </div>
 
-          {/* Size Variants (Mandatory Now) */}
+          {/* Size Variants */}
           <div className="bg-black/30 p-4 border border-gold-400/30 rounded-lg relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full bg-gold-400"></div>
             <div className="flex justify-between items-center mb-4 pl-2">
@@ -72,7 +73,7 @@ const ProductFormModal = ({
             <div className="space-y-4 pl-2">
               {formData.variants.map((variant, idx) => (
                 <div key={idx} className="bg-black/50 border border-white/10 rounded-lg p-3 relative group">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 items-start">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3 items-start">
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size (Add unit e.g. ml) *</label>
                       <input required type="text" value={variant.size} onChange={e => onVariantChange(idx, 'size', e.target.value)} placeholder="e.g. 50ml" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
@@ -98,6 +99,10 @@ const ProductFormModal = ({
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Stock</label>
                       <input type="number" min="0" value={variant.stock_count} onChange={e => onVariantChange(idx, 'stock_count', e.target.value)} placeholder="∞ if blank" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Low Stock At</label>
+                      <input type="number" min="0" value={variant.low_stock_threshold} onChange={e => onVariantChange(idx, 'low_stock_threshold', e.target.value)} placeholder={`Def: ${globalLowStock}`} title="Leave blank to use global default" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
                     </div>
                   </div>
 
