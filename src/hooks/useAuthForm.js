@@ -45,8 +45,8 @@ export const useAuthForm = () => {
         return false;
       }
 
-      // ✨ Consent check
-      if (settings.legal?.showLegalPages && !formData.consent) {
+      // ✨ Updated Consent check
+      if (!formData.consentData || !formData.consentTerms) {
         setError('You must agree to the Terms & Conditions and Privacy Policy to create an account.');
         return false;
       }

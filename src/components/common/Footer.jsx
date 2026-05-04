@@ -44,16 +44,12 @@ const Footer = () => {
         </p>
 
         {/* ✨ Added Navigation Links */}
-        <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
-          <button onClick={() => { setCurrentPage('products'); window.scrollTo(0,0); }} className="text-gray-400 hover:text-gold-400 transition-colors">Shop</button>
-          
-          {settings?.legal?.showLegalPages && (
-            <>
-              <button onClick={() => { navigate('/terms-and-conditions'); window.scrollTo(0,0); }} className="text-gray-400 hover:text-gold-400 transition-colors">Terms & Conditions</button>
-              <button onClick={() => { navigate('/privacy-policy'); window.scrollTo(0,0); }} className="text-gray-400 hover:text-gold-400 transition-colors">Privacy Policy</button>
-            </>
-          )}
-        </div>
+        {settings?.legal?.showLegalPages && (
+          <div className="flex flex-wrap justify-center gap-6 mb-8 text-sm">
+            <button onClick={() => { navigate('/terms-and-conditions'); window.scrollTo(0,0); }} className="text-gray-400 hover:text-gold-400 transition-colors">Terms & Conditions</button>
+            <button onClick={() => { navigate('/privacy-policy'); window.scrollTo(0,0); }} className="text-gray-400 hover:text-gold-400 transition-colors">Privacy Policy</button>
+          </div>
+        )}
 
         <div className="flex flex-col items-center gap-3 mb-10">
           <div className="flex gap-6 mb-2">

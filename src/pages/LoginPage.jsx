@@ -11,7 +11,7 @@ const LoginPage = () => {
   const navigate = useNavigate(); 
   
   const [view, setView] = useState('login'); 
-  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', consent: false });
+  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', consentData: false, consentTerms: false });
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -129,24 +129,39 @@ const LoginPage = () => {
                     </div>
                   </div>
                   
-                  {settings?.legal?.showLegalPages && (
-                    <div className="flex items-start gap-3 mt-4 animate-fade-in">
+                  <div className="flex flex-col gap-3 mt-4 animate-fade-in">
+                    <div className="flex items-start gap-3">
                       <input 
                         required 
                         type="checkbox" 
-                        id="consent" 
-                        name="consent" 
-                        checked={formData.consent} 
+                        id="consentData" 
+                        name="consentData" 
+                        checked={formData.consentData} 
                         onChange={handleInputChange} 
                         className="mt-1 w-4 h-4 accent-gold-400 bg-black/40 border-gray-600 rounded cursor-pointer flex-shrink-0" 
                       />
-                      <label htmlFor="consent" className="text-xs text-gray-400 leading-relaxed select-none">
-                        I consent to the collection and processing of my personal data and agree to the{' '}
-                        <button type="button" onClick={() => navigate('/terms-and-conditions')} className="text-gold-400 hover:underline">Terms & Conditions</button> and{' '}
+                      <label htmlFor="consentData" className="text-xs text-gray-400 leading-relaxed select-none">
+                        I consent to the collection and processing of my personal data as outlined in the{' '}
                         <button type="button" onClick={() => navigate('/privacy-policy')} className="text-gold-400 hover:underline">Privacy Policy</button>.
                       </label>
                     </div>
-                  )}
+
+                    <div className="flex items-start gap-3">
+                      <input 
+                        required 
+                        type="checkbox" 
+                        id="consentTerms" 
+                        name="consentTerms" 
+                        checked={formData.consentTerms} 
+                        onChange={handleInputChange} 
+                        className="mt-1 w-4 h-4 accent-gold-400 bg-black/40 border-gray-600 rounded cursor-pointer flex-shrink-0" 
+                      />
+                      <label htmlFor="consentTerms" className="text-xs text-gray-400 leading-relaxed select-none">
+                        I have read and agree to the{' '}
+                        <button type="button" onClick={() => navigate('/terms-and-conditions')} className="text-gold-400 hover:underline">Terms & Conditions</button>.
+                      </label>
+                    </div>
+                  </div>
                 </>
               )}
 
