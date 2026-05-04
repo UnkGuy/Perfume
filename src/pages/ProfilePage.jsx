@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Clock, LogOut, ArrowLeft, Settings, User, Phone, Lock, Loader2, Mail } from 'lucide-react';
+import { Package, Clock, LogOut, ArrowLeft, Settings, Phone, Loader2, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom'; 
 
 import Header from '../components/common/Header';
@@ -77,10 +77,10 @@ const ProfilePage = () => {
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 backdrop-blur-sm">
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 rounded-full bg-gold-400/20 text-gold-400 flex items-center justify-center border border-gold-400/50 text-3xl font-bold uppercase">
-              {profileData.username ? profileData.username.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+              {user.email.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white mb-1 truncate max-w-[250px]">{profileData.username || 'My Account'}</h1>
+              <h1 className="text-2xl font-bold text-white mb-1 truncate max-w-[250px]">My Account</h1>
               <p className="text-gray-400 break-long-text">{user.email}</p>
             </div>
           </div>
@@ -143,13 +143,7 @@ const ProfilePage = () => {
               <form onSubmit={handleSaveSettings} className="space-y-8">
                 <div>
                   <h3 className="text-lg font-bold text-white mb-4 uppercase tracking-widest border-b border-white/10 pb-2">Personal Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
-                        <User size={14} className="text-gold-400" /> Username
-                      </label>
-                      <input type="text" value={profileData.username} onChange={e => setProfileData({ ...profileData, username: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors" />
-                    </div>
+                  <div className="grid grid-cols-1 gap-6">
                     <div>
                       <label className="text-xs text-gray-400 uppercase tracking-widest flex items-center gap-2 mb-2">
                         <Phone size={14} className="text-gold-400" /> Phone Number (Optional)
@@ -181,9 +175,9 @@ const ProfilePage = () => {
                 {/* CONNECTED ACCOUNTS UI */}
                 <div>
                   <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest border-b border-white/10 pb-2 mt-8">Connected Accounts</h3>
-                  <p className="text-sm text-gray-500 mb-4">Link your social accounts to log in with one click.</p>
+                  <p className="text-sm text-gray-500 mb-4">Link your Google account to log in with one click.</p>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 max-w-md gap-4">
                     <div className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-lg">
                       <div className="flex items-center gap-3">
                         <svg className="w-6 h-6" viewBox="0 0 48 48">
@@ -198,20 +192,6 @@ const ProfilePage = () => {
                         <button type="button" onClick={() => handleUnlinkIdentity('google')} className="text-sm text-red-400 hover:text-red-300">Disconnect</button>
                       ) : (
                         <button type="button" onClick={() => handleLinkIdentity('google')} disabled={isLinking} className="text-sm text-gold-400 hover:text-gold-300">Connect</button>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between p-4 bg-black/40 border border-white/10 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <svg className="w-6 h-6" fill="#1877F2" viewBox="0 0 24 24">
-                          <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.879V14.89h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v7.005A9.963 9.963 0 0022 12z" />
-                        </svg>
-                        <span className="text-white font-medium">Facebook</span>
-                      </div>
-                      {identities.some(id => id.provider === 'facebook') ? (
-                        <button type="button" onClick={() => handleUnlinkIdentity('facebook')} className="text-sm text-red-400 hover:text-red-300">Disconnect</button>
-                      ) : (
-                        <button type="button" onClick={() => handleLinkIdentity('facebook')} disabled={isLinking} className="text-sm text-gold-400 hover:text-gold-300">Connect</button>
                       )}
                     </div>
                   </div>

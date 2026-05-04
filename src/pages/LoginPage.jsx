@@ -11,7 +11,7 @@ const LoginPage = () => {
   const navigate = useNavigate(); 
   
   const [view, setView] = useState('login'); 
-  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', username: '', consent: false });
+  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', consent: false });
   
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -128,12 +128,7 @@ const LoginPage = () => {
                       </button>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1.5">Username</label>
-                    <input required type="text" name="username" placeholder="e.g. PerfumeLover99" value={formData.username} onChange={handleInputChange} className={`w-full bg-black/40 border rounded-lg px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:border-gold-400 transition-colors ${error ? 'border-red-500/50' : 'border-white/10'}`} />
-                  </div>
                   
-                  {/* ✨ Safe Optional Chaining applied here */}
                   {settings?.legal?.showLegalPages && (
                     <div className="flex items-start gap-3 mt-4 animate-fade-in">
                       <input 

@@ -2,14 +2,12 @@ import { useState } from 'react';
 import { loginAPI, registerAPI, resetPasswordAPI, fetchUserRoleAPI, signInWithOAuthAPI } from '../services/authApi';
 import { useShop } from '../contexts/ShopContext';
 import { useUI } from '../contexts/UIContext';
-// Add this import at the top
 import { useSettings } from '../contexts/SettingsContext';
 
-// Inside your useAuthForm hook:
 export const useAuthForm = () => {
   const { showToast } = useShop();
   const { setCurrentPage } = useUI();
-  const { settings } = useSettings(); // ✨ Get settings
+  const { settings } = useSettings(); 
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +17,6 @@ export const useAuthForm = () => {
 
     const email = formData.email?.trim();
     const password = formData.password;
-    const username = formData.username?.trim();
 
     if (!email || (view !== 'forgot' && !password)) {
       setError('Please fill in all required fields.');
@@ -33,11 +30,6 @@ export const useAuthForm = () => {
     }
 
     if (view === 'register') {
-      if (!username) {
-        setError('Please provide a username.');
-        return false;
-      }
-      
       if (password.length < 8) {
         setError('Password must be at least 8 characters long.');
         return false;
@@ -70,7 +62,7 @@ export const useAuthForm = () => {
 
     try {
       if (view === 'register') {
-        await registerAPI(email, password, username, captchaToken);
+        await registerAPI(email, password, captchaToken);
         if (showToast) showToast('Success', 'Account created! Please check your email to verify.');
         setView('login'); 
         

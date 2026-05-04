@@ -9,7 +9,6 @@ export const useProfile = (activeTab) => {
   const { showToast } = useShop();
 
   const [profileData, setProfileData] = useState({ 
-    username: '', 
     phone_number: '',
     address: { region: '', province: '', city: '', barangay: '', street: '', landmark: '' }
   });
@@ -34,7 +33,6 @@ export const useProfile = (activeTab) => {
               catch (e) { parsedAddress.street = data.address; }
             }
             setProfileData({
-              username: data.username || '',
               phone_number: data.phone_number || '',
               address: parsedAddress
             });
@@ -74,7 +72,6 @@ export const useProfile = (activeTab) => {
     setIsSaving(true);
     try {
       await updateUserProfileAPI(user.id, {
-        username: profileData.username,
         phone_number: profileData.phone_number,
         address: JSON.stringify(profileData.address)
       });
@@ -90,7 +87,6 @@ export const useProfile = (activeTab) => {
     }
   };
 
-  // ✨ NEW: Handles triggering the password reset email and logging out ✨
   const handlePasswordResetRequest = async (email) => {
     try {
       await resetPasswordAPI(email);
@@ -136,6 +132,6 @@ export const useProfile = (activeTab) => {
   return { 
     profileData, setProfileData, handleAddressChange, isProfileLoading, isSaving, 
     saveProfile, errors, identities, handleLinkIdentity, handleUnlinkIdentity, isLinking,
-    handlePasswordResetRequest // exported new function
+    handlePasswordResetRequest 
   };
 };

@@ -13,15 +13,21 @@ export const loginAPI = async (email, password, captchaToken) => {
   return data;
 };
 
-// ✨ Modified to accept captchaToken for registration
-export const registerAPI = async (email, password, username, captchaToken) => {
+// ✨ Modified to accept captchaToken for registration, removed username, added emailRedirectTo
+export const registerAPI = async (email, password, captchaToken) => {
   const cleanEmail = email.trim().toLowerCase();
   
+  const getURL = () => {
+    let url = import.meta.env.VITE_SITE_URL ?? window.location.origin;
+    return url.endsWith('/') ? url : `${url}/`;
+  };
+
   const { data, error } = await supabase.auth.signUp({ 
     email: cleanEmail, 
     password,
     options: {
       captchaToken, // ✨ Pass the token to Supabase
+      emailRedirectTo: getURL(), // ✨ Fixes email confirmation redirect errors
     }
   });
   if (error) throw error;
@@ -29,8 +35,7 @@ export const registerAPI = async (email, password, username, captchaToken) => {
   if (data?.user?.id) {
     const { error: profileError } = await supabase.from('profiles').upsert({
       id: data.user.id,
-      email: cleanEmail,
-      username: username.trim()
+      email: cleanEmail
     });
     
     if (!profileError) {
