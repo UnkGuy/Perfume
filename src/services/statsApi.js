@@ -1,3 +1,4 @@
+// FILE: src/services/statsApi.js
 import { supabase } from './supabase';
 
 export const fetchDashboardStatsAPI = async (days = 30) => {
@@ -27,7 +28,7 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
   
   const revenue = recentOrders?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
 
-  // Build Chart Data - FIXED: Pre-fill dates to prevent "Not Enough Data" on zero-sale days
+  // Build Chart Data - Fixed: Pre-fill dates to prevent "Not Enough Data" on zero-sale days
   const chartDataMap = {};
   
   if (days !== 'all') {
@@ -54,7 +55,7 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
 
   // 3. Unread Messages 
   const { count: unreadMessages } = await supabase
-    .from('latest_messages_per_user')
+    .from('messages')
     .select('*', { count: 'exact', head: true })
     .eq('sender_role', 'customer');
 
@@ -64,7 +65,7 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending');
 
-  // 5. Active Users & Out of Stock
+  // 5. Total Users & Out of Stock
   const { count: activeUsers } = await supabase
     .from('profiles').select('*', { count: 'exact', head: true });
 
@@ -90,8 +91,6 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
-  // 7. Low Stock (Removed hardcoded API call, now handled dynamically by useDashboardStats hook for accuracy)
-
   return {
     pendingOrders: pendingOrders || 0,
     unreadMessages: unreadMessages || 0,
@@ -101,6 +100,6 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
     outOfStock: outOfStock || 0,
     chartData,
     bestSellers,
-    lowStockProducts: [], // Handled by useDashboardStats to respect Admin Settings threshold
+    lowStockProducts: [],
   };
 };

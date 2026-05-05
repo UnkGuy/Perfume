@@ -1,3 +1,4 @@
+// FILE: src/components/admin/ProductFormModal.jsx
 import React from 'react';
 import { Loader2, X, Trash2, Sparkles, Plus } from 'lucide-react';
 import ImageUploader from '../common/ImageUploader';
@@ -35,18 +36,28 @@ const ProductFormModal = ({
             </div>
             <div>
               <label className="flex justify-between text-xs text-gray-400 uppercase tracking-widest mb-1">
-                <span>Brand</span><Counter value={formData.brand} max={LIMITS.brand} />
+                <span>Brand</span>
               </label>
-              <input required type="text" maxLength={LIMITS.brand} value={formData.brand} onChange={e => setFormData({ ...formData, brand: e.target.value })} placeholder="Type a brand or select below" className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.brand, LIMITS.brand)}`} />
-              
-              {allDisplayBrands?.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-3 max-h-24 overflow-y-auto custom-scrollbar">
-                  {allDisplayBrands.map(b => (
-                    <button key={b} type="button" onClick={() => setFormData({ ...formData, brand: b })} className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200 ${formData.brand === b ? 'bg-gold-400 text-black border-gold-400' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50'}`}>
-                      {b}
-                    </button>
-                  ))}
-                </div>
+              <select 
+                value={allDisplayBrands.includes(formData.brand) ? formData.brand : ''} 
+                onChange={e => setFormData({ ...formData, brand: e.target.value })}
+                className="w-full bg-black/50 border border-white/10 rounded-lg p-3 text-white focus:border-gold-400 outline-none transition-colors mb-2"
+              >
+                <option value="">Type custom or select a brand</option>
+                {allDisplayBrands?.length > 0 && allDisplayBrands.map(b => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
+              </select>
+              {(!allDisplayBrands.includes(formData.brand) || formData.brand === '') && (
+                <input 
+                  required 
+                  type="text" 
+                  maxLength={LIMITS.brand} 
+                  value={formData.brand} 
+                  onChange={e => setFormData({ ...formData, brand: e.target.value })} 
+                  placeholder="Type a custom brand name..." 
+                  className={`w-full bg-black/50 border rounded-lg p-3 text-white outline-none transition-colors ${inputBorder(formData.brand, LIMITS.brand)}`} 
+                />
               )}
             </div>
             <div>
@@ -72,41 +83,54 @@ const ProductFormModal = ({
 
             <div className="space-y-4 pl-2">
               {formData.variants.map((variant, idx) => (
-                <div key={idx} className="bg-black/50 border border-white/10 rounded-lg p-3 relative group">
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3 items-start">
+                <div key={idx} className="bg-black/50 border border-white/10 rounded-lg p-4 relative group">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4 items-start">
                     <div>
-                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size (Add unit e.g. ml) *</label>
-                      <input required type="text" value={variant.size} onChange={e => onVariantChange(idx, 'size', e.target.value)} placeholder="e.g. 50ml" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
-                      
-                      {allDisplaySizes?.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2 max-h-20 overflow-y-auto custom-scrollbar">
-                          {allDisplaySizes.map(s => (
-                            <button key={s} type="button" onClick={() => onVariantChange(idx, 'size', s)} className={`px-2 py-1 rounded-md text-[10px] font-medium border transition-all duration-200 ${variant.size === s ? 'bg-gold-400 text-black border-gold-400' : 'bg-black/50 text-gray-400 border-white/10 hover:border-gold-400/50'}`}>
-                              {s}
-                            </button>
-                          ))}
-                        </div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Size *</label>
+                      <select
+                        value={allDisplaySizes.includes(variant.size) ? variant.size : ''}
+                        onChange={(e) => onVariantChange(idx, 'size', e.target.value)}
+                        className="w-full bg-black/60 border border-white/10 rounded px-2 py-2 text-xs text-white focus:border-gold-400 outline-none mb-2"
+                      >
+                        <option value="">Type custom or select size</option>
+                        {allDisplaySizes.map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
+                      {(!allDisplaySizes.includes(variant.size) || variant.size === '') && (
+                        <input
+                          required
+                          type="text"
+                          value={variant.size}
+                          onChange={e => onVariantChange(idx, 'size', e.target.value)}
+                          placeholder="e.g. 50ml"
+                          className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none"
+                        />
                       )}
                     </div>
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Selling Price (₱) *</label>
-                      <input required type="number" min="0" value={variant.price} onChange={e => onVariantChange(idx, 'price', e.target.value)} placeholder="1500" className="w-full bg-black/60 border border-gold-400/30 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                      <input required type="number" min="0" value={variant.price} onChange={e => onVariantChange(idx, 'price', e.target.value)} placeholder="1500" className="w-full bg-black/60 border border-gold-400/30 rounded px-2 py-2 text-xs text-white focus:border-gold-400 outline-none" />
                     </div>
                     <div>
                       <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Orig. Price (₱)</label>
-                      <input type="number" min="0" value={variant.compare_at_price} onChange={e => onVariantChange(idx, 'compare_at_price', e.target.value)} placeholder="Optional Sale" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Stock</label>
-                      <input type="number" min="0" value={variant.stock_count} onChange={e => onVariantChange(idx, 'stock_count', e.target.value)} placeholder="∞ if blank" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Low Stock At</label>
-                      <input type="number" min="0" value={variant.low_stock_threshold} onChange={e => onVariantChange(idx, 'low_stock_threshold', e.target.value)} placeholder={`Def: ${globalLowStock}`} title="Leave blank to use global default" className="w-full bg-black/60 border border-white/10 rounded px-2 py-1.5 text-xs text-white focus:border-gold-400 outline-none" />
+                      <input type="number" min="0" value={variant.compare_at_price} onChange={e => onVariantChange(idx, 'compare_at_price', e.target.value)} placeholder="Optional Sale" className="w-full bg-black/60 border border-white/10 rounded px-2 py-2 text-xs text-white focus:border-gold-400 outline-none" />
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  {/* The lowered space for stock fields */}
+                  <div className="grid grid-cols-2 gap-4 mb-4 items-start border-t border-white/5 pt-3">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Stock Count</label>
+                      <input type="number" min="0" value={variant.stock_count} onChange={e => onVariantChange(idx, 'stock_count', e.target.value)} placeholder="∞ if blank" className="w-full bg-black/60 border border-white/10 rounded px-2 py-2 text-xs text-white focus:border-gold-400 outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 uppercase tracking-wider mb-1">Low Stock At</label>
+                      <input type="number" min="0" value={variant.low_stock_threshold} onChange={e => onVariantChange(idx, 'low_stock_threshold', e.target.value)} placeholder={`default: ${globalLowStock}`} title="Leave blank to use global default" className="w-full bg-black/60 border border-white/10 rounded px-2 py-2 text-xs text-white focus:border-gold-400 outline-none" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 border-t border-white/5 pt-3">
                     <span className="text-[10px] text-gray-500 uppercase tracking-wider">Custom image:</span>
                     {variant.image_url ? (
                       <div className="flex items-center gap-2">

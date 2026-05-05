@@ -1,3 +1,4 @@
+// FILE: src/hooks/useDashboardStats.js
 import { useQuery } from '@tanstack/react-query';
 import { fetchDashboardStatsAPI } from '../services/statsApi';
 import { useProducts } from './useAdminProducts';

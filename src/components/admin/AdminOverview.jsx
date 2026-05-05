@@ -1,3 +1,4 @@
+// FILE: src/components/admin/AdminOverview.jsx
 import React, { useState } from 'react';
 import { TrendingUp, Users, ShoppingBag, AlertCircle, Loader2, AlertTriangle, Download, MessageCircle, Star, ArrowUpRight } from 'lucide-react';
 import { useDashboardStats } from '../../hooks/useDashboardStats';
@@ -21,7 +22,7 @@ const AdminOverview = ({ onNavigate }) => {
     csvContent += "Metric,Value\n";
     csvContent += `Pending Orders,${stats.pendingOrders}\n`;
     csvContent += `Est. Revenue,${stats.revenue}\n`;
-    csvContent += `Active Customers,${stats.activeUsers}\n`;
+    csvContent += `Total Customers,${stats.activeUsers}\n`;
     csvContent += `Unreplied Messages,${stats.unreadMessages}\n`;
     csvContent += `Pending Reviews,${stats.pendingReviews}\n`;
     csvContent += `Unavailable Items,${stats.outOfStock}\n\n`;
@@ -126,7 +127,7 @@ const AdminOverview = ({ onNavigate }) => {
         />
         <StatCard 
           icon={<Star size={20} />} 
-          color="orange"        
+          color="orange"         
           title="Pending Reviews"  
           value={stats.pendingReviews} 
           onClick={() => onNavigate('reviews')}
@@ -145,7 +146,7 @@ const AdminOverview = ({ onNavigate }) => {
         <StatCard 
           icon={<Users size={20} />}        
           color="blue"   
-          title="Active Customers"  
+          title="Total Customers"  
           value={stats.activeUsers} 
         />
         <StatCard 
@@ -236,7 +237,7 @@ const AdminOverview = ({ onNavigate }) => {
             <div className="flex items-center gap-2">
               <AlertTriangle size={18} className="text-orange-400 flex-shrink-0" />
               <h3 className="text-sm font-bold text-orange-400 uppercase tracking-widest">
-                Low Stock Alert — {stats.lowStockProducts.length} variant{stats.lowStockProducts.length > 1 ? 's' : ''} running low
+                Low Stock Alert — {stats.lowStockProducts.length} product variant{stats.lowStockProducts.length > 1 ? 's' : ''} running low
               </h3>
             </div>
             <ArrowUpRight size={18} className="text-orange-400/50 group-hover:text-orange-400 transition-colors" />
@@ -290,4 +291,4 @@ const StatCard = ({ icon, color, title, value, onClick, clickable }) => {
   );
 };
 
-export default AdminOverview;
+export default AdminOverview; 

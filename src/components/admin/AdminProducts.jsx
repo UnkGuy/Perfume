@@ -44,6 +44,12 @@ const AdminProducts = () => {
   const filteredProducts = [...products]
     .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.brand.toLowerCase().includes(searchQuery.toLowerCase()))
     .sort((a, b) => {
+      if (sortConfig.key === 'name') {
+        // Natural string sorting handles numbers and special characters gracefully
+        return sortConfig.direction === 'asc'
+          ? a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+          : b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' });
+      }
       if (sortConfig.key === 'date') {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
@@ -53,12 +59,30 @@ const AdminProducts = () => {
         const getStock = (p) => {
           if (!p.product_variants || p.product_variants.length === 0) return 0;
           if (p.product_variants.some(v => v.stock_count === null || v.stock_count === '')) return Infinity;
-          // SORT BY LOWEST VARIANT STOCK: Ensures products with a low variant bubble up to the top!
-          return Math.min(...p.product_variants.map(v => v.stock_count || 0));
+          return p.product_variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
         };
         const stockA = getStock(a);
         const stockB = getStock(b);
         return sortConfig.direction === 'asc' ? stockA - stockB : stockB - stockA;
+      }
+      if (sortConfig.key === 'stock_status') {
+        // 1 = Low Stock, 2 = Normal, 3 = Infinite
+        const getStatusVal = (p) => {
+          if (!p.product_variants || p.product_variants.length === 0) return 2;
+          const hasLow = p.product_variants.some(v => v.stock_count !== null && v.stock_count !== '' && v.stock_count <= (v.low_stock_threshold ?? lowStockThreshold));
+          if (hasLow) return 1;
+          const hasInf = p.product_variants.some(v => v.stock_count === null || v.stock_count === '');
+          if (hasInf) return 3;
+          return 2;
+        };
+        const valA = getStatusVal(a);
+        const valB = getStatusVal(b);
+        return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
+      }
+      if (sortConfig.key === 'available') {
+        const valA = a.available ? 1 : 0;
+        const valB = b.available ? 1 : 0;
+        return sortConfig.direction === 'asc' ? valA - valB : valB - valA;
       }
       return 0;
     });
@@ -219,41 +243,62 @@ const AdminProducts = () => {
               <tr className="bg-black/40 border-b border-white/10 text-xs uppercase tracking-widest text-gray-500">
                 <th className="p-4 w-10 text-left"><input type="checkbox" checked={allOnPageSelected} onChange={toggleSelectAll} className="accent-gold-400 w-4 h-4 cursor-pointer" /></th>
                 <th className="p-4 w-10 text-right"></th>
-                <th className="p-4 font-medium text-left">Product</th>
+                <th className={`p-4 font-medium cursor-pointer transition-colors text-left ${sortConfig.key === 'name' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('name')}>
+                  <div className="flex items-center gap-1">Product <ArrowUpDown size={12} className={sortConfig.key === 'name' ? 'text-gold-400' : ''}/></div>
+                </th>
                 <th className="p-4 font-medium text-right">Variants</th>
                 <th className={`p-4 font-medium cursor-pointer transition-colors text-right ${sortConfig.key === 'date' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('date')}>
                   <div className="flex items-center justify-end gap-1">Date Added <ArrowUpDown size={12} className={sortConfig.key === 'date' ? 'text-gold-400' : ''}/></div>
                 </th>
                 <th className={`p-4 font-medium cursor-pointer transition-colors text-right ${sortConfig.key === 'stock' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('stock')}>
-                  <div className="flex items-center justify-end gap-1">Min. Variant Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
+                  <div className="flex items-center justify-end gap-1">Total Stock <ArrowUpDown size={12} className={sortConfig.key === 'stock' ? 'text-gold-400' : ''}/></div>
                 </th>
-                <th className="p-4 font-medium text-right">Status</th>
+                <th className={`p-4 font-medium cursor-pointer transition-colors text-center ${sortConfig.key === 'stock_status' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('stock_status')}>
+                  <div className="flex items-center justify-center gap-1">Stock Status <ArrowUpDown size={12} className={sortConfig.key === 'stock_status' ? 'text-gold-400' : ''}/></div>
+                </th>
+                <th className={`p-4 font-medium cursor-pointer transition-colors text-right ${sortConfig.key === 'available' ? 'text-gold-400 bg-gold-400/10' : 'hover:text-white'}`} onClick={() => handleSort('available')}>
+                  <div className="flex items-center justify-end gap-1">Status <ArrowUpDown size={12} className={sortConfig.key === 'available' ? 'text-gold-400' : ''}/></div>
+                </th>
                 <th className="p-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-sm text-gray-300">
               {isLoading ? (
-                <tr><td colSpan="8" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
+                <tr><td colSpan="9" className="p-8 text-center"><Loader2 className="animate-spin text-gold-400 mx-auto" /></td></tr>
               ) : paginatedProducts.length === 0 ? (
-                <tr><td colSpan="8" className="p-8 text-center text-gray-500">No products found.</td></tr>
+                <tr><td colSpan="9" className="p-8 text-center text-gray-500">No products found.</td></tr>
               ) : paginatedProducts.map(product => {
                 const variants = product.product_variants || [];
                 const hasInfiniteStock = variants.some(v => v.stock_count === null || v.stock_count === '');
                 const totalStock = hasInfiniteStock ? '∞' : variants.reduce((acc, v) => acc + (v.stock_count || 0), 0);
-                // UPDATED THIS LINE for custom fallback:
                 const hasLowStock = variants.some(v => v.stock_count !== null && v.stock_count !== '' && v.stock_count <= (v.low_stock_threshold ?? lowStockThreshold));
                 const isExpanded = expandedRows.has(product.id);
                 
+                // Determine the visual badge for stock status
+                let stockStatusBadge;
+                if (hasLowStock) {
+                  stockStatusBadge = <span className="px-2 py-1 bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] uppercase font-bold rounded animate-pulse">Low Stock</span>;
+                } else if (hasInfiniteStock) {
+                  stockStatusBadge = <span className="px-2 py-1 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-[10px] uppercase font-bold rounded">Infinite</span>;
+                } else {
+                  stockStatusBadge = <span className="px-2 py-1 bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] uppercase font-bold rounded">Normal</span>;
+                }
+                
                 return (
                   <React.Fragment key={product.id}>
-                    <tr className={`hover:bg-white/5 transition-colors ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}>
-                      <td className="p-4 text-left"><input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" /></td>
-                      <td className="p-4 text-right">
-                        <button onClick={() => toggleExpand(product.id)} className="p-1 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors">
-                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
+                    <tr 
+                      className={`hover:bg-white/5 transition-colors cursor-pointer ${selectedIds.has(product.id) ? 'bg-gold-400/5' : ''}`}
+                      onClick={() => toggleExpand(product.id)}
+                    >
+                      <td className="p-4 text-left" onClick={(e) => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedIds.has(product.id)} onChange={() => toggleSelect(product.id)} className="accent-gold-400 w-4 h-4 cursor-pointer" />
                       </td>
-                      <td className="p-4 flex items-center gap-3 text-left">
+                      <td className="p-4 text-right">
+                        <span className="p-1 text-gray-400 transition-colors">
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </span>
+                      </td>
+                      <td className={`p-4 flex items-center gap-3 text-left ${sortConfig.key === 'name' ? 'bg-gold-400/5' : ''}`}>
                         {product.image_urls?.length > 0
                           ? <img src={product.image_urls[0]} alt={product.name} className="w-10 h-10 object-cover rounded bg-white/10 border border-white/5" />
                           : <div className="w-10 h-10 rounded bg-white/5 border border-white/10 flex items-center justify-center text-gray-600 text-xs">No Img</div>}
@@ -264,9 +309,6 @@ const AdminProducts = () => {
                       </td>
                       <td className="p-4 text-right">
                         <span className="text-gray-400 font-medium">{variants.length}</span>
-                        {hasLowStock && !hasInfiniteStock && (
-                          <span className="ml-2 px-1.5 py-0.5 bg-red-500/20 border border-red-500/50 text-red-400 text-[10px] uppercase font-bold rounded animate-pulse">Low Stock</span>
-                        )}
                       </td>
                       <td className={`p-4 text-right text-gray-500 text-xs ${sortConfig.key === 'date' ? 'bg-gold-400/5 text-gold-200' : ''}`}>
                         {new Date(product.created_at).toLocaleDateString()}
@@ -276,17 +318,22 @@ const AdminProducts = () => {
                           <span className="px-2 py-1 bg-white/10 rounded text-xs text-gray-300 font-bold">{totalStock}</span>
                         </div>
                       </td>
-                      <td className="p-4 text-right">{statusBadge(product.available)}</td>
-                      <td className="p-4 flex justify-end gap-2 text-right">
-                        <button onClick={() => handleOpenModal(product)} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit"><Edit2 size={16} /></button>
-                        <button onClick={() => handleDelete(product.id, product.name)} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete"><Trash2 size={16} /></button>
+                      <td className={`p-4 text-center ${sortConfig.key === 'stock_status' ? 'bg-gold-400/5' : ''}`}>
+                        {stockStatusBadge}
+                      </td>
+                      <td className={`p-4 text-right ${sortConfig.key === 'available' ? 'bg-gold-400/5' : ''}`}>
+                        {statusBadge(product.available)}
+                      </td>
+                      <td className="p-4 flex justify-end gap-2 text-right" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={(e) => { e.stopPropagation(); handleOpenModal(product); }} className="p-2 bg-white/5 hover:bg-gold-400/20 hover:text-gold-400 rounded transition-colors" title="Edit"><Edit2 size={16} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); handleDelete(product.id, product.name); }} className="p-2 bg-white/5 hover:bg-red-500/20 hover:text-red-400 rounded transition-colors" title="Delete"><Trash2 size={16} /></button>
                       </td>
                     </tr>
                     
                     {/* EXPANDED VARIANTS SUB-TABLE */}
                     {isExpanded && (
                       <tr className="bg-black/20 border-b border-white/5">
-                        <td colSpan="8" className="p-0">
+                        <td colSpan="9" className="p-0">
                           <div className="px-14 py-4">
                             <table className="w-full text-left text-xs bg-white/5 rounded-lg overflow-hidden">
                               <thead className="bg-white/5 text-gray-400 uppercase tracking-wider">
@@ -299,7 +346,6 @@ const AdminProducts = () => {
                               </thead>
                               <tbody className="divide-y divide-white/5">
                                 {variants.map(v => {
-                                  // UPDATED THIS LINE for custom fallback:
                                   const isVariantLow = v.stock_count !== null && v.stock_count !== '' && v.stock_count <= (v.low_stock_threshold ?? lowStockThreshold);
                                   return (
                                     <tr key={v.id} className="hover:bg-white/5">
@@ -307,8 +353,8 @@ const AdminProducts = () => {
                                       <td className="px-4 py-2 text-right text-gold-400">₱{v.price.toLocaleString()}</td>
                                       <td className="px-4 py-2 text-right text-gray-500">{v.compare_at_price ? `₱${v.compare_at_price.toLocaleString()}` : '-'}</td>
                                       <td className="px-4 py-2 text-right flex items-center justify-end gap-2">
-                                        {isVariantLow && <AlertTriangle size={12} className="text-orange-400" />}
-                                        <span className={isVariantLow ? 'text-orange-400 font-bold' : 'text-gray-400'}>
+                                        {isVariantLow && <AlertTriangle size={12} className="text-red-400" />}
+                                        <span className={isVariantLow ? 'text-red-400 font-bold' : 'text-gray-400'}>
                                           {v.stock_count === null || v.stock_count === '' ? '∞' : v.stock_count}
                                         </span>
                                       </td>
@@ -346,7 +392,7 @@ const AdminProducts = () => {
         onAddCustomNote={handleAddCustomNote} onNoteToggle={handleNoteToggle} onRemoveImage={handleRemoveImage} showToast={showToast}
         onAIGenerate={() => showToast('AI Magic', 'AI Description Generation coming in V3! 🪄')}
         onAddVariant={handleAddVariant} onRemoveVariant={handleRemoveVariant} onVariantChange={handleVariantChange}
-        globalLowStock={lowStockThreshold} // <-- ADDED PROP
+        globalLowStock={lowStockThreshold}
       />
     </div>
   );
