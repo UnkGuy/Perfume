@@ -14,7 +14,11 @@ export const useReviews = (productId, fallbackRating) => {
   });
 
   const reviewList = reviews || [];
-  const averageRating = reviewList.length > 0 ? (reviewList.reduce((acc, curr) => acc + curr.rating, 0) / reviewList.length).toFixed(1) : (fallbackRating > 0 ? fallbackRating : 0);
+  
+  // ✨ FIX: Strict tenths formatting on the frontend as well
+  const averageRating = reviewList.length > 0 
+    ? Math.round((reviewList.reduce((acc, curr) => acc + curr.rating, 0) / reviewList.length) * 10) / 10
+    : (fallbackRating > 0 ? Math.round(fallbackRating * 10) / 10 : 0);
 
   const submitMutation = useMutation({ 
     mutationFn: ({ rating, comment, isAnonymous }) => submitReviewAPI(productId, user.id, rating, comment, isAnonymous), 

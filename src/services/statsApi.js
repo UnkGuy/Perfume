@@ -28,7 +28,7 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
   
   const revenue = recentOrders?.reduce((acc, curr) => acc + Number(curr.total_amount), 0) || 0;
 
-  // Build Chart Data - Fixed: Pre-fill dates to prevent "Not Enough Data" on zero-sale days
+  // Build Chart Data
   const chartDataMap = {};
   
   if (days !== 'all') {
@@ -72,10 +72,19 @@ export const fetchDashboardStatsAPI = async (days = 30) => {
   const { count: outOfStock } = await supabase
     .from('products').select('*', { count: 'exact', head: true }).eq('available', false);
 
-  // 6. Best Sellers
-  const { data: orderItems } = await supabase
+  // 6. Best Sellers (✨ OPTIMIZED: Bound by time to prevent infinite table scanning)
+  let bestSellersQuery = supabase
     .from('order_items')
-    .select('quantity, products(name)');
+    // We use an !inner join so we only fetch items attached to a completed order
+    // within our specific dateLimit.
+    .select('quantity, products(name), orders!inner(created_at, status)')
+    .eq('orders.status', 'completed');
+
+  if (dateLimit) {
+    bestSellersQuery = bestSellersQuery.gte('orders.created_at', dateLimit.toISOString());
+  }
+
+  const { data: orderItems } = await bestSellersQuery;
 
   const productSales = {};
   if (orderItems) {

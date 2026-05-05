@@ -16,16 +16,36 @@ export const updateOrderStatusAPI = async (orderId, newStatus, orderItems = []) 
   // Insert into history tracking table
   await supabase.from('order_status_history').insert([{ order_id: orderId, status: newStatus }]);
 
+  // ✨ OPTIMIZED: Parallel Stock Deductions
   if (newStatus === 'completed' && orderItems.length > 0) {
-    for (const item of orderItems) {
-      if (!item.variant_id) continue; 
+    const variantIds = orderItems.map(item => item.variant_id).filter(Boolean);
+    
+    if (variantIds.length > 0) {
       try {
-        const { data: variant } = await supabase.from('product_variants').select('stock_count').eq('id', item.variant_id).single();
-        if (variant?.stock_count != null) {
-          const newStock = Math.max(0, variant.stock_count - item.quantity);
-          await supabase.from('product_variants').update({ stock_count: newStock }).eq('id', item.variant_id);
+        const { data: variants } = await supabase
+          .from('product_variants')
+          .select('id, stock_count')
+          .in('id', variantIds);
+
+        if (variants) {
+          const updatePromises = orderItems.map(item => {
+            if (!item.variant_id) return null;
+            const variant = variants.find(v => v.id === item.variant_id);
+            if (variant?.stock_count != null) {
+              const newStock = Math.max(0, variant.stock_count - item.quantity);
+              return supabase.from('product_variants').update({ stock_count: newStock }).eq('id', item.variant_id);
+            }
+            return null;
+          }).filter(Boolean); // Remove empty promises
+
+          // Fire all updates simultaneously
+          if (updatePromises.length > 0) {
+            await Promise.all(updatePromises);
+          }
         }
-      } catch (err) { console.error(`Stock update failed`, err); }
+      } catch (err) {
+        console.error(`Stock bulk update failed`, err);
+      }
     }
   }
 };

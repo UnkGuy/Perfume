@@ -15,7 +15,6 @@ export const fetchReviewsAPI = async (productId) => {
   return data;
 };
 
-// Admin specific fetcher for pending reviews
 export const fetchPendingReviewsAPI = async () => {
   console.log("🔍 Admin attempting to fetch pending reviews...");
   const { data, error } = await supabase
@@ -29,26 +28,37 @@ export const fetchPendingReviewsAPI = async () => {
     throw error;
   }
   
-  console.log("✅ Admin fetch successful. Pending reviews found:", data?.length);
   return data;
 };
 
-// Admin specific update status function
 export const updateReviewStatusAPI = async (reviewId, status) => {
   const { data, error } = await supabase
     .from('reviews')
     .update({ status })
     .eq('id', reviewId)
-    .select();
+    .select('product_id')
+    .single();
 
-  if (error) {
-    console.error('🔥 Status Update Error:', error.message);
-    throw error;
+  if (error) throw error;
+  if (!data) throw new Error('Action blocked: You do not have permission to update this review.');
+
+  const { data: approvedReviews } = await supabase
+    .from('reviews')
+    .select('rating')
+    .eq('product_id', data.product_id)
+    .eq('status', 'approved');
+
+  let newRating = 0;
+  if (approvedReviews && approvedReviews.length > 0) {
+    const sum = approvedReviews.reduce((acc, curr) => acc + curr.rating, 0);
+    // ✨ STRICT TENTHS: Mathematically forces exactly 1 decimal place 
+    newRating = Math.round((sum / approvedReviews.length) * 10) / 10;
   }
-  
-  if (!data || data.length === 0) {
-    throw new Error('Action blocked: You do not have permission to update this review.');
-  }
+
+  await supabase
+    .from('products')
+    .update({ rating: newRating })
+    .eq('id', data.product_id);
 
   return data;
 };
@@ -72,13 +82,12 @@ export const submitReviewAPI = async (productId, userId, rating, comment, isAnon
       comment: finalComment || null,
       status: 'pending'
     }])
-    .select(); // We force .select() here to ensure Supabase hands us back the created row
+    .select(); 
 
   if (error) {
     console.error('🔥 Submit Review Error:', error.message, error.details);
     throw error;
   }
   
-  console.log("✅ Review successfully inserted into database:", data);
   return data;
 };

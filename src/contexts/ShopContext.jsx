@@ -18,7 +18,6 @@ const readGuestCart = () => {
 
 const writeGuestCart = (items) => {
   try {
-    // Added variant_id to the saved data
     const slim = items.map(({ id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity, variant_id }) => ({
       id, name, brand, price, size, image_urls, gender, notes, available, compare_at_price, quantity, variant_id,
     }));
@@ -51,22 +50,32 @@ export const ShopProvider = ({ children }) => {
           if (guestCart.length > 0) {
             clearGuestCart();
             const merged = [...dbCart];
+            
+            // ✨ OPTIMIZED: Parallel Cart Syncing
+            const syncPromises = [];
+            
             for (const guestItem of guestCart) {
-              // Now checks for both product ID AND variant ID
               const existing = merged.find(i => i.id === guestItem.id && i.variant_id === guestItem.variant_id);
               if (existing) {
                 existing.quantity += guestItem.quantity;
               } else {
                 merged.push(guestItem);
               }
-              try {
-                const finalQty = existing ? existing.quantity : guestItem.quantity;
-                await syncCartItemAPI(user.id, guestItem.id, finalQty, guestItem.variant_id);
-              } catch (err) {
-                console.error('Merge sync error for item', guestItem.id, err);
-              }
+              const finalQty = existing ? existing.quantity : guestItem.quantity;
+              
+              // Push the network request to an array instead of awaiting it here
+              syncPromises.push(syncCartItemAPI(user.id, guestItem.id, finalQty, guestItem.variant_id));
             }
+            
             setCartItems(merged);
+            
+            // Fire them all at once
+            try {
+               await Promise.all(syncPromises);
+            } catch (err) {
+               console.error('Merge sync error', err);
+            }
+
           } else {
             setCartItems(dbCart);
           }
@@ -97,7 +106,6 @@ export const ShopProvider = ({ children }) => {
     let finalQuantity = quantity;
 
     setCartItems(prev => {
-      // Now checks for both product ID AND variant ID
       const existing = prev.find(item => item.id === product.id && item.variant_id === product.variant_id);
       if (existing) {
         finalQuantity = existing.quantity + quantity;

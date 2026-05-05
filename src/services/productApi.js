@@ -3,25 +3,15 @@ import { supabase } from './supabase';
 export const fetchProductsAPI = async () => {
   const { data, error } = await supabase
     .from('products')
-    // We now fetch the reviews alongside the products to dynamically calculate ratings
-    .select('*, product_variants(*), reviews(*)')
+    // ✨ OPTIMIZED: Removed reviews(*) payload bomb. We now rely on the 'rating' column.
+    .select('*, product_variants(*)')
     .eq('is_deleted', false) // Soft delete filter added here
     .order('created_at', { ascending: false });
     
   if (error) throw error;
 
-  // Process the rating on the fly so it's always accurate across the whole app!
-  return data.map(product => {
-    const approvedReviews = (product.reviews || []).filter(r => r.status === 'approved');
-    const avgRating = approvedReviews.length > 0
-      ? (approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length).toFixed(1)
-      : 0;
-
-    return {
-      ...product,
-      rating: avgRating, 
-    };
-  });
+  // No more heavy client-side mapping required!
+  return data;
 };
 
 export const saveProductAPI = async (payload, id = null) => {

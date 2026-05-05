@@ -34,12 +34,33 @@ export const useActiveChats = () => {
 
     const subscription = supabase
       .channel('admin-active-chats')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async () => {
-        try {
-          const data = await fetchActiveChatsAPI();
-          if (isMounted) setActiveChats(buildChatList(data));
-        } catch (err) {
-          console.error('Failed to refresh active chats', err);
+      // ✨ OPTIMIZED: Update state directly from payload instead of re-fetching DB
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const newMsg = payload.new;
+
+        if (isMounted) {
+          setActiveChats(currentChats => {
+            const existingIndex = currentChats.findIndex(chat => chat.id === newMsg.user_id);
+
+            if (existingIndex > -1) {
+              // Existing chat: Move to top and update status
+              const chat = currentChats[existingIndex];
+              const updatedChat = {
+                ...chat,
+                lastActive: newMsg.created_at,
+                hasUnread: newMsg.sender_role === 'customer' ? true : chat.hasUnread,
+              };
+              const newChatsList = [...currentChats];
+              newChatsList.splice(existingIndex, 1);
+              return [updatedChat, ...newChatsList];
+            } else {
+              // Completely new user: Only NOW do we fetch from DB to get their profile details
+              fetchActiveChatsAPI().then(data => {
+                if (isMounted) setActiveChats(buildChatList(data));
+              });
+              return currentChats;
+            }
+          });
         }
       })
       .subscribe();

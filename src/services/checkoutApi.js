@@ -17,25 +17,32 @@ export const processCheckoutAPI = async (userId, total, localItems, checkoutInfo
     }
   }
 
-  // --- STOCK AVAILABILITY CHECK (VARIANT-AWARE) ---
-  for (const item of localItems) {
-    const { data: product, error: prodErr } = await supabase
-      .from('products')
-      .select('available, name')
-      .eq('id', item.id)
-      .single();
+  // --- ✨ OPTIMIZED: BULK STOCK AVAILABILITY CHECK ---
+  const productIds = localItems.map(item => item.id);
+  const variantIds = localItems.map(item => item.variant_id);
 
-    if (prodErr || !product?.available) {
+  // Fetch all products and variants in parallel, in just 2 queries instead of 2 per item
+  const [ { data: products, error: prodErr }, { data: variants, error: varErr } ] = await Promise.all([
+    supabase.from('products').select('id, available, name').in('id', productIds),
+    supabase.from('product_variants').select('id, stock_count').in('id', variantIds)
+  ]);
+
+  if (prodErr) throw new Error("Failed to verify product availability.");
+  if (varErr) throw new Error("Failed to verify stock levels.");
+
+  // Create fast lookup maps
+  const productMap = new Map(products.map(p => [p.id, p]));
+  const variantMap = new Map(variants.map(v => [v.id, v]));
+
+  // Instantly validate in memory
+  for (const item of localItems) {
+    const product = productMap.get(item.id);
+    if (!product || !product.available) {
       throw new Error(`"${item.name}" is currently unavailable.`);
     }
 
-    const { data: variant, error: varErr } = await supabase
-      .from('product_variants')
-      .select('stock_count')
-      .eq('id', item.variant_id)
-      .single();
-
-    if (varErr || !variant) {
+    const variant = variantMap.get(item.variant_id);
+    if (!variant) {
       throw new Error(`The specific size for "${item.name}" could not be found.`);
     }
 
