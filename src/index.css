@@ -36,3 +36,10 @@ html, body {
   overflow-wrap: break-word;
   hyphens: auto;
 }
+
+/* Add this anywhere in src/index.css */
+@media (min-width: 1024px) {
+  html {
+    font-size: 80%;
+  }
+}

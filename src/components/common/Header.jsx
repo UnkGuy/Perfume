@@ -81,7 +81,7 @@ const Header = () => {
   return (
     <>
       <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${isScrolled ? 'bg-rich-black/95 backdrop-blur-md border-b border-white/5 py-4 shadow-lg' : 'bg-transparent py-6'}`}>
-        <div className="container mx-auto px-6 max-w-7xl">
+        <div className="container mx-auto px-6 max-w-[100rem]">
           <div className="flex justify-between items-center">
 
             {/* Logo */}

@@ -150,7 +150,7 @@ const WelcomePage = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-rich-black via-rich-black/80 to-transparent"></div>
           </div>
           
-          <div className="container mx-auto px-6 relative z-10 max-w-7xl">
+          <div className="container mx-auto px-6 relative z-10 max-w-[100rem]">
             <div className="max-w-2xl animate-fade-in-up">
               <span className="text-gold-400 font-bold tracking-widest uppercase text-sm mb-4 block">Discover Your Signature</span>
               <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
@@ -185,7 +185,7 @@ const WelcomePage = () => {
 
         {/* FEATURES SECTION */}
         <section className="py-24 bg-white/5">
-          <div className="container mx-auto px-6 max-w-7xl">
+          <div className="container mx-auto px-6 max-w-[100rem]">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12 text-center">
               <FeatureCard icon={<Sparkles size={28} />} title="Premium Ingredients" description="Sourced globally from the finest botanicals to ensure a rich, long-lasting scent profile." delay="0s" />
               <FeatureCard icon={<Droplets size={28} />} title="Extrait de Parfum" description="Highly concentrated formulations guaranteeing projection and longevity throughout your day." delay="0.15s" />
@@ -197,7 +197,7 @@ const WelcomePage = () => {
         {/* INTERACTIVE CAROUSEL SECTION */}
         {featuredProducts.length > 0 && (
           <section className="py-24 relative overflow-hidden border-t border-white/5">
-            <div className="container mx-auto px-6 max-w-7xl mb-10 flex justify-between items-end">
+            <div className="container mx-auto px-6 max-w-[100rem] mb-10 flex justify-between items-end">
               <div>
                 <span className="text-gold-400 font-bold tracking-widest uppercase text-sm mb-2 block">Trending</span>
                 <h2 className="text-3xl md:text-4xl font-bold text-white">Featured Collection</h2>
@@ -233,7 +233,7 @@ const WelcomePage = () => {
                   <div 
                     key={product.id} 
                     onClick={() => navigate(`/products/${product.id}`)}
-                    className="w-[160px] min-w-[160px] md:w-[200px] md:min-w-[200px] snap-center shrink-0 group cursor-pointer"
+                    className="w-[10rem] min-w-[10rem] md:w-[12.5rem] md:min-w-[12.5rem] snap-center shrink-0 group cursor-pointer"
                   >
                     <div className="relative aspect-[4/5] rounded-xl overflow-hidden mb-3 border border-white/10 group-hover:border-gold-400/50 transition-colors">
                       <img 
@@ -266,7 +266,7 @@ const WelcomePage = () => {
 
         {/* STORY SECTION */}
         <section className="py-24 bg-white/5 border-t border-white/5">
-          <div className="container mx-auto px-6 max-w-7xl">
+          <div className="container mx-auto px-6 max-w-[100rem]">
             <div className="flex flex-col md:flex-row items-center gap-16">
               <div ref={storyImageRef} className="story-image-wrap w-full md:w-1/2 relative aspect-square md:aspect-[4/5] rounded-2xl overflow-hidden">
                 <img 

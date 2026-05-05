@@ -26,7 +26,7 @@ const Footer = () => {
 
   return (
     <footer className="w-full bg-rich-black border-t border-white/10 py-12 relative z-10 overflow-hidden">
-      <div className="container mx-auto px-6 max-w-7xl flex flex-col items-center text-center">
+      <div className="container mx-auto px-6 max-w-[100rem] flex flex-col items-center text-center">
         <div className="flex items-center gap-4 mb-6 group cursor-pointer" onClick={handleLogoClick}>
           <img
             src={storeLogoUrl}
