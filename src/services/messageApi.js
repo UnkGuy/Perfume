@@ -34,3 +34,14 @@ export const sendMessageAPI = async (payload) => {
   if (error) throw error;
   return data;
 };
+
+export const markMessagesAsSeenAPI = async (userId) => {
+  const { error } = await supabase
+    .from('messages')
+    .update({ is_seen: true })
+    .eq('user_id', userId)
+    .eq('sender_role', 'customer')
+    .eq('is_seen', false);
+    
+  if (error) throw error;
+};

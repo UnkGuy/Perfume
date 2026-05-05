@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'; 
 import { supabase } from '../services/supabase'; 
-import { fetchActiveChatsAPI, fetchMessagesByUserAPI, sendMessageAPI } from '../services/messageApi';
+import { fetchActiveChatsAPI, fetchMessagesByUserAPI, sendMessageAPI, markMessagesAsSeenAPI } from '../services/messageApi';
 
 export const useActiveChats = () => { 
   const [activeChats, setActiveChats] = useState([]); 
@@ -13,8 +13,7 @@ export const useActiveChats = () => {
       email: msg.email || `Customer ${msg.user_id.substring(0, 6)}`, 
       displayName: msg.username || msg.email || 'Unknown User', 
       lastActive: msg.created_at, 
-      // If the last message wasn't from an admin, it's unread
-      hasUnread: msg.sender_role && msg.sender_role !== 'admin', 
+      hasUnread: msg.sender_role === 'customer' && msg.is_seen === false, 
     })); 
   };
 
@@ -102,6 +101,15 @@ export const useMessageThread = (userId, role) => {
     return () => supabase.removeChannel(subscription);
   }, [userId, role]);
 
+  const markAsSeen = async () => {
+    if (!userId || role !== 'admin') return;
+    try {
+      await markMessagesAsSeenAPI(userId);
+    } catch (error) {
+      console.error('Failed to mark messages as seen', error);
+    }
+  };
+
   const sendMessage = async (content, imageUrl = null) => { 
     const trimmedContent = content?.trim() || null; 
     if (!trimmedContent && !imageUrl) return { success: false }; 
@@ -154,5 +162,5 @@ export const useMessageThread = (userId, role) => {
     return publicUrlData.publicUrl;
   };
 
-  return { messages, sendMessage, uploadChatImage }; 
+  return { messages, sendMessage, uploadChatImage, markAsSeen }; 
 };

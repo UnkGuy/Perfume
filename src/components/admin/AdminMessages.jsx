@@ -21,7 +21,6 @@ const MAX_CHARS = 250;
 const AdminMessages = ({ defaultSelectedUser }) => {
   const { showToast } = useShop();
   
-  // Modified: Initialize state with the prop if provided
   const [selectedUser, setSelectedUser] = useState(defaultSelectedUser || null);
   const [reply, setReply] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -33,10 +32,9 @@ const AdminMessages = ({ defaultSelectedUser }) => {
   const fileInputRef   = useRef(null);
 
   const { activeChats, isLoading: chatsLoading } = useActiveChats();
-  const { messages, sendMessage, uploadChatImage } = useMessageThread(selectedUser, 'admin');
+  const { messages, sendMessage, uploadChatImage, markAsSeen } = useMessageThread(selectedUser, 'admin');
   const { isBanned, toggleBan } = useUserBan(selectedUser);
 
-  // Modified: Sync local state when parent passes a new user ID
   useEffect(() => {
     if (defaultSelectedUser) {
       setSelectedUser(defaultSelectedUser);
@@ -61,6 +59,13 @@ const AdminMessages = ({ defaultSelectedUser }) => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Mark messages as seen when a user is selected or when new messages arrive
+  useEffect(() => {
+    if (selectedUser) {
+      markAsSeen();
+    }
+  }, [selectedUser, messages]);
 
   const handleImageSelect = (e) => {
     const file = e.target.files?.[0];
