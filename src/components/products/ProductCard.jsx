@@ -17,7 +17,12 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
   const prices = variants.map(v => Number(v.price));
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+  
+  // LOGIC FIX: Check if discounted AND check if genuinely new (added in last 30 days)
   const isDiscounted = variants.some(v => v.compare_at_price && v.compare_at_price > v.price);
+  const daysSinceAdded = product.created_at ? (new Date() - new Date(product.created_at)) / (1000 * 60 * 60 * 24) : 999;
+  const isNew = daysSinceAdded <= 30;
+
   const hasPriceVariation = variants.length > 1 && minPrice !== maxPrice;
   
   return (
@@ -34,10 +39,20 @@ const ProductCard = ({ product, onSelect, onQuickView, isCompact = false }) => {
 
       <div className={`relative overflow-hidden bg-white/5 cursor-pointer flex-shrink-0 ${isCompact ? 'w-32 sm:w-40 md:w-48 h-full min-h-[12rem]' : 'w-full aspect-[4/5]'}`} onClick={() => onSelect(product)}> 
           <img src={imageSource} alt={product.name} loading="lazy" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-90 group-hover:opacity-100" />
-          <div className="absolute top-2 left-2 flex flex-col gap-1.5 max-w-[80%]">
-            {product.available && !isDiscounted && <span className={`bg-gold-400 text-black font-bold rounded-sm uppercase tracking-wider shadow-lg truncate ${isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'}`}>New</span>}
-            {product.available && isDiscounted && <span className={`bg-gold-400 text-black font-bold rounded-sm uppercase tracking-wider shadow-lg truncate ${isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'}`}>Sale</span>}
+          
+          <div className="absolute top-2 left-2 flex flex-col gap-1.5 max-w-[80%] z-10">
+            {product.available && isDiscounted && (
+              <span className={`bg-gold-400 text-black font-bold rounded-sm uppercase tracking-wider shadow-lg truncate ${isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'}`}>
+                Sale
+              </span>
+            )}
+            {product.available && isNew && !isDiscounted && (
+              <span className={`bg-gold-400 text-black font-bold rounded-sm uppercase tracking-wider shadow-lg truncate ${isCompact ? 'text-[9px] px-1.5 py-0.5' : 'text-[10px] px-2 py-1'}`}>
+                New
+              </span>
+            )}
           </div>
+
           {!product.available && <span className={`absolute inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm text-white font-bold tracking-widest border-2 border-white/20 text-center px-2 break-words ${isCompact ? 'text-[8px] m-1' : 'text-xs m-4'}`}>OUT OF STOCK</span>}
       </div>
 
