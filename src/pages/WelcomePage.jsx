@@ -58,7 +58,23 @@ const WelcomePage = () => {
     return imgs.length > 0 ? imgs : [HERO_IMAGE];
   }, [products, settings?.welcomeImages?.hero]);
 
-  const storyImage = settings?.welcomeImages?.secondary?.[0] || HERO_IMAGE;
+  const storyImages = useMemo(() => {
+    const adminSecondary = settings?.welcomeImages?.secondary;
+    if (adminSecondary && adminSecondary.length > 0) {
+      return adminSecondary;
+    }
+    return [HERO_IMAGE];
+  }, [settings?.welcomeImages?.secondary]);
+
+  const [storyImgIdx, setStoryImgIdx] = useState(0);
+
+  const nextStoryImage = () => {
+    setStoryImgIdx((prev) => (prev + 1) % storyImages.length);
+  };
+
+  const prevStoryImage = () => {
+    setStoryImgIdx((prev) => (prev - 1 + storyImages.length) % storyImages.length);
+  };
 
   useEffect(() => {
     if (heroImages.length <= 1) return;
@@ -268,12 +284,36 @@ const WelcomePage = () => {
         <section className="py-24 bg-white/5 border-t border-white/5">
           <div className="container mx-auto px-6 max-w-[100rem]">
             <div className="flex flex-col md:flex-row items-center gap-16">
-              <div ref={storyImageRef} className="story-image-wrap w-full md:w-1/2 relative aspect-square md:aspect-[4/5] rounded-2xl overflow-hidden">
+              <div ref={storyImageRef} className="story-image-wrap w-full md:w-1/2 relative aspect-square md:aspect-[4/5] rounded-2xl overflow-hidden group">
                 <img 
-                  src={storyImage} 
+                  src={storyImages[storyImgIdx]} 
                   alt="Crafting Perfume" 
-                  className="w-full h-full object-cover grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-700" 
+                  className="w-full h-full object-cover grayscale opacity-70 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700" 
                 />
+                {storyImages.length > 1 && (
+                  <>
+                    <button 
+                      onClick={prevStoryImage}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gold-400 hover:text-black z-10"
+                    >
+                      <ChevronLeft size={24} />
+                    </button>
+                    <button 
+                      onClick={nextStoryImage}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gold-400 hover:text-black z-10"
+                    >
+                      <ChevronRight size={24} />
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                      {storyImages.map((_, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`w-2 h-2 rounded-full transition-colors ${idx === storyImgIdx ? 'bg-gold-400' : 'bg-white/30'}`}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               <div className="w-full md:w-1/2 flex flex-col">
                 <div ref={storyHeadingRef} className="reveal-fade" style={{ '--delay': '0.1s' }}>

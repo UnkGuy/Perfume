@@ -84,10 +84,24 @@ const AdminSettings = () => {
   const setInventory = (key, val) => setDraft(d => ({ ...d, inventory: { ...d.inventory, [key]: val } }));
   const setLegal = (key, val) => setDraft(d => ({ ...d, legal: { ...d.legal, [key]: val } }));
 
-  const addHeroImage = (url) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: [...(d.welcomeImages?.hero || []), url] } }));
+  const addHeroImage = (url) => setDraft(d => {
+    const current = d.welcomeImages?.hero || [];
+    if (current.length >= 10) {
+      showToast('Limit Reached', 'You can only upload up to 10 hero images.', 'error');
+      return d;
+    }
+    return { ...d, welcomeImages: { ...d.welcomeImages, hero: [...current, url] } };
+  });
   const removeHeroImage = (idx) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, hero: d.welcomeImages.hero.filter((_, i) => i !== idx) } }));
   
-  const addSecondaryImage = (url) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, secondary: [...(d.welcomeImages?.secondary || []), url] } }));
+  const addSecondaryImage = (url) => setDraft(d => {
+    const current = d.welcomeImages?.secondary || [];
+    if (current.length >= 10) {
+      showToast('Limit Reached', 'You can only upload up to 10 secondary images.', 'error');
+      return d;
+    }
+    return { ...d, welcomeImages: { ...d.welcomeImages, secondary: [...current, url] } };
+  });
   const removeSecondaryImage = (idx) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, secondary: d.welcomeImages.secondary.filter((_, i) => i !== idx) } }));
 
   const handleSave = async () => { 
@@ -159,7 +173,10 @@ const AdminSettings = () => {
           
           {/* Hero Images */}
           <div>
-            <label className="block text-xs text-gray-400 uppercase tracking-widest mb-3">Hero Carousel Images</label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block text-xs text-gray-400 uppercase tracking-widest">Hero Carousel Images</label>
+              <span className="text-xs text-gray-500">{(draft.welcomeImages?.hero || []).length} / 10</span>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {(draft.welcomeImages?.hero || []).map((url, idx) => (
                 <div key={idx} className="relative group aspect-[4/5] rounded-lg overflow-hidden border border-white/10">
@@ -171,13 +188,15 @@ const AdminSettings = () => {
                   </div>
                 </div>
               ))}
-              <div className="aspect-[4/5] h-full min-h-[200px]">
-                <ImageUploader 
-                  bucketName="assets-images" // <-- ADDED BUCKET PROP
-                  onUploadSuccess={(url) => addHeroImage(url)} 
-                  onError={(err) => showToast('Upload Failed', err, 'error')} 
-                />
-              </div>
+              {(draft.welcomeImages?.hero || []).length < 10 && (
+                <div className="aspect-[4/5] h-full min-h-[200px]">
+                  <ImageUploader 
+                    bucketName="assets-images" // <-- ADDED BUCKET PROP
+                    onUploadSuccess={(url) => addHeroImage(url)} 
+                    onError={(err) => showToast('Upload Failed', err, 'error')} 
+                  />
+                </div>
+              )}
             </div>
           </div>
 
