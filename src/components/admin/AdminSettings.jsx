@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react'; 
-import { Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2, Store, CreditCard, Truck, Settings, CheckCircle, Image as ImageIcon, Box, FileText } from 'lucide-react'; 
+import { Save, Loader2, ToggleLeft, ToggleRight, Plus, Trash2, Store, CreditCard, Truck, Settings, CheckCircle, Image as ImageIcon, Box, FileText, Star, Search } from 'lucide-react'; 
 import { saveSettingsAPI } from '../../services/settingsApi'; 
 import { logAdminActionAPI } from '../../services/logApi'; 
 import { useSettings } from '../../contexts/SettingsContext'; 
 import { useAuth } from '../../contexts/AuthContext'; 
 import { useShop } from '../../contexts/ShopContext';
+import { useStoreProducts } from '../../hooks/useStoreProducts';
 import ImageUploader from '../common/ImageUploader';
+
+const FALLBACK_IMAGE = 'https://zmewzupojoufgryrskrs.supabase.co/storage/v1/object/public/product-images/test.jpg';
 
 const Toggle = ({ checked, onChange, label, description }) => (
   <div className="flex items-center justify-between py-3 border-b border-white/5 last:border-0">
@@ -69,10 +72,15 @@ const AdminSettings = () => {
   const { settings, setSettings } = useSettings(); 
   const { user } = useAuth(); 
   const { showToast } = useShop();
+  const { products } = useStoreProducts();
 
   const [draft, setDraft] = useState(null); 
   const [isSaving, setIsSaving] = useState(false); 
   const [savedAt, setSavedAt] = useState(null);
+  
+  // Search state for Curated Works
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => { setDraft(JSON.parse(JSON.stringify(settings))); }, [settings]);
 
@@ -104,6 +112,17 @@ const AdminSettings = () => {
   });
   const removeSecondaryImage = (idx) => setDraft(d => ({ ...d, welcomeImages: { ...d.welcomeImages, secondary: d.welcomeImages.secondary.filter((_, i) => i !== idx) } }));
 
+  const handleAddFeatured = (id) => {
+    const current = draft.featuredProducts || [];
+    if (!current.includes(id)) {
+      setDraft(d => ({ ...d, featuredProducts: [...current, id] }));
+    }
+  };
+
+  const handleRemoveFeatured = (id) => {
+    setDraft(d => ({ ...d, featuredProducts: (d.featuredProducts || []).filter(pid => pid !== id) }));
+  };
+
   const handleSave = async () => { 
     setIsSaving(true); 
     try { 
@@ -125,6 +144,13 @@ const AdminSettings = () => {
   };
 
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(settings);
+
+  // Filter products for the search dropdown
+  const availableProducts = products?.filter(p => p.available && !(draft.featuredProducts || []).includes(p.id)) || [];
+  const filteredProducts = availableProducts.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    p.brand.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -167,6 +193,84 @@ const AdminSettings = () => {
         </div>
       )}
 
+      {/* ── Welcome Page Featured Products ── */}
+      <Section icon={<Star size={16} />} title="Curated Works (Welcome Page)" description="Select which products appear in the oversized carousel on the Welcome Page.">
+        <div className="space-y-6">
+          <div className="relative">
+            <div className="flex items-center bg-black/50 border border-white/10 rounded-lg px-3 focus-within:border-gold-400 transition-colors">
+              <Search size={18} className="text-gray-400" />
+              <input 
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)} // Delay so click registers
+                placeholder="Search products by name or brand to feature..."
+                className="flex-1 bg-transparent px-3 py-3 text-sm text-white focus:outline-none placeholder-gray-500"
+              />
+            </div>
+            
+            {/* Search Dropdown Results */}
+            {isSearchFocused && (
+              <div className="absolute z-20 w-full mt-2 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-2xl max-h-60 overflow-y-auto custom-scrollbar">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map(p => (
+                    <button
+                      key={p.id}
+                      className="w-full text-left px-4 py-3 hover:bg-white/5 border-b border-white/5 last:border-0 flex items-center gap-4 transition-colors"
+                      onClick={() => {
+                        handleAddFeatured(p.id);
+                        setSearchQuery("");
+                        setIsSearchFocused(false);
+                      }}
+                    >
+                      <img src={p.image_urls?.[0] || FALLBACK_IMAGE} alt={p.name} className="w-10 h-10 rounded object-cover border border-white/10" />
+                      <div>
+                        <div className="text-sm font-bold text-white">{p.name}</div>
+                        <div className="text-xs text-gray-400 uppercase tracking-widest">{p.brand}</div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-4 py-4 text-sm text-gray-500 text-center">No matching products found.</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
+            {(draft.featuredProducts || []).map(pid => {
+              const p = products?.find(prod => prod.id === pid);
+              if (!p) return null;
+              const imgUrl = p.image_urls?.[0] || FALLBACK_IMAGE;
+              
+              return (
+                <div key={pid} className="relative group bg-white/5 border border-white/10 rounded-lg p-2 flex items-center gap-3 hover:border-white/20 transition-colors">
+                  <img src={imgUrl} alt={p.name} className="w-12 h-12 rounded object-cover border border-white/10" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{p.name}</p>
+                    <p className="text-xs text-gray-400 uppercase tracking-wider truncate">{p.brand}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleRemoveFeatured(pid)} 
+                    className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
+                    title="Remove from featured"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              );
+            })}
+            
+            {(draft.featuredProducts || []).length === 0 && (
+              <div className="col-span-full py-6 text-center text-sm text-gray-500 border border-dashed border-white/10 rounded-lg">
+                No products featured. The welcome page will automatically show the newest 8 items.
+              </div>
+            )}
+          </div>
+        </div>
+      </Section>
+
       {/* ── Welcome Page Images ── */}
       <Section icon={<ImageIcon size={16} />} title="Welcome Page Images" description="Upload images to feature on the welcome page hero carousel and story section.">
         <div className="space-y-6">
@@ -191,7 +295,7 @@ const AdminSettings = () => {
               {(draft.welcomeImages?.hero || []).length < 10 && (
                 <div className="aspect-[4/5] h-full min-h-[200px]">
                   <ImageUploader 
-                    bucketName="assets-images" // <-- ADDED BUCKET PROP
+                    bucketName="assets-images"
                     onUploadSuccess={(url) => addHeroImage(url)} 
                     onError={(err) => showToast('Upload Failed', err, 'error')} 
                   />
@@ -218,7 +322,7 @@ const AdminSettings = () => {
               ))}
               <div className="aspect-[4/5] h-full min-h-[200px]">
                 <ImageUploader 
-                  bucketName="assets-images" // <-- ADDED BUCKET PROP
+                  bucketName="assets-images"
                   onUploadSuccess={(url) => addSecondaryImage(url)} 
                   onError={(err) => showToast('Upload Failed', err, 'error')} 
                 />

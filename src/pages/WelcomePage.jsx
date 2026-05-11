@@ -63,7 +63,15 @@ const WelcomePage = () => {
     }
   };
 
-  const featuredProducts = (products || []).filter(p => p.available).slice(0, 8);
+  // LOGIC FIX: Pull curated works from settings, fallback to newest 8 items
+  const featuredProducts = useMemo(() => {
+    if (settings?.featuredProducts && settings.featuredProducts.length > 0) {
+      return settings.featuredProducts
+        .map(id => (products || []).find(p => p.id === id))
+        .filter(Boolean); // removes undefined if a product gets deleted
+    }
+    return (products || []).filter(p => p.available).slice(0, 8);
+  }, [products, settings?.featuredProducts]);
 
   return (
     <div className="min-h-[100dvh] bg-[#050505] text-white font-sans flex flex-col selection:bg-gold-400 selection:text-black">
